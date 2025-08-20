@@ -265,12 +265,10 @@
                 <!-- Inputs Tab -->
                 <div id="inputs-content" class="tab-pane active">
                     <h2>Shutter Specification</h2>
+                    <!-- REMOVED: Excel File Import Button -->
                     <div class="form-group">
-                        <label for="xlsxFile">Import Excel Data File (.xlsx)</label>
-                        <input type="file" id="xlsxFile" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-                        <div id="import-status">Import file with 'Lath', 'Bottom lath', 'Axles', 'Motors', 'SafetyB', 'Endplate', and 'Wicket doors' sheets.</div>
+                         <div id="import-status">Attempting to load data from repository...</div>
                     </div>
-                    <hr>
                     <div class="form-group">
                         <label for="width">Curtain Width (mm)</label>
                         <input type="number" id="width" placeholder="e.g., 3000">
@@ -546,7 +544,7 @@
         
         const dom = {};
         // *** MODIFIED START ***
-        ['xlsxFile', 'width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
+        ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 
          'max-torque', 'total-revolutions', 'motorMountingType', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
@@ -589,7 +587,9 @@
             updateAllCalculations();
         });
 
-        dom.xlsxFile.addEventListener('change', handleFileSelect);
+        // Event listener for manual file selection is no longer needed
+        // dom.xlsxFile.addEventListener('change', handleFileSelect);
+
         dom.motorSelector.addEventListener('change', updateSelectedMotorInfo);
         dom.endplateSelector.addEventListener('change', updateSelectedEndplateInfo);
         tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
@@ -609,6 +609,7 @@
             }
         }
         
+        // This function is no longer called by a user action, but its logic is used in the auto-loader
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -2879,6 +2880,126 @@
         };
         
         updateAllCalculations();
+    </script>
+
+    <!-- ADDED: Script to automatically load Excel file from GitHub -->
+    <script>
+        window.addEventListener('load', () => {
+            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
+            const statusDiv = document.getElementById('import-status');
+            
+            statusDiv.textContent = 'Loading data from repository...';
+            statusDiv.style.color = '#555';
+
+            fetch(excelFileUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(fileData => {
+                    // This is the core processing logic, adapted from your original handleFileSelect function
+                    userSelectedAxleIndex = null; 
+                    (async () => { // Use an async IIFE to handle the async image extraction
+                        try {
+                            const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
+                            
+                            const required = {
+                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
+                                'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
+                                'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
+                                'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
+                                'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
+                                'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
+                                'Wicket doors': ['Name', 'Height', 'Width']
+                            };
+
+                            for (const sheetName in required) {
+                                if (!workbook.Sheets[sheetName]) {
+                                    if (sheetName === 'Wicket doors') {
+                                        console.warn(`Optional sheet "Wicket doors" not found.`);
+                                        wicketData = [];
+                                        continue;
+                                    }
+                                    const coreRequired = {
+                                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
+                                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
+                                        'Axles': ['Name', 'Diameter', 'Wall Thickness'],
+                                        'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
+                                        'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
+                                        'Endplate': ['Name', 'Size', 'Material'],
+                                        'Wicket doors': ['Name', 'Height', 'Width']
+                                    };
+                                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                                    if (sheetData.length > 0) {
+                                        const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
+                                        for (const requiredCol of coreRequired[sheetName]) {
+                                            if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
+                                                throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
+                                            }
+                                        }
+                                    } else {
+                                      throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
+                                    }
+                                }
+                                
+                                const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                                switch (sheetName) {
+                                    case 'Lath': lathData = objectData; break;
+                                    case 'Bottom lath': bottomLathData = objectData; break;
+                                    case 'Axles': axleData = objectData; break;
+                                    case 'Motors': motorData = objectData; break;
+                                    case 'SafetyB': safetyBrakeData = objectData; break;
+                                    case 'Endplate': endplateData = objectData; break;
+                                    case 'Wicket doors': wicketData = objectData; break;
+                                }
+                            }
+
+                            lathImageMap.clear(); 
+                            safetyBrakeImageMap.clear();
+                            const exceljsWorkbook = new ExcelJS.Workbook();
+                            await exceljsWorkbook.xlsx.load(fileData);
+
+                            const lathSheet = exceljsWorkbook.getWorksheet('Lath');
+                            if (lathSheet) {
+                                await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
+                            }
+                            
+                            const safetyBrakeSheet = exceljsWorkbook.getWorksheet('SafetyB');
+                            if (safetyBrakeSheet) {
+                                await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
+                            }
+                            
+                            populateDropdown(dom.lathType, lathData, 'Name');
+                            populateDropdown(dom.visionLathType, lathData, 'Name');
+                            populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
+                            populateMotorMountingTypes();
+                            populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
+
+                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector'].forEach(id => {
+                                if(dom[id]) dom[id].disabled = false;
+                            });
+
+                            updateSelectedWicketInfo(); 
+                            statusDiv.textContent = 'Successfully loaded data from repository.';
+                            statusDiv.style.color = 'green';
+                            updateAllCalculations();
+
+                        } catch (error) {
+                            statusDiv.textContent = `Error processing Excel file: ${error.message}`;
+                            statusDiv.style.color = 'red';
+                            alert(`Error Reading File: ${error.message}`);
+                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = [];
+                        }
+                    })();
+                })
+                .catch(error => {
+                    statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.';
+                    statusDiv.style.color = 'red';
+                    console.error('There has been a problem with the fetch operation:', error);
+                });
+        });
     </script>
 </body>
 </html>
