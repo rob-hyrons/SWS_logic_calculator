@@ -336,6 +336,7 @@
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
                         <!-- *** MODIFIED START *** -->
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
+                        <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <!-- *** MODIFIED END *** -->
                         <p>Max Wind Resistance: <span id="wind-resistance">0</span> Pa (<span id="wind-class">Class 0</span>)</p>
                         <p>Lath Deflection at Max Load: <span id="lath-deflection">0.00</span> mm</p>
@@ -563,7 +564,7 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
          'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
-         'vision-percentage', 'vision-percentage-para'
+         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para'
         ].forEach(id => dom[id] = document.getElementById(id));
         // *** MODIFIED END ***
         
@@ -1779,8 +1780,9 @@
             }
         
             // *** MODIFIED START ***
-            // Hide vision percentage when vision is disabled
+            // Hide vision percentage details when vision is disabled
             dom['vision-percentage-para'].style.display = 'none';
+            dom['vision-area-m2-para'].style.display = 'none';
             // *** MODIFIED END ***
 
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
@@ -1860,6 +1862,7 @@
                 dom['curtain-area'].textContent = '0.00';
                 // *** MODIFIED START ***
                 dom['vision-percentage-para'].style.display = 'none';
+                dom['vision-area-m2-para'].style.display = 'none';
                 // *** MODIFIED END ***
                 return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
             };
@@ -1936,10 +1939,18 @@
             const actualVisionPanelHeight = numLathsVision * visionLathCompressed;
 
             // *** MODIFIED START ***
-            // Calculate and display overall vision percentage
-            const visionPercentage = (totalArea > 0) ? (areaVision / totalArea) * 100 : 0;
-            dom['vision-percentage'].textContent = visionPercentage.toFixed(2);
+            // Calculate and display overall vision percentage and area based on the lath's specific vision percentage
+            const visionLathVisionKey = Object.keys(visionLath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const lathVisionPercentage = visionLathVisionKey ? (parseFloat(visionLath[visionLathVisionKey]) || 0) : 0;
+            
+            const actualVisionAreaM2 = areaVision * (lathVisionPercentage / 100);
+            const overallVisionPercentage = (totalArea > 0) ? (actualVisionAreaM2 / totalArea) * 100 : 0;
+
+            dom['vision-percentage'].textContent = overallVisionPercentage.toFixed(2);
+            dom['vision-area-m2'].textContent = actualVisionAreaM2.toFixed(2);
+
             dom['vision-percentage-para'].style.display = 'block';
+            dom['vision-area-m2-para'].style.display = 'block';
             // *** MODIFIED END ***
 
             const visionData = {
