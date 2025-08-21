@@ -334,6 +334,9 @@
                         <h3>Shutter Details</h3>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
+                        <!-- *** MODIFIED START *** -->
+                        <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
+                        <!-- *** MODIFIED END *** -->
                         <p>Max Wind Resistance: <span id="wind-resistance">0</span> Pa (<span id="wind-class">Class 0</span>)</p>
                         <p>Lath Deflection at Max Load: <span id="lath-deflection">0.00</span> mm</p>
                         <p>Number of Laths: <span id="lath-count">0</span></p>
@@ -559,7 +562,8 @@
          'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity', 
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
-         'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize'
+         'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
+         'vision-percentage', 'vision-percentage-para'
         ].forEach(id => dom[id] = document.getElementById(id));
         // *** MODIFIED END ***
         
@@ -623,11 +627,11 @@
                     const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                     
                     const required = {
-                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
-                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                         // *** MODIFIED START ***
-                        'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
+                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
                         // *** MODIFIED END ***
+                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
+                        'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                         'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
                         'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                         'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
@@ -696,7 +700,22 @@
                     }
                     
                     populateDropdown(dom.lathType, lathData, 'Name');
-                    populateDropdown(dom.visionLathType, lathData, 'Name');
+                    // *** MODIFIED START ***
+                    // Custom population for vision lath dropdown to filter by vision percentage
+                    const visionSelect = dom.visionLathType;
+                    visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
+                    lathData.forEach((item, index) => {
+                        const visionKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'vision percentage');
+                        const visionValue = visionKey ? (parseFloat(item[visionKey]) || 0) : 0;
+                        if (visionValue > 0) {
+                            const option = document.createElement('option');
+                            option.value = index; // Use the original index from lathData
+                            const nameKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'name');
+                            option.textContent = item[nameKey];
+                            visionSelect.appendChild(option);
+                        }
+                    });
+                    // *** MODIFIED END ***
                     populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
                     populateMotorMountingTypes();
                     
@@ -1759,6 +1778,11 @@
                 return calculateVisionCurtainProperties(lath, bottomLath, axle);
             }
         
+            // *** MODIFIED START ***
+            // Hide vision percentage when vision is disabled
+            dom['vision-percentage-para'].style.display = 'none';
+            // *** MODIFIED END ***
+
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             if (!lath || !bottomLath || floorToAxleCenter <= 0) {
                 dom['lath-count'].textContent = '0';
@@ -1834,6 +1858,9 @@
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
+                // *** MODIFIED START ***
+                dom['vision-percentage-para'].style.display = 'none';
+                // *** MODIFIED END ***
                 return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
             };
 
@@ -1907,6 +1934,13 @@
             
             const actualVisionStartHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed);
             const actualVisionPanelHeight = numLathsVision * visionLathCompressed;
+
+            // *** MODIFIED START ***
+            // Calculate and display overall vision percentage
+            const visionPercentage = (totalArea > 0) ? (areaVision / totalArea) * 100 : 0;
+            dom['vision-percentage'].textContent = visionPercentage.toFixed(2);
+            dom['vision-percentage-para'].style.display = 'block';
+            // *** MODIFIED END ***
 
             const visionData = {
                 visionLath,
@@ -2906,7 +2940,9 @@
                             const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                             
                             const required = {
-                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
+                                // *** MODIFIED START ***
+                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
+                                // *** MODIFIED END ***
                                 'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                                 'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                                 'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
@@ -2972,7 +3008,22 @@
                             }
                             
                             populateDropdown(dom.lathType, lathData, 'Name');
-                            populateDropdown(dom.visionLathType, lathData, 'Name');
+                            // *** MODIFIED START ***
+                            // Custom population for vision lath dropdown to filter by vision percentage
+                            const visionSelect = dom.visionLathType;
+                            visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
+                            lathData.forEach((item, index) => {
+                                const visionKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'vision percentage');
+                                const visionValue = visionKey ? (parseFloat(item[visionKey]) || 0) : 0;
+                                if (visionValue > 0) {
+                                    const option = document.createElement('option');
+                                    option.value = index; // Use the original index from lathData
+                                    const nameKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'name');
+                                    option.textContent = item[nameKey];
+                                    visionSelect.appendChild(option);
+                                }
+                            });
+                            // *** MODIFIED END ***
                             populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
                             populateMotorMountingTypes();
                             populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
