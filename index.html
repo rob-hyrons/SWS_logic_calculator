@@ -288,6 +288,14 @@
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
+                    <!-- *** MODIFIED START *** -->
+                    <div class="form-group">
+                        <label for="endLockType">End Lock Type</label>
+                        <select id="endLockType" disabled>
+                            <option value="">-- None --</option>
+                        </select>
+                    </div>
+                    <!-- *** MODIFIED END *** -->
                     <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
                         <img id="lathImageDisplay" src="" alt="Lath Image" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
                     </div>
@@ -333,6 +341,9 @@
                     <div class="results">
                         <h3>Shutter Details</h3>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
+                        <!-- *** MODIFIED START *** -->
+                        <p>End Lock Weight: <span id="endlock-weight-kg">0.00</span> kgs</p>
+                        <!-- *** MODIFIED END *** -->
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
                         <!-- *** MODIFIED START *** -->
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
@@ -537,7 +548,9 @@
     </div>
 
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [];
+        // *** MODIFIED START ***
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endLockData = [];
+        // *** MODIFIED END ***
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
@@ -564,7 +577,7 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
          'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
-         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para'
+         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endLockType', 'endlock-weight-kg'
         ].forEach(id => dom[id] = document.getElementById(id));
         // *** MODIFIED END ***
         
@@ -572,7 +585,7 @@
         
         // *** MODIFIED START ***
         ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize'
+         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endLockType'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -630,22 +643,26 @@
                     const required = {
                         // *** MODIFIED START ***
                         'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
-                        // *** MODIFIED END ***
                         'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                         'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                         'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
                         'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                         'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
-                        'Wicket doors': ['Name', 'Height', 'Width']
+                        'Wicket doors': ['Name', 'Height', 'Width'],
+                        'End lock': ['Description', 'weight in grams']
+                        // *** MODIFIED END ***
                     };
 
                     for (const sheetName in required) {
                         if (!workbook.Sheets[sheetName]) {
-                            if (sheetName === 'Wicket doors') {
-                                console.warn(`Optional sheet "Wicket doors" not found.`);
-                                wicketData = [];
+                             // *** MODIFIED START ***
+                            if (sheetName === 'Wicket doors' || sheetName === 'End lock') {
+                                console.warn(`Optional sheet "${sheetName}" not found.`);
+                                if(sheetName === 'Wicket doors') wicketData = [];
+                                if(sheetName === 'End lock') endLockData = [];
                                 continue;
                             }
+                            // *** MODIFIED END ***
                             // Do not throw error for missing optional columns, just check for core ones.
                             const coreRequired = {
                                 'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
@@ -654,7 +671,10 @@
                                 'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
                                 'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
                                 'Endplate': ['Name', 'Size', 'Material'],
-                                'Wicket doors': ['Name', 'Height', 'Width']
+                                'Wicket doors': ['Name', 'Height', 'Width'],
+                                // *** MODIFIED START ***
+                                'End lock': ['Description', 'weight in grams']
+                                // *** MODIFIED END ***
                             };
 
                             const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
@@ -679,6 +699,9 @@
                             case 'SafetyB': safetyBrakeData = objectData; break;
                             case 'Endplate': endplateData = objectData; break;
                             case 'Wicket doors': wicketData = objectData; break;
+                            // *** MODIFIED START ***
+                            case 'End lock': endLockData = objectData; break;
+                            // *** MODIFIED END ***
                         }
                     }
 
@@ -702,6 +725,10 @@
                     
                     populateDropdown(dom.lathType, lathData, 'Name');
                     // *** MODIFIED START ***
+                    populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
+                    // *** MODIFIED END ***
+
+                    // *** MODIFIED START ***
                     // Custom population for vision lath dropdown to filter by vision percentage
                     const visionSelect = dom.visionLathType;
                     visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
@@ -721,9 +748,11 @@
                     populateMotorMountingTypes();
                     
                     populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
-                    ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector'].forEach(id => {
+                    // *** MODIFIED START ***
+                    ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
                         if(dom[id]) dom[id].disabled = false;
                     });
+                    // *** MODIFIED END ***
                     updateSelectedWicketInfo(); 
 
                     dom['import-status'].textContent = 'Successfully imported all data sheets.';
@@ -732,7 +761,9 @@
                     updateAllCalculations();
                 } catch (error) {
                     alert(`Error Reading File: ${error.message}`);
-                    lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = [];
+                    // *** MODIFIED START ***
+                    lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
+                    // *** MODIFIED END ***
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -848,7 +879,7 @@
             const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight);
 
             const finalCurtainProps = calculateCurtainProperties(selectedLath, selectedBottomLath, bestAxle);
-            const { totalWeight, travelHeight, fullCurtainLength, visionData } = finalCurtainProps;
+            const { totalWeight, travelHeight, fullCurtainLength, visionData, endLockInfo } = finalCurtainProps;
             visionCalcs = visionData;
 
             calculateWindResistance();
@@ -866,7 +897,10 @@
                 selectedLath,
                 selectedBottomLath,
                 bestAxle,
-                visionCalcs
+                visionCalcs,
+                // *** MODIFIED START ***
+                endLockInfo
+                // *** MODIFIED END ***
             );
             updateWicketCalculationsAndGraphic();
         }
@@ -1762,16 +1796,22 @@
             return { profileData, finalCoilDiameter: currentRollDiameter };
         };
         
-        function populateDropdown(selectElement, dataArray, nameField) {
-            selectElement.innerHTML = `<option value="">-- Select an option --</option>`;
+        // *** MODIFIED START: Corrected populateDropdown function ***
+        function populateDropdown(selectElement, dataArray, nameField, defaultOptionText = '-- Select an option --') {
+            selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
             dataArray.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
                 const header = Object.keys(item).find(k => k.toLowerCase().trim() === nameField.toLowerCase().trim());
-                option.textContent = item[header];
-                selectElement.appendChild(option);
+                if(header && item[header]) { // Check that the header and its value exist
+                    option.textContent = item[header];
+                    selectElement.appendChild(option);
+                } else {
+                    console.warn(`Could not find header "${nameField}" or its value in data item:`, item);
+                }
             });
         };
+        // *** MODIFIED END ***
         
         function calculateCurtainProperties(lath, bottomLath, axle) {
             const visionEnabled = dom.addVision.checked;
@@ -1780,6 +1820,10 @@
             }
         
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
+            let totalWeight = 0;
+            let endLockWeight = 0;
+            let endLockInfo = null;
+
             if (!lath || !bottomLath || floorToAxleCenter <= 0) {
                 dom['lath-count'].textContent = '0';
                 dom['weight-kg'].textContent = '0.00';
@@ -1788,7 +1832,8 @@
                 dom['curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
-                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
+                dom['endlock-weight-kg'].textContent = '0.00';
+                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endLockInfo: null };
             }
 
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
@@ -1831,7 +1876,28 @@
 
             const lathWeightBasedOnArea = widthM * (numLaths * lathCoverageForWeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-            const totalWeight = lathWeightBasedOnArea + bottomLathWeight;
+            totalWeight = lathWeightBasedOnArea + bottomLathWeight;
+            
+            // *** MODIFIED START: End Lock Calculation ***
+            const selectedEndLockIndex = dom.endLockType.value;
+            if (selectedEndLockIndex !== "" && endLockData[selectedEndLockIndex] && numLaths > 0) {
+                const endLock = endLockData[selectedEndLockIndex];
+                const weightGramsKey = Object.keys(endLock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                const endLockWeightGrams = weightGramsKey ? parseFloat(endLock[weightGramsKey]) : 0;
+
+                if (endLockWeightGrams > 0) {
+                    const lathsWithEndLocks = Math.ceil((numLaths - 1) / 2);
+                    const totalEndLocks = lathsWithEndLocks * 2;
+                    endLockWeight = (totalEndLocks * endLockWeightGrams) / 1000;
+                    totalWeight += endLockWeight;
+                    endLockInfo = { // Pass info to the graphics function
+                        lathsWithLocks: lathsWithEndLocks
+                    };
+                }
+            }
+            dom['endlock-weight-kg'].textContent = endLockWeight.toFixed(2);
+            // *** MODIFIED END ***
+
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             const travelHeight = floorToAxleCenter - bottomLathHeight;
@@ -1853,7 +1919,7 @@
             }
             // *** REVISED LOGIC END ***
             
-            return { totalWeight, travelHeight, fullCurtainLength, visionData: null };
+            return { totalWeight, travelHeight, fullCurtainLength, visionData: null, endLockInfo };
         };
         
         function calculateVisionCurtainProperties(mainLath, bottomLath, axle) {
@@ -1862,6 +1928,8 @@
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             const desiredVisionStart = parseFloat(dom.visionStartHeight.value) || 0;
             const desiredVisionPanelHeight = parseFloat(dom.visionPanelHeight.value) || 0;
+            let endLockWeight = 0;
+            let endLockInfo = null;
 
             const resetAndReturn = () => {
                 dom['lath-count'].textContent = '0';
@@ -1871,7 +1939,8 @@
                 dom['curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
-                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
+                dom['endlock-weight-kg'].textContent = '0.00';
+                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endLockInfo: null };
             };
 
             if (!mainLath || !bottomLath || !visionLath || !axle || floorToAxleCenter <= 0 || widthM <= 0) {
@@ -1925,7 +1994,28 @@
             const weightVision = numLathsVision * (visionLathUncompressed / 1000) * widthM * visionLathKgsM2;
             const weightAbove = numLathsAbove * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
             const bottomLathWeight = widthM * bottomLathWeightPerM;
-            const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight;
+            let totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight;
+            
+             // *** MODIFIED START: End Lock Calculation ***
+            const selectedEndLockIndex = dom.endLockType.value;
+            if (selectedEndLockIndex !== "" && endLockData[selectedEndLockIndex] && totalNumLaths > 0) {
+                const endLock = endLockData[selectedEndLockIndex];
+                const weightGramsKey = Object.keys(endLock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                const endLockWeightGrams = weightGramsKey ? parseFloat(endLock[weightGramsKey]) : 0;
+
+                if (endLockWeightGrams > 0) {
+                    const lathsWithEndLocks = Math.ceil((totalNumLaths - 1) / 2);
+                    const totalEndLocks = lathsWithEndLocks * 2;
+                    endLockWeight = (totalEndLocks * endLockWeightGrams) / 1000;
+                    totalWeight += endLockWeight;
+                    endLockInfo = { // Pass info to the graphics function
+                        lathsWithLocks: lathsWithEndLocks
+                    };
+                }
+            }
+            dom['endlock-weight-kg'].textContent = endLockWeight.toFixed(2);
+            // *** MODIFIED END ***
+
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             const compressedCurtainHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed) + (numLathsAbove * mainLathCompressed);
@@ -1974,7 +2064,7 @@
                 actualVisionPanelHeight
             };
 
-            return { totalWeight, travelHeight, fullCurtainLength, visionData };
+            return { totalWeight, travelHeight, fullCurtainLength, visionData, endLockInfo };
         }
 
         function drawTorqueGraph(profileData, container) {
@@ -2484,7 +2574,7 @@
         }
         // *** MODIFIED END ***
 
-        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, visionData = null) {
+        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, visionData = null, endLockInfo = null) {
             const container = dom['shutter-graphic-container'];
             container.innerHTML = '';
             
@@ -2493,7 +2583,10 @@
                 showHeightDim: true,
                 showCurtainWidthDim: true,
                 showAxleCenterline: true,
-                visionOptions: visionData
+                visionOptions: visionData,
+                // *** MODIFIED START ***
+                endLockOptions: endLockInfo
+                // *** MODIFIED END ***
             };
             
             const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, options);
@@ -2528,7 +2621,10 @@
                 showAxleCenterline = false,
                 wicket = null, 
                 wicketLathHeight = 0,
-                visionOptions = null
+                visionOptions = null,
+                // *** MODIFIED START ***
+                endLockOptions = null
+                // *** MODIFIED END ***
             } = options;
 
             const svg = document.createElementNS(svgNS, "svg");
@@ -2593,6 +2689,10 @@
             let visionStartY = 0;
             let visionEndY = 0;
 
+            // *** MODIFIED START: Store lath positions for end lock drawing ***
+            const lathYPositions = [];
+            // *** MODIFIED END ***
+
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions;
                 const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
@@ -2605,6 +2705,7 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
+                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight }); // Store position
                     currentY += scaledMainLathHeight;
                 }
                 
@@ -2616,6 +2717,7 @@
                     lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
+                    lathYPositions.push({ y: currentY, height: scaledVisionLathHeight }); // Store position
                     currentY += scaledVisionLathHeight;
                 }
                 visionEndY = currentY;
@@ -2627,6 +2729,7 @@
                     lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
+                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight }); // Store position
                     currentY += scaledMainLathHeight;
                 }
 
@@ -2640,6 +2743,7 @@
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
+                    lathYPositions.push({ y: currentY, height: scaledLathHeight }); // Store position
                     currentY += scaledLathHeight;
                 }
             }
@@ -2653,6 +2757,31 @@
             bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic');
             svg.appendChild(bottomLathRect);
             const bottomY = currentY + scaledBottomLathHeight;
+
+            // *** MODIFIED START: Draw End Locks ***
+            if (endLockOptions && lathYPositions.length > 0) {
+                const endLockSize = Math.max(2, Math.min(scaledShutterWidth * 0.05, lathYPositions[0].height * 0.8)); // Dynamic size
+                for (let i = lathYPositions.length - 2; i >= 0; i -= 2) {
+                    const lathPos = lathYPositions[i];
+                    
+                    const leftLock = document.createElementNS(svgNS, 'rect');
+                    leftLock.setAttribute('x', lathStartX);
+                    leftLock.setAttribute('y', lathPos.y + (lathPos.height - endLockSize) / 2);
+                    leftLock.setAttribute('width', endLockSize);
+                    leftLock.setAttribute('height', endLockSize);
+                    leftLock.setAttribute('fill', 'black');
+                    svg.appendChild(leftLock);
+
+                    const rightLock = document.createElementNS(svgNS, 'rect');
+                    rightLock.setAttribute('x', lathStartX + scaledShutterWidth - endLockSize);
+                    rightLock.setAttribute('y', lathPos.y + (lathPos.height - endLockSize) / 2);
+                    rightLock.setAttribute('width', endLockSize);
+                    rightLock.setAttribute('height', endLockSize);
+                    rightLock.setAttribute('fill', 'black');
+                    svg.appendChild(rightLock);
+                }
+            }
+            // *** MODIFIED END ***
 
             if (wicket) {
                 const wicketRealHeight = parseFloat(wicket.Height) || 0;
@@ -2965,22 +3094,26 @@
                             const required = {
                                 // *** MODIFIED START ***
                                 'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
-                                // *** MODIFIED END ***
                                 'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                                 'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                                 'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
                                 'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                                 'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
-                                'Wicket doors': ['Name', 'Height', 'Width']
+                                'Wicket doors': ['Name', 'Height', 'Width'],
+                                'End lock': ['Description', 'weight in grams']
+                                // *** MODIFIED END ***
                             };
 
                             for (const sheetName in required) {
                                 if (!workbook.Sheets[sheetName]) {
-                                    if (sheetName === 'Wicket doors') {
-                                        console.warn(`Optional sheet "Wicket doors" not found.`);
-                                        wicketData = [];
+                                    // *** MODIFIED START ***
+                                    if (sheetName === 'Wicket doors' || sheetName === 'End lock') {
+                                        console.warn(`Optional sheet "${sheetName}" not found.`);
+                                        if(sheetName === 'Wicket doors') wicketData = [];
+                                        if(sheetName === 'End lock') endLockData = [];
                                         continue;
                                     }
+                                    // *** MODIFIED END ***
                                     const coreRequired = {
                                         'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
                                         'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
@@ -2988,7 +3121,10 @@
                                         'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
                                         'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
                                         'Endplate': ['Name', 'Size', 'Material'],
-                                        'Wicket doors': ['Name', 'Height', 'Width']
+                                        'Wicket doors': ['Name', 'Height', 'Width'],
+                                        // *** MODIFIED START ***
+                                        'End lock': ['Description', 'weight in grams']
+                                        // *** MODIFIED END ***
                                     };
                                     const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                                     if (sheetData.length > 0) {
@@ -3012,6 +3148,9 @@
                                     case 'SafetyB': safetyBrakeData = objectData; break;
                                     case 'Endplate': endplateData = objectData; break;
                                     case 'Wicket doors': wicketData = objectData; break;
+                                     // *** MODIFIED START ***
+                                    case 'End lock': endLockData = objectData; break;
+                                    // *** MODIFIED END ***
                                 }
                             }
 
@@ -3032,6 +3171,10 @@
                             
                             populateDropdown(dom.lathType, lathData, 'Name');
                             // *** MODIFIED START ***
+                            populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
+                            // *** MODIFIED END ***
+                            
+                            // *** MODIFIED START ***
                             // Custom population for vision lath dropdown to filter by vision percentage
                             const visionSelect = dom.visionLathType;
                             visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
@@ -3051,9 +3194,11 @@
                             populateMotorMountingTypes();
                             populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector'].forEach(id => {
+                            // *** MODIFIED START ***
+                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
                                 if(dom[id]) dom[id].disabled = false;
                             });
+                            // *** MODIFIED END ***
 
                             updateSelectedWicketInfo(); 
                             statusDiv.textContent = 'Successfully loaded data from repository.';
@@ -3064,7 +3209,9 @@
                             statusDiv.textContent = `Error processing Excel file: ${error.message}`;
                             statusDiv.style.color = 'red';
                             alert(`Error Reading File: ${error.message}`);
-                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = [];
+                            // *** MODIFIED START ***
+                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
+                            // *** MODIFIED END ***
                         }
                     })();
                 })
