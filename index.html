@@ -725,7 +725,7 @@
                     
                     populateDropdown(dom.lathType, lathData, 'Name');
                     // *** MODIFIED START ***
-                    populateDropdown(dom.endLockType, endLockData, 'Description');
+                    populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
                     // *** MODIFIED END ***
 
                     // *** MODIFIED START ***
@@ -1796,16 +1796,22 @@
             return { profileData, finalCoilDiameter: currentRollDiameter };
         };
         
-        function populateDropdown(selectElement, dataArray, nameField) {
-            selectElement.innerHTML = `<option value="">-- Select an option --</option>`;
+        // *** MODIFIED START: Corrected populateDropdown function ***
+        function populateDropdown(selectElement, dataArray, nameField, defaultOptionText = '-- Select an option --') {
+            selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
             dataArray.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
                 const header = Object.keys(item).find(k => k.toLowerCase().trim() === nameField.toLowerCase().trim());
-                option.textContent = item[header];
-                selectElement.appendChild(option);
+                if(header && item[header]) { // Check that the header and its value exist
+                    option.textContent = item[header];
+                    selectElement.appendChild(option);
+                } else {
+                    console.warn(`Could not find header "${nameField}" or its value in data item:`, item);
+                }
             });
         };
+        // *** MODIFIED END ***
         
         function calculateCurtainProperties(lath, bottomLath, axle) {
             const visionEnabled = dom.addVision.checked;
@@ -3165,7 +3171,7 @@
                             
                             populateDropdown(dom.lathType, lathData, 'Name');
                             // *** MODIFIED START ***
-                            populateDropdown(dom.endLockType, endLockData, 'Description');
+                            populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
                             // *** MODIFIED END ***
                             
                             // *** MODIFIED START ***
