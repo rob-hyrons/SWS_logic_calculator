@@ -640,70 +640,32 @@
                     const fileData = e.target.result;
                     const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                     
-                    const required = {
-                        // *** MODIFIED START ***
-                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
-                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
-                        'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                        'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
-                        'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
-                        'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
-                        'Wicket doors': ['Name', 'Height', 'Width'],
-                        'End lock': ['Description', 'weight in grams']
-                        // *** MODIFIED END ***
-                    };
-
-                    for (const sheetName in required) {
-                        if (!workbook.Sheets[sheetName]) {
-                             // *** MODIFIED START ***
-                            if (sheetName === 'Wicket doors' || sheetName === 'End lock') {
-                                console.warn(`Optional sheet "${sheetName}" not found.`);
-                                if(sheetName === 'Wicket doors') wicketData = [];
-                                if(sheetName === 'End lock') endLockData = [];
-                                continue;
-                            }
-                            // *** MODIFIED END ***
-                            // Do not throw error for missing optional columns, just check for core ones.
-                            const coreRequired = {
-                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
-                                'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
-                                'Axles': ['Name', 'Diameter', 'Wall Thickness'],
-                                'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
-                                'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
-                                'Endplate': ['Name', 'Size', 'Material'],
-                                'Wicket doors': ['Name', 'Height', 'Width'],
-                                // *** MODIFIED START ***
-                                'End lock': ['Description', 'weight in grams']
-                                // *** MODIFIED END ***
-                            };
-
-                            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-                            if (sheetData.length > 0) {
-                                const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
-                                for (const requiredCol of coreRequired[sheetName]) {
-                                    if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
-                                        throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}". Please check spelling.`);
-                                    }
-                                }
-                            } else {
-                               throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
-                            }
-                        }
-                        
+                    // *** MODIFIED START: Flexible Sheet Name Finding ***
+                    const sheetNames = workbook.SheetNames;
+                    
+                    sheetNames.forEach(sheetName => {
+                        const lowerTrimmedName = sheetName.toLowerCase().trim();
                         const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                        switch (sheetName) {
-                            case 'Lath': lathData = objectData; break;
-                            case 'Bottom lath': bottomLathData = objectData; break;
-                            case 'Axles': axleData = objectData; break;
-                            case 'Motors': motorData = objectData; break;
-                            case 'SafetyB': safetyBrakeData = objectData; break;
-                            case 'Endplate': endplateData = objectData; break;
-                            case 'Wicket doors': wicketData = objectData; break;
-                            // *** MODIFIED START ***
-                            case 'End lock': endLockData = objectData; break;
-                            // *** MODIFIED END ***
+
+                        if (lowerTrimmedName.includes('lath') && !lowerTrimmedName.includes('bottom')) {
+                            lathData = objectData;
+                        } else if (lowerTrimmedName.includes('bottom lath')) {
+                            bottomLathData = objectData;
+                        } else if (lowerTrimmedName.includes('axle')) {
+                            axleData = objectData;
+                        } else if (lowerTrimmedName.includes('motor')) {
+                            motorData = objectData;
+                        } else if (lowerTrimmedName.includes('safetyb') || lowerTrimmedName.includes('safety brake')) {
+                            safetyBrakeData = objectData;
+                        } else if (lowerTrimmedName.includes('endplate')) {
+                            endplateData = objectData;
+                        } else if (lowerTrimmedName.includes('wicket')) {
+                            wicketData = objectData;
+                        } else if (lowerTrimmedName.includes('end lock')) {
+                            endLockData = objectData;
                         }
-                    }
+                    });
+                     // *** MODIFIED END ***
 
                     // --- Image Extraction Logic using ExcelJS ---
                     lathImageMap.clear(); 
@@ -711,17 +673,23 @@
                     const exceljsWorkbook = new ExcelJS.Workbook();
                     await exceljsWorkbook.xlsx.load(fileData);
 
-                    // Lath Images
-                    const lathSheet = exceljsWorkbook.getWorksheet('Lath');
-                    if (lathSheet) {
-                        await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
+                    // *** MODIFIED START: Flexible Sheet Finding for Images ***
+                    const lathSheetName = sheetNames.find(name => name.toLowerCase().trim().includes('lath') && !name.toLowerCase().trim().includes('bottom'));
+                    if (lathSheetName) {
+                        const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
+                        if (lathSheet) {
+                            await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
+                        }
                     }
                     
-                    // Safety Brake Images
-                    const safetyBrakeSheet = exceljsWorkbook.getWorksheet('SafetyB');
-                    if (safetyBrakeSheet) {
-                        await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
+                    const safetyBrakeSheetName = sheetNames.find(name => name.toLowerCase().trim().includes('safetyb') || name.toLowerCase().trim().includes('safety brake'));
+                    if (safetyBrakeSheetName) {
+                        const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
+                        if (safetyBrakeSheet) {
+                           await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
+                        }
                     }
+                    // *** MODIFIED END ***
                     
                     populateDropdown(dom.lathType, lathData, 'Name');
                     // *** MODIFIED START ***
@@ -3091,83 +3059,64 @@
                         try {
                             const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                             
-                            const required = {
-                                // *** MODIFIED START ***
-                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
-                                'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
-                                'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                                'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
-                                'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
-                                'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
-                                'Wicket doors': ['Name', 'Height', 'Width'],
-                                'End lock': ['Description', 'weight in grams']
-                                // *** MODIFIED END ***
-                            };
-
-                            for (const sheetName in required) {
-                                if (!workbook.Sheets[sheetName]) {
-                                    // *** MODIFIED START ***
-                                    if (sheetName === 'Wicket doors' || sheetName === 'End lock') {
-                                        console.warn(`Optional sheet "${sheetName}" not found.`);
-                                        if(sheetName === 'Wicket doors') wicketData = [];
-                                        if(sheetName === 'End lock') endLockData = [];
-                                        continue;
-                                    }
-                                    // *** MODIFIED END ***
-                                    const coreRequired = {
-                                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
-                                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
-                                        'Axles': ['Name', 'Diameter', 'Wall Thickness'],
-                                        'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
-                                        'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
-                                        'Endplate': ['Name', 'Size', 'Material'],
-                                        'Wicket doors': ['Name', 'Height', 'Width'],
-                                        // *** MODIFIED START ***
-                                        'End lock': ['Description', 'weight in grams']
-                                        // *** MODIFIED END ***
-                                    };
-                                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-                                    if (sheetData.length > 0) {
-                                        const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
-                                        for (const requiredCol of coreRequired[sheetName]) {
-                                            if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
-                                                throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
-                                            }
-                                        }
-                                    } else {
-                                      throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
-                                    }
-                                }
-                                
+                            // *** MODIFIED START: More robustly find and load data from sheets ***
+                            const sheetNames = workbook.SheetNames;
+                            
+                            sheetNames.forEach(sheetName => {
+                                const lowerTrimmedName = sheetName.toLowerCase().trim();
                                 const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                                switch (sheetName) {
-                                    case 'Lath': lathData = objectData; break;
-                                    case 'Bottom lath': bottomLathData = objectData; break;
-                                    case 'Axles': axleData = objectData; break;
-                                    case 'Motors': motorData = objectData; break;
-                                    case 'SafetyB': safetyBrakeData = objectData; break;
-                                    case 'Endplate': endplateData = objectData; break;
-                                    case 'Wicket doors': wicketData = objectData; break;
-                                     // *** MODIFIED START ***
-                                    case 'End lock': endLockData = objectData; break;
-                                    // *** MODIFIED END ***
+
+                                if (lowerTrimmedName.includes('lath') && !lowerTrimmedName.includes('bottom')) {
+                                    lathData = objectData;
+                                    console.log(`Found and loaded Lath data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('bottom lath')) {
+                                    bottomLathData = objectData;
+                                     console.log(`Found and loaded Bottom Lath data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('axle')) {
+                                    axleData = objectData;
+                                     console.log(`Found and loaded Axles data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('motor')) {
+                                    motorData = objectData;
+                                     console.log(`Found and loaded Motors data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('safetyb') || lowerTrimmedName.includes('safety brake')) {
+                                    safetyBrakeData = objectData;
+                                     console.log(`Found and loaded Safety Brake data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('endplate')) {
+                                    endplateData = objectData;
+                                     console.log(`Found and loaded Endplate data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('wicket')) {
+                                    wicketData = objectData;
+                                     console.log(`Found and loaded Wicket Door data from sheet: "${sheetName}"`);
+                                } else if (lowerTrimmedName.includes('end lock')) {
+                                    endLockData = objectData;
+                                     console.log(`Found and loaded End Lock data from sheet: "${sheetName}"`);
                                 }
-                            }
+                            });
+                            // *** MODIFIED END ***
+
 
                             lathImageMap.clear(); 
                             safetyBrakeImageMap.clear();
                             const exceljsWorkbook = new ExcelJS.Workbook();
                             await exceljsWorkbook.xlsx.load(fileData);
 
-                            const lathSheet = exceljsWorkbook.getWorksheet('Lath');
-                            if (lathSheet) {
-                                await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
+                             // *** MODIFIED START: Flexible Sheet Finding for Images ***
+                            const lathSheetName = sheetNames.find(name => name.toLowerCase().trim().includes('lath') && !name.toLowerCase().trim().includes('bottom'));
+                            if (lathSheetName) {
+                                const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
+                                if (lathSheet) {
+                                    await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
+                                }
                             }
                             
-                            const safetyBrakeSheet = exceljsWorkbook.getWorksheet('SafetyB');
-                            if (safetyBrakeSheet) {
-                                await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
+                            const safetyBrakeSheetName = sheetNames.find(name => name.toLowerCase().trim().includes('safetyb') || name.toLowerCase().trim().includes('safety brake'));
+                             if (safetyBrakeSheetName) {
+                                const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
+                                if (safetyBrakeSheet) {
+                                   await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
+                                }
                             }
+                            // *** MODIFIED END ***
                             
                             populateDropdown(dom.lathType, lathData, 'Name');
                             // *** MODIFIED START ***
