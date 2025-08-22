@@ -171,6 +171,12 @@
         .shutter-vision-lath-graphic { fill: #a7d8f0; stroke: #6bafd2; stroke-width: 0.5; }
         /* *** MODIFIED START *** */
         .endlock-graphic { fill: #000000; }
+        .endplate-box-graphic {
+            fill: rgba(255, 193, 7, 0.2); /* Semi-transparent yellow */
+            stroke: #ffc107;
+            stroke-width: 1;
+            stroke-dasharray: 4, 2;
+        }
         /* *** MODIFIED END *** */
         
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
@@ -882,13 +888,20 @@
             visionCalcs = visionData;
 
             calculateWindResistance();
+            calculateEndplateRecommendation(); 
 
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
 
             drawDeflectionGraphic(totalLength, deflection);
             calculateMotorRecommendation(totalWeight, selectedLath, bestAxle, travelHeight);
             calculateSafetyBrakeForce(totalWeight, selectedLath, bestAxle, travelHeight, fullCurtainLength);
-            calculateEndplateRecommendation();
+            
+            // *** MODIFIED START: Pass selected endplate to graphic ***
+            const selectedEndplateIndex = dom.endplateSelector.value;
+            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
+                ? currentFilteredEndplates[selectedEndplateIndex] 
+                : null;
+
             drawShutterGraphic(
                 parseFloat(dom.width.value),
                 parseFloat(dom.additionalLength.value),
@@ -896,8 +909,10 @@
                 selectedLath,
                 selectedBottomLath,
                 bestAxle,
+                selectedEndplate,
                 visionCalcs
             );
+            // *** MODIFIED END ***
             updateWicketCalculationsAndGraphic();
         }
         
@@ -1653,6 +1668,12 @@
             dom['laths-at-wicket'].textContent = lathsAtWicket;
             dom['wicket-lath-height'].textContent = wicketLathHeight.toFixed(0);
             
+            // *** MODIFIED START: Pass selected endplate to graphic ***
+            const selectedEndplateIndex = dom.endplateSelector.value;
+            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
+                ? currentFilteredEndplates[selectedEndplateIndex] 
+                : null;
+            
             drawWicketGraphic(
                 parseFloat(dom.width.value),
                 parseFloat(dom.additionalLength.value),
@@ -1660,9 +1681,11 @@
                 selectedLath,
                 selectedBottomLath,
                 selectedAxle,
+                selectedEndplate,
                 selectedWicket,
                 wicketLathHeight 
             );
+            // *** MODIFIED END ***
             
             calculateWicketTorque();
         }
@@ -2550,7 +2573,9 @@
         }
         // *** MODIFIED END ***
 
-        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, visionData = null) {
+        // *** MODIFIED START: Pass selectedEndplate parameter ***
+        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null) {
+        // *** MODIFIED END ***
             const container = dom['shutter-graphic-container'];
             container.innerHTML = '';
             
@@ -2562,16 +2587,18 @@
                 visionOptions: visionData
             };
             
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, options);
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options);
             if(graphic) {
                 container.appendChild(graphic);
             }
         }
         
-        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, wicket, wicketLathHeight) {
+        // *** MODIFIED START: Pass selectedEndplate parameter ***
+        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight) {
+        // *** MODIFIED END ***
             const container = dom['wicket-graphic-container'];
             container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, { 
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { 
                 wicket: wicket, 
                 wicketLathHeight: wicketLathHeight 
             });
@@ -2580,37 +2607,27 @@
             }
         }
 
-        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, options = {}) {
+        // *** MODIFIED START: Complete rewrite of the graphic drawing function ***
+        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}) {
             const svgNS = "http://www.w3.org/2000/svg";
 
-            if (!realWidth || !numLaths || !lath || !bottomLath || !axle) {
+            if (!realWidth || !lath || !bottomLath || !axle) {
                 return null;
             }
-            
-            // *** MODIFIED START ***
-            const selectedEndlockIndex = dom.endlockType.value;
-            const endlocksSelected = selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex];
-            // *** MODIFIED END ***
 
             const { 
-                showMainDimensions = false, 
-                showHeightDim = false, 
-                showCurtainWidthDim = false,
-                showAxleCenterline = false,
                 wicket = null, 
                 wicketLathHeight = 0,
                 visionOptions = null
             } = options;
 
-            const svg = document.createElementNS(svgNS, "svg");
-            let svgWidth = 550; 
-            let svgHeight = 250;
-            
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+            const selectedEndlockIndex = dom.endlockType.value;
+            const endlocksSelected = selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex];
 
-            const padding = { top: 30, right: 60, bottom: 40, left: 60 };
-            const graphWidth = svgWidth - padding.left - padding.right;
-            const graphHeight = svgHeight - padding.top - padding.bottom;
+            const svg = document.createElementNS(svgNS, "svg");
+            
+            const padding = { top: 30, right: 90, bottom: 40, left: 120 };
+            const svgWidth = 600; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height'] || mainLathHeight);
@@ -2620,24 +2637,114 @@
             if (visionOptions) {
                 totalRealCompressedHeight = parseFloat(dom['curtain-height-compressed'].textContent);
             } else {
-                totalRealCompressedHeight = (numLaths * mainLathHeight) + bottomLathHeight + axleDiameter;
+                totalRealCompressedHeight = (numLaths * mainLathHeight) + bottomLathHeight;
             }
+            totalRealCompressedHeight += axleDiameter; // Add axle diameter for total height in graphic
+
             const totalRealAxleWidth = realWidth + (additionalLength || 0);
 
             if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
 
-            const scale = Math.min(graphWidth / totalRealAxleWidth, graphHeight / totalRealCompressedHeight);
+            // Determine scale based on width, then calculate required height
+            const graphWidth = svgWidth - padding.left - padding.right;
+            const scale = graphWidth / totalRealAxleWidth;
+            const graphHeight = totalRealCompressedHeight * scale;
+            const svgHeight = graphHeight + padding.top + padding.bottom;
+            
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
+            // --- DEFS for markers ---
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'dim-arrow');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '5');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            // --- Drawing Helpers ---
+            const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal') => {
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow)');
+                line.setAttribute('marker-end', 'url(#dim-arrow)');
+                svg.appendChild(line);
+
+                const text = document.createElementNS(svgNS, 'text');
+                text.textContent = label;
+                text.setAttribute('class', 'dimension-text');
+
+                if (orientation === 'horizontal') {
+                    text.setAttribute('x', x1 + (x2 - x1) / 2);
+                    text.setAttribute('y', y1 - 6);
+                } else { // vertical
+                    const textX = x1 + 10;
+                    const textY = y1 + (y2 - y1) / 2;
+                    text.setAttribute('x', textX);
+                    text.setAttribute('y', textY);
+                    text.setAttribute('transform', `rotate(-90, ${textX}, ${textY})`);
+                }
+                svg.appendChild(text);
+            };
+
+            const drawAnnotation = (startY, endY, label) => {
+                const lineX = padding.left - 10;
+                const textX = lineX - 6;
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
+                line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow)');
+                line.setAttribute('marker-end', 'url(#dim-arrow)');
+                svg.appendChild(line);
+                const text = document.createElementNS(svgNS, 'text');
+                const textY = startY + (endY - startY) / 2;
+                text.setAttribute('x', textX);
+                text.setAttribute('y', textY);
+                text.setAttribute('class', 'dimension-text');
+                text.setAttribute('text-anchor', 'end');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.textContent = label;
+                svg.appendChild(text);
+            };
+
+            // --- Start Drawing ---
             const scaledTotalAxleWidth = totalRealAxleWidth * scale;
             const scaledShutterWidth = realWidth * scale;
-            
-            const startX = padding.left + (graphWidth - scaledTotalAxleWidth) / 2;
+            const startX = padding.left;
             let currentY = padding.top;
             
             const axleX = startX;
             const axleY = currentY;
             const scaledAxleHeight = axleDiameter * scale;
-            
+            const axleCenterlineY = axleY + scaledAxleHeight / 2;
+
+            // Draw Endplate Box (behind axle)
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    const scaledEndplateHeight = endplateSize * scale;
+                    const endplateBox = document.createElementNS(svgNS, 'rect');
+                    endplateBox.setAttribute('x', axleX);
+                    endplateBox.setAttribute('y', axleCenterlineY - (scaledEndplateHeight / 2));
+                    endplateBox.setAttribute('width', scaledTotalAxleWidth);
+                    endplateBox.setAttribute('height', scaledEndplateHeight);
+                    endplateBox.setAttribute('class', 'endplate-box-graphic');
+                    svg.appendChild(endplateBox);
+                }
+            }
+
+            // Draw Axle
             const axleRect = document.createElementNS(svgNS, 'rect');
             axleRect.setAttribute('x', axleX);
             axleRect.setAttribute('y', axleY);
@@ -2646,361 +2753,124 @@
             axleRect.setAttribute('class', 'shutter-axle-graphic');
             svg.appendChild(axleRect);
             
-            const axleCenterlineY = axleY + scaledAxleHeight / 2;
-            if (showAxleCenterline) {
-                const centerline = document.createElementNS(svgNS, 'line');
-                centerline.setAttribute('x1', axleX);
-                centerline.setAttribute('y1', axleCenterlineY);
-                centerline.setAttribute('x2', axleX + scaledTotalAxleWidth);
-                centerline.setAttribute('y2', axleCenterlineY);
-                centerline.setAttribute('class', 'axle-centerline-graphic');
-                svg.appendChild(centerline);
-            }
-            
+            const centerline = document.createElementNS(svgNS, 'line');
+            centerline.setAttribute('x1', axleX); centerline.setAttribute('y1', axleCenterlineY);
+            centerline.setAttribute('x2', axleX + scaledTotalAxleWidth); centerline.setAttribute('y2', axleCenterlineY);
+            centerline.setAttribute('class', 'axle-centerline-graphic');
+            svg.appendChild(centerline);
+
             currentY += scaledAxleHeight;
-
+            const curtainStartY = currentY;
             const lathStartX = axleX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
-            
-            let visionStartY = 0;
-            let visionEndY = 0;
-            
-            // *** MODIFIED START ***
             let lathCounter = 0;
-            const endlockSize = 4;
-            function drawEndlocks(lathY, lathH) {
+            const endlockSize = Math.min(4, scaledShutterWidth * 0.05);
+            const drawEndlocks = (lathY, lathH) => {
                 const endlockY = lathY + (lathH / 2) - (endlockSize / 2);
-                
                 const leftEndlock = document.createElementNS(svgNS, 'rect');
-                leftEndlock.setAttribute('x', lathStartX);
-                leftEndlock.setAttribute('y', endlockY);
-                leftEndlock.setAttribute('width', endlockSize);
-                leftEndlock.setAttribute('height', endlockSize);
-                leftEndlock.setAttribute('class', 'endlock-graphic');
-                svg.appendChild(leftEndlock);
-
+                leftEndlock.setAttribute('x', lathStartX); leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockSize); leftEndlock.setAttribute('height', endlockSize);
+                leftEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(leftEndlock);
                 const rightEndlock = document.createElementNS(svgNS, 'rect');
-                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSize);
-                rightEndlock.setAttribute('y', endlockY);
-                rightEndlock.setAttribute('width', endlockSize);
-                rightEndlock.setAttribute('height', endlockSize);
-                rightEndlock.setAttribute('class', 'endlock-graphic');
-                svg.appendChild(rightEndlock);
-            }
-            // *** MODIFIED END ***
+                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSize); rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockSize); rightEndlock.setAttribute('height', endlockSize);
+                rightEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(rightEndlock);
+            };
 
+            // Draw Laths and Annotations
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions;
                 const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
                 const scaledMainLathHeight = mainLathHeight * scale;
                 const scaledVisionLathHeight = visionLathCompHeight * scale;
-
+                
+                let sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsAbove; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                     currentY += scaledMainLathHeight;
                     lathCounter++;
                 }
-                
-                visionStartY = currentY;
+                if (vo.numLathsAbove > 0) drawAnnotation(sectionStartY, currentY, `${lath['Name']} (x${vo.numLathsAbove})`);
+
+                sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsVision; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledVisionLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
                     currentY += scaledVisionLathHeight;
                     lathCounter++;
                 }
-                visionEndY = currentY;
+                if (vo.numLathsVision > 0) drawAnnotation(sectionStartY, currentY, `${vo.visionLath['Name']} (x${vo.numLathsVision})`);
 
+                sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsBelow; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledMainLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                     currentY += scaledMainLathHeight;
                     lathCounter++;
                 }
-
-            } else {
+                 if (vo.numLathsBelow > 0) drawAnnotation(sectionStartY, currentY, `${lath['Name']} (x${vo.numLathsBelow})`);
+            } else if (numLaths > 0) {
                  const scaledLathHeight = mainLathHeight * scale;
                  for (let i = 0; i < numLaths; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX);
-                    lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledLathHeight);
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && i % 2 === 0) drawEndlocks(currentY, scaledLathHeight);
+                    if (endlocksSelected && (i + 1) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
                     currentY += scaledLathHeight;
                 }
+                drawAnnotation(curtainStartY, currentY, `${lath['Name']} (x${numLaths})`);
             }
 
+            // Draw Bottom Lath
             const scaledBottomLathHeight = bottomLathHeight * scale;
             const bottomLathRect = document.createElementNS(svgNS, 'rect');
-            bottomLathRect.setAttribute('x', lathStartX);
-            bottomLathRect.setAttribute('y', currentY);
-            bottomLathRect.setAttribute('width', scaledShutterWidth);
-            bottomLathRect.setAttribute('height', scaledBottomLathHeight);
+            bottomLathRect.setAttribute('x', lathStartX); bottomLathRect.setAttribute('y', currentY);
+            bottomLathRect.setAttribute('width', scaledShutterWidth); bottomLathRect.setAttribute('height', scaledBottomLathHeight);
             bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic');
             svg.appendChild(bottomLathRect);
             const bottomY = currentY + scaledBottomLathHeight;
 
+            // Draw Wicket Door
             if (wicket) {
                 const wicketRealHeight = parseFloat(wicket.Height) || 0;
                 const wicketRealWidth = parseFloat(wicket.Width) || 0;
                 const scaledWicketHeight = wicketRealHeight * scale;
                 const scaledWicketWidth = wicketRealWidth * scale;
-                
                 const wicketRect = document.createElementNS(svgNS, 'rect');
-                wicketRect.setAttribute('x', lathStartX);
-                wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
-                wicketRect.setAttribute('width', scaledWicketWidth);
-                wicketRect.setAttribute('height', scaledWicketHeight);
+                wicketRect.setAttribute('x', lathStartX); wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
+                wicketRect.setAttribute('width', scaledWicketWidth); wicketRect.setAttribute('height', scaledWicketHeight);
                 wicketRect.setAttribute('class', 'wicket-door-graphic');
                 svg.appendChild(wicketRect);
             }
+
+            // --- Draw Dimensions ---
+            const heightDimLineX = axleX + scaledTotalAxleWidth + 15;
+            drawDimensionLine(heightDimLineX, axleCenterlineY, heightDimLineX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
             
-            const textOverlayX = lathStartX + scaledShutterWidth / 2;
-            
-            function createOverlayText(content, x, y, ns) {
-                const textElem = document.createElementNS(ns, 'text');
-                textElem.setAttribute('x', x);
-                textElem.setAttribute('y', y);
-                textElem.setAttribute('class', 'shutter-overlay-text');
-                textElem.setAttribute('dominant-baseline', 'middle');
-                textElem.textContent = content;
-                return textElem;
-            }
+            const totalWidthDimY = axleY - 15;
+            drawDimensionLine(axleX, totalWidthDimY, axleX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
 
-            if (visionOptions && visionOptions.visionLath) {
-                const vo = visionOptions;
-                const mainLathName = lath['Name'];
-                const visionLathName = vo.visionLath['Name'];
-                const scaledMainLathHeight = mainLathHeight * scale;
-                const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
-                const scaledVisionLathHeight = visionLathCompHeight * scale;
-
-                const topSectionStartY = axleY + scaledAxleHeight;
-                const topSectionHeight = vo.numLathsAbove * scaledMainLathHeight;
-                if (vo.numLathsAbove > 0) {
-                    const topTextY = topSectionStartY + topSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${mainLathName} (x${vo.numLathsAbove})`, textOverlayX, topTextY, svgNS));
-                }
-
-                const visionSectionStartY = topSectionStartY + topSectionHeight;
-                const visionSectionHeight = vo.numLathsVision * scaledVisionLathHeight;
-                if (vo.numLathsVision > 0) {
-                    const visionTextY = visionSectionStartY + visionSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${visionLathName} (x${vo.numLathsVision})`, textOverlayX, visionTextY, svgNS));
-                }
-                
-                const bottomSectionStartY = visionSectionStartY + visionSectionHeight;
-                const bottomSectionHeight = vo.numLathsBelow * scaledMainLathHeight;
-                if (vo.numLathsBelow > 0) {
-                    const bottomTextY = bottomSectionStartY + bottomSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${mainLathName} (x${vo.numLathsBelow})`, textOverlayX, bottomTextY, svgNS));
-                }
-            } else {
-                const mainLathName = lath['Name'];
-                if (numLaths > 0) {
-                    const lathSectionStartY = axleY + scaledAxleHeight;
-                    const lathSectionHeight = numLaths * (mainLathHeight * scale);
-                    const textY = lathSectionStartY + lathSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${mainLathName} (x${numLaths})`, textOverlayX, textY, svgNS));
-                }
-            }
-
-            if (showMainDimensions) {
-                const totalWidthDimY = axleY - 10;
-                const mainTotalWidthLine = document.createElementNS(svgNS, 'line');
-                mainTotalWidthLine.setAttribute('x1', axleX); mainTotalWidthLine.setAttribute('y1', totalWidthDimY);
-                mainTotalWidthLine.setAttribute('x2', axleX + scaledTotalAxleWidth); mainTotalWidthLine.setAttribute('y2', totalWidthDimY);
-                mainTotalWidthLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(mainTotalWidthLine);
-
-                const leftTotalTick = document.createElementNS(svgNS, 'line');
-                leftTotalTick.setAttribute('x1', axleX); leftTotalTick.setAttribute('y1', totalWidthDimY - 4);
-                leftTotalTick.setAttribute('x2', axleX); leftTotalTick.setAttribute('y2', totalWidthDimY + 4);
-                leftTotalTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(leftTotalTick);
-
-                const rightTotalTick = document.createElementNS(svgNS, 'line');
-                rightTotalTick.setAttribute('x1', axleX + scaledTotalAxleWidth); rightTotalTick.setAttribute('y1', totalWidthDimY - 4);
-                rightTotalTick.setAttribute('x2', axleX + scaledTotalAxleWidth); rightTotalTick.setAttribute('y2', totalWidthDimY + 4);
-                rightTotalTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(rightTotalTick);
-                
-                const totalWidthText = document.createElementNS(svgNS, 'text');
-                totalWidthText.setAttribute('x', axleX + scaledTotalAxleWidth / 2);
-                totalWidthText.setAttribute('y', totalWidthDimY - 8);
-                totalWidthText.setAttribute('class', 'dimension-text');
-                totalWidthText.textContent = `${totalRealAxleWidth.toFixed(0)} mm`;
-                svg.appendChild(totalWidthText);
-            }
-
-            if (showHeightDim) {
-                const heightDimLineX = axleX + scaledTotalAxleWidth + 15;
-                const heightDimLineTopY = axleCenterlineY;
-                const heightDimLineBottomY = bottomY;
-
-                const mainHeightDimLine = document.createElementNS(svgNS, 'line');
-                mainHeightDimLine.setAttribute('x1', heightDimLineX); mainHeightDimLine.setAttribute('y1', heightDimLineTopY);
-                mainHeightDimLine.setAttribute('x2', heightDimLineX); mainHeightDimLine.setAttribute('y2', heightDimLineBottomY);
-                mainHeightDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(mainHeightDimLine);
-
-                const topTickH = document.createElementNS(svgNS, 'line');
-                topTickH.setAttribute('x1', heightDimLineX - 4); topTickH.setAttribute('y1', heightDimLineTopY);
-                topTickH.setAttribute('x2', heightDimLineX + 4); topTickH.setAttribute('y2', heightDimLineTopY);
-                topTickH.setAttribute('class', 'dimension-line');
-                svg.appendChild(topTickH);
-                
-                const bottomTickH = document.createElementNS(svgNS, 'line');
-                bottomTickH.setAttribute('x1', heightDimLineX - 4); bottomTickH.setAttribute('y1', heightDimLineBottomY);
-                bottomTickH.setAttribute('x2', heightDimLineX + 4); bottomTickH.setAttribute('y2', heightDimLineBottomY);
-                bottomTickH.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomTickH);
-
-                const heightDimText = document.createElementNS(svgNS, 'text');
-                const heightTextX = heightDimLineX + 10;
-                const heightTextY = heightDimLineTopY + (heightDimLineBottomY - heightDimLineTopY) / 2;
-                heightDimText.setAttribute('transform', `translate(${heightTextX}, ${heightTextY}) rotate(-90)`);
-                heightDimText.setAttribute('class', 'dimension-text');
-                heightDimText.textContent = `${parseFloat(dom.height.value).toFixed(0)} mm`;
-                svg.appendChild(heightDimText);
-            }
-
-            if (showCurtainWidthDim) {
-                const widthDimLineY = bottomY + 15;
-                const widthDimStartX = lathStartX;
-                const widthDimEndX = lathStartX + scaledShutterWidth;
-
-                const mainWidthDimLine = document.createElementNS(svgNS, 'line');
-                mainWidthDimLine.setAttribute('x1', widthDimStartX); mainWidthDimLine.setAttribute('y1', widthDimLineY);
-                mainWidthDimLine.setAttribute('x2', widthDimEndX); mainWidthDimLine.setAttribute('y2', widthDimLineY);
-                mainWidthDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(mainWidthDimLine);
-
-                const leftWidthTick = document.createElementNS(svgNS, 'line');
-                leftWidthTick.setAttribute('x1', widthDimStartX); leftWidthTick.setAttribute('y1', widthDimLineY - 4);
-                leftWidthTick.setAttribute('x2', widthDimStartX); leftWidthTick.setAttribute('y2', widthDimLineY + 4);
-                leftWidthTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(leftWidthTick);
-                
-                const rightWidthTick = document.createElementNS(svgNS, 'line');
-                rightWidthTick.setAttribute('x1', widthDimEndX); rightWidthTick.setAttribute('y1', widthDimLineY - 4);
-                rightWidthTick.setAttribute('x2', widthDimEndX); rightWidthTick.setAttribute('y2', widthDimLineY + 4);
-                rightWidthTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(rightWidthTick);
-
-                const widthDimText = document.createElementNS(svgNS, 'text');
-                widthDimText.setAttribute('x', widthDimStartX + (scaledShutterWidth / 2));
-                widthDimText.setAttribute('y', widthDimLineY + 12);
-                widthDimText.setAttribute('class', 'dimension-text');
-                widthDimText.textContent = `${realWidth.toFixed(0)} mm`;
-                svg.appendChild(widthDimText);
-            }
-            
-            if (wicketLathHeight > 0 && wicket) {
-                const dimLineX = lathStartX - 15;
-                const scaledWicketLathHeight = wicketLathHeight * scale;
-                const wicketDimY = bottomY - scaledWicketLathHeight;
-
-                const wicketDimLine = document.createElementNS(svgNS, 'line');
-                wicketDimLine.setAttribute('x1', dimLineX); wicketDimLine.setAttribute('y1', wicketDimY);
-                wicketDimLine.setAttribute('x2', dimLineX); wicketDimLine.setAttribute('y2', bottomY);
-                wicketDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(wicketDimLine);
-
-                const topTick = document.createElementNS(svgNS, 'line');
-                topTick.setAttribute('x1', dimLineX - 4); topTick.setAttribute('y1', wicketDimY);
-                topTick.setAttribute('x2', dimLineX + 4); topTick.setAttribute('y2', wicketDimY);
-                topTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(topTick);
-
-                const bottomTick = document.createElementNS(svgNS, 'line');
-                bottomTick.setAttribute('x1', dimLineX - 4); bottomTick.setAttribute('y1', bottomY);
-                bottomTick.setAttribute('x2', dimLineX + 4); bottomTick.setAttribute('y2', bottomY);
-                bottomTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomTick);
-                
-                const textElem = document.createElementNS(svgNS, 'text');
-                const textX = dimLineX - 10;
-                const textY = wicketDimY + (scaledWicketLathHeight / 2);
-                textElem.setAttribute('transform', `translate(${textX}, ${textY}) rotate(-90)`);
-                textElem.setAttribute('class', 'dimension-text');
-                textElem.textContent = `${wicketLathHeight.toFixed(0)} mm`;
-                svg.appendChild(textElem);
-            }
-
-            if (visionOptions && visionOptions.visionLath) {
-                const dimLineX = lathStartX - 15;
-                
-                const startDimY = bottomY - (visionOptions.actualVisionStartHeight * scale);
-
-                const panelDimLineTop = startDimY - (visionOptions.actualVisionPanelHeight * scale);
-
-                const panelDimLine = document.createElementNS(svgNS, 'line');
-                panelDimLine.setAttribute('x1', dimLineX); panelDimLine.setAttribute('y1', panelDimLineTop);
-                panelDimLine.setAttribute('x2', dimLineX); panelDimLine.setAttribute('y2', startDimY);
-                panelDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(panelDimLine);
-
-                const topPanelTick = document.createElementNS(svgNS, 'line');
-                topPanelTick.setAttribute('x1', dimLineX - 4); topPanelTick.setAttribute('y1', panelDimLineTop);
-                topPanelTick.setAttribute('x2', dimLineX + 4); topPanelTick.setAttribute('y2', panelDimLineTop);
-                topPanelTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(topPanelTick);
-
-                const bottomPanelTick = document.createElementNS(svgNS, 'line');
-                bottomPanelTick.setAttribute('x1', dimLineX - 4); bottomPanelTick.setAttribute('y1', startDimY);
-                bottomPanelTick.setAttribute('x2', dimLineX + 4); bottomPanelTick.setAttribute('y2', startDimY);
-                bottomPanelTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomPanelTick);
-                
-                const panelDimText = document.createElementNS(svgNS, 'text');
-                const panelTextX = dimLineX - 10;
-                const panelTextY = panelDimLineTop + (startDimY - panelDimLineTop) / 2;
-                panelDimText.setAttribute('transform', `translate(${panelTextX}, ${panelTextY}) rotate(-90)`);
-                panelDimText.setAttribute('class', 'dimension-text');
-                panelDimText.textContent = `${visionOptions.actualVisionPanelHeight.toFixed(0)} mm`;
-                svg.appendChild(panelDimText);
-                
-                const startDimLine = document.createElementNS(svgNS, 'line');
-                startDimLine.setAttribute('x1', dimLineX); startDimLine.setAttribute('y1', startDimY);
-                startDimLine.setAttribute('x2', dimLineX); startDimLine.setAttribute('y2', bottomY);
-                startDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(startDimLine);
-                
-                const bottomStartTick = document.createElementNS(svgNS, 'line');
-                bottomStartTick.setAttribute('x1', dimLineX - 4); bottomStartTick.setAttribute('y1', bottomY);
-                bottomStartTick.setAttribute('x2', dimLineX + 4); bottomStartTick.setAttribute('y2', bottomY);
-                bottomStartTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomStartTick);
-                
-                const startDimText = document.createElementNS(svgNS, 'text');
-                const startTextX = dimLineX - 10;
-                const startTextY = startDimY + (bottomY - startDimY) / 2;
-                startDimText.setAttribute('transform', `translate(${startTextX}, ${startTextY}) rotate(-90)`);
-                startDimText.setAttribute('class', 'dimension-text');
-                startDimText.textContent = `${visionOptions.actualVisionStartHeight.toFixed(0)} mm`;
-                svg.appendChild(startDimText);
-            }
+            const widthDimLineY = bottomY + 15;
+            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
             
             return svg;
         }
-        
+        // *** MODIFIED END ***
+
         function switchTab(targetTabId) {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             tabButtons.forEach(b => b.classList.remove('active'));
