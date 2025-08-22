@@ -181,6 +181,9 @@
         
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
+        /* *** MODIFIED START *** */
+        .leader-line { stroke: #adb5bd; stroke-width: 1; stroke-dasharray: 2, 2; }
+        /* *** MODIFIED END *** */
         .dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
         .shutter-overlay-text {
             font-family: sans-serif;
@@ -2066,513 +2069,6 @@
             return { totalWeight, travelHeight, fullCurtainLength, visionData };
         }
 
-        function drawTorqueGraph(profileData, container) {
-            container.innerHTML = '';
-            if (!profileData || profileData.length === 0) return;
-            
-            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
-            let svgWidth = container.clientWidth;
-            if (svgWidth === 0) svgWidth = 550; 
-            let svgHeight = container.clientHeight;
-            if (svgHeight === 0) svgHeight = 280;
-            
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-            const padding = { top: 30, right: 20, bottom: 60, left: 40 }; 
-            const graphWidth = svgWidth - padding.left - padding.right;
-            const graphHeight = svgHeight - padding.top - padding.bottom;
-            const maxTorque = Math.max(...profileData.map(p => p.torque)) * 1.1 || 10;
-
-            const yAxis = document.createElementNS(svgNS, 'line');
-            yAxis.setAttribute('x1', padding.left); yAxis.setAttribute('y1', padding.top);
-            yAxis.setAttribute('x2', padding.left); yAxis.setAttribute('y2', padding.top + graphHeight);
-            yAxis.setAttribute('class', 'axis-line');
-            svg.appendChild(yAxis);
-            
-            const xLabel = document.createElementNS(svgNS, 'text');
-            xLabel.setAttribute('class', 'graph-text');
-            xLabel.setAttribute('transform', `translate(${svgWidth/2}, ${svgHeight - 15})`);
-            xLabel.textContent = 'Coil Diameter (mm) / Revolutions';
-            svg.appendChild(xLabel);
-            
-            const barWidth = Math.max(5, graphWidth / profileData.length * 0.8);
-            const barSpacing = Math.max(1, graphWidth / profileData.length * 0.2);
-
-            profileData.forEach((item, index) => {
-                const barHeight = (item.torque / maxTorque) * graphHeight;
-                const x = padding.left + index * (barWidth + barSpacing);
-                const y = padding.top + graphHeight - barHeight;
-                const revs = (index + 1) * 0.5;
-
-                const bar = document.createElementNS(svgNS, 'rect');
-                bar.setAttribute('x', x);
-                bar.setAttribute('y', y);
-                bar.setAttribute('width', barWidth);
-                bar.setAttribute('height', barHeight);
-                bar.setAttribute('class', 'torque-bar');
-                
-                const title = document.createElementNS(svgNS, 'title');
-                title.textContent = `Rev ${revs.toFixed(1)}: ${item.torque.toFixed(1)} Nm | Dia: ${item.diameter.toFixed(0)} mm`;
-                bar.appendChild(title);
-                svg.appendChild(bar);
-
-                const textX = x + barWidth / 2;
-
-                if (barHeight > 15) {
-                    const torqueText = document.createElementNS(svgNS, 'text');
-                    torqueText.setAttribute('x', textX);
-                    torqueText.setAttribute('y', y - 5); 
-                    torqueText.setAttribute('class', 'graph-data-label'); 
-                    torqueText.textContent = `${item.torque.toFixed(1)} Nm`;
-                    svg.appendChild(torqueText);
-                }
-
-                const showAxisLabel = profileData.length < 15 || index % Math.ceil(profileData.length / 15) === 0;
-                if (showAxisLabel) {
-                    const diaText = document.createElementNS(svgNS, 'text');
-                    diaText.setAttribute('x', textX);
-                    diaText.setAttribute('y', padding.top + graphHeight + 15); 
-                    diaText.setAttribute('class', 'graph-data-label');
-                    diaText.textContent = `Ø${item.diameter.toFixed(0)}`;
-                    svg.appendChild(diaText);
-                
-                    const revText = document.createElementNS(svgNS, 'text');
-                    revText.setAttribute('x', textX);
-                    revText.setAttribute('y', padding.top + graphHeight + 28);
-                    revText.setAttribute('class', 'graph-data-label');
-                    revText.textContent = `(${revs.toFixed(1)}r)`;
-                    svg.appendChild(revText);
-                }
-            });
-            container.appendChild(svg);
-        }
-        
-        function drawDeflectionGraphic(length, deflection, isWarning = false) {
-            const container = dom['deflection-graphic-container'];
-            container.innerHTML = '';
-            
-            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
-            let svgWidth = container.clientWidth;
-            if (svgWidth === 0) svgWidth = 550;
-            let svgHeight = container.clientHeight;
-            if (svgHeight === 0) svgHeight = 150;
-
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-
-            const padding = 30, beamY = svgHeight / 2 + 10;
-            const maxVisualDeflection = svgHeight * 0.3;
-            const numericDeflection = parseFloat(deflection) || 0;
-            const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 25));
-
-            const startX = padding, endX = svgWidth - padding;
-            
-            const refPath = document.createElementNS(svgNS, 'path');
-            refPath.setAttribute('d', `M ${startX} ${beamY} H ${endX}`);
-            refPath.setAttribute('class', 'beam-path');
-            svg.appendChild(refPath);
-
-            const deflectedPath = document.createElementNS(svgNS, 'path');
-            const controlX = svgWidth / 2, controlY = beamY + visualDeflection;
-            deflectedPath.setAttribute('d', `M ${startX},${beamY} Q ${controlX},${controlY} ${endX},${beamY}`);
-            deflectedPath.setAttribute('class', 'deflected-path');
-            
-            const ratio = (numericDeflection > 0) ? length / numericDeflection : Infinity;
-            if (isWarning || numericDeflection > 25 || ratio < 400) {
-                 deflectedPath.classList.add('warning');
-            }
-            svg.appendChild(deflectedPath);
-
-            const supportSize = 10;
-            const leftSupport = document.createElementNS(svgNS, 'path');
-            leftSupport.setAttribute('d', `M ${startX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`);
-            leftSupport.setAttribute('class', 'support-symbol');
-            svg.appendChild(leftSupport);
-            
-            const rightSupport = document.createElementNS(svgNS, 'path');
-            rightSupport.setAttribute('d', `M ${endX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`);
-            rightSupport.setAttribute('class', 'support-symbol');
-            svg.appendChild(rightSupport);
-
-            if (numericDeflection > 0.1) {
-                const text = document.createElementNS(svgNS, 'text');
-                text.setAttribute('x', controlX);
-                text.setAttribute('y', controlY + 15);
-                text.setAttribute('class', 'graph-text');
-                text.textContent = `${numericDeflection.toFixed(2)} mm`;
-                svg.appendChild(text);
-            }
-            container.appendChild(svg);
-        }
-
-        function drawWindDeflectionGraphic(length, deflection, isWarning = false) {
-            const container = dom['wind-deflection-graphic-container'];
-            container.innerHTML = ''; // Clear previous graphic
-            if (!length || length <= 0) return;
-
-            // This function is now essentially the same as the axle one, but in a different container.
-            // We can reuse the core logic by passing the correct container.
-            drawDeflectionGraphic(length, deflection, isWarning);
-            // Manually swap the container to the correct one for this specific call.
-            const tempGraphic = dom['deflection-graphic-container'].innerHTML;
-            dom['deflection-graphic-container'].innerHTML = '';
-            container.innerHTML = tempGraphic;
-        }
-
-        function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSeparation, endplateSize) {
-            const container = dom['endplate-force-diagram-container'];
-            container.innerHTML = '';
-            if (downwardForce <= 0 && pulloutForce <= 0) return;
-
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 550;
-            const svgHeight = 250;
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-
-            const defs = document.createElementNS(svgNS, 'defs');
-            const createMarker = (id, color) => {
-                const marker = document.createElementNS(svgNS, 'marker');
-                marker.setAttribute('id', id);
-                marker.setAttribute('viewBox', '0 0 10 10');
-                marker.setAttribute('refX', '10');
-                marker.setAttribute('refY', '5');
-                marker.setAttribute('markerWidth', '6');
-                marker.setAttribute('markerHeight', '6');
-                marker.setAttribute('orient', 'auto');
-                const arrowPath = document.createElementNS(svgNS, 'path');
-                arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-                arrowPath.setAttribute('fill', color);
-                marker.appendChild(arrowPath);
-                return marker;
-            };
-
-            defs.appendChild(createMarker('arrow-force-red', '#d93025'));
-            defs.appendChild(createMarker('arrow-force-blue', '#007bff'));
-            defs.appendChild(createMarker('arrow-dim', '#343a40'));
-            svg.appendChild(defs);
-            
-            const createElem = (type, attrs) => {
-                const el = document.createElementNS(svgNS, type);
-                for (const key in attrs) el.setAttribute(key, attrs[key]);
-                return el;
-            };
-
-            const wallX = 150;
-            const wallTop = 20;
-            const wallBottom = svgHeight - 20;
-            
-            svg.appendChild(createElem('line', { x1: wallX, y1: wallTop, x2: wallX, y2: wallBottom, stroke: '#343a40', 'stroke-width': '4' }));
-            const wallLabel = createElem('text', { x: wallX - 10, y: wallBottom, class: 'dimension-text', 'text-anchor': 'end' });
-            wallLabel.textContent = "Wall";
-            svg.appendChild(wallLabel);
-
-            const plateWidth = 20;
-            const plateHeight = 160;
-            const plateY = (svgHeight - plateHeight) / 2;
-            svg.appendChild(createElem('rect', { x: wallX, y: plateY, width: plateWidth, height: plateHeight, fill: '#adb5bd', stroke: '#495057', 'stroke-width': '1' }));
-
-            const plateCenterY = plateY + plateHeight / 2;
-            const scaledFixingSep = Math.min(plateHeight * 0.7, fixingSeparation * 0.4); 
-            const topFixingY = plateCenterY - scaledFixingSep / 2;
-            const bottomFixingY = plateCenterY + scaledFixingSep / 2;
-            const fixingX = wallX + plateWidth / 2;
-            svg.appendChild(createElem('circle', { cx: fixingX, cy: topFixingY, r: 4, fill: '#495057' }));
-            svg.appendChild(createElem('circle', { cx: fixingX, cy: bottomFixingY, r: 4, fill: '#495057' }));
-
-            const coilCenterX = wallX + plateWidth + (offsetM * 1000 * 0.4);
-            const coilCenterY = plateCenterY;
-            const coilRadius = 40;
-            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: coilCenterY, r: coilRadius, fill: '#e9ecef', stroke: '#adb5bd', 'stroke-width': '2', 'stroke-dasharray': '4,2' }));
-            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: coilCenterY, r: 5, fill: '#6c757d' }));
-
-            const redForceArrow = { stroke: '#d93025', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-red)' };
-            const redForceText = { fill: '#d93025', 'font-size': '11px', 'font-weight': 'bold' };
-            const blueForceArrow = { stroke: '#007bff', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-blue)' };
-            const blueForceText = { fill: '#007bff', 'font-size': '11px', 'font-weight': 'bold' };
-            const dimLineStyle = { class: 'dimension-line', 'marker-start': 'url(#arrow-dim)', 'marker-end': 'url(#arrow-dim)' };
-
-            const mainForceYEnd = coilCenterY + coilRadius + 40;
-            svg.appendChild(createElem('line', { x1: coilCenterX, y1: coilCenterY, x2: coilCenterX, y2: mainForceYEnd, ...redForceArrow }));
-            const mainForceTextEl = createElem('text', { x: coilCenterX + 5, y: mainForceYEnd, 'text-anchor': 'start', ...redForceText });
-            mainForceTextEl.textContent = `Shear Force on Plate: ${downwardForce.toFixed(0)} N`;
-            svg.appendChild(mainForceTextEl);
-            
-            const pulloutXEnd = wallX - 50;
-            svg.appendChild(createElem('line', { x1: wallX, y1: topFixingY, x2: pulloutXEnd, y2: topFixingY, ...redForceArrow }));
-            const pulloutTextEl = createElem('text', { x: pulloutXEnd - 5, y: topFixingY - 5, 'text-anchor': 'end', ...redForceText });
-            pulloutTextEl.textContent = `Pull-out: ${pulloutForce.toFixed(0)} N`;
-            svg.appendChild(pulloutTextEl);
-
-            const compressionXStart = wallX - 50;
-            svg.appendChild(createElem('line', { x1: compressionXStart, y1: bottomFixingY, x2: wallX, y2: bottomFixingY, ...blueForceArrow }));
-            const compressionTextEl = createElem('text', { x: compressionXStart - 5, y: bottomFixingY - 5, 'text-anchor': 'end', ...blueForceText });
-            compressionTextEl.textContent = `Compression: ${pulloutForce.toFixed(0)} N`;
-            svg.appendChild(compressionTextEl);
-
-            const shearForce = downwardForce / 2; // Assuming 2 fixings per plate
-            const shearYEnd = 40;
-            svg.appendChild(createElem('line', { x1: fixingX, y1: topFixingY, x2: fixingX, y2: topFixingY + shearYEnd, ...redForceArrow }));
-            svg.appendChild(createElem('line', { x1: fixingX, y1: bottomFixingY, x2: fixingX, y2: bottomFixingY + shearYEnd, ...redForceArrow }));
-            const shearTextEl = createElem('text', { x: fixingX + 5, y: bottomFixingY + shearYEnd, 'text-anchor': 'start', ...redForceText });
-            shearTextEl.textContent = `Shear (each): ${shearForce.toFixed(0)} N`;
-            svg.appendChild(shearTextEl);
-            
-            const fixDimX = wallX + plateWidth + 25;
-            svg.appendChild(createElem('line', { x1: fixDimX, y1: topFixingY, x2: fixDimX, y2: bottomFixingY, ...dimLineStyle }));
-            const fixTextEl = createElem('text', { x: fixDimX + 8, y: plateCenterY, class: 'dimension-text', 'dominant-baseline': 'middle', 'text-anchor': 'middle', transform: `rotate(-90, ${fixDimX + 8}, ${plateCenterY})` });
-            fixTextEl.textContent = `${fixingSeparation.toFixed(0)} mm`;
-            svg.appendChild(fixTextEl);
-
-            const offsetDimY = wallBottom + 10;
-            svg.appendChild(createElem('line', { x1: wallX, y1: offsetDimY, x2: coilCenterX, y2: offsetDimY, ...dimLineStyle }));
-            const offsetTextEl = createElem('text', { x: wallX + (coilCenterX - wallX)/2, y: offsetDimY + 12, class: 'dimension-text' });
-            offsetTextEl.textContent = `Offset: ${(offsetM * 1000).toFixed(0)} mm`;
-            svg.appendChild(offsetTextEl);
-
-            container.appendChild(svg);
-        }
-
-        function drawEndplateGraphic(endplate, coilDiameter) {
-            const container = dom['endplate-graphic-container'];
-            container.innerHTML = '';
-            if (!endplate || !coilDiameter || coilDiameter <= 0) return;
-
-            const endplateSize = parseFloat(endplate.Size);
-            if (isNaN(endplateSize) || endplateSize <= 0) return;
-
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 550;
-            const svgHeight = 250;
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker');
-            marker.setAttribute('id', 'arrow-endplate');
-            marker.setAttribute('viewBox', '0 0 10 10');
-            marker.setAttribute('refX', '1');
-            marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '5');
-            marker.setAttribute('markerHeight', '5');
-            marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path');
-            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-            arrowPath.setAttribute('fill', '#343a40');
-            marker.appendChild(arrowPath);
-            defs.appendChild(marker);
-            svg.appendChild(defs);
-
-            const padding = { top: 20, right: 120, bottom: 20, left: 20 };
-            const graphHeight = svgHeight - padding.top - padding.bottom;
-            
-            const scale = graphHeight / endplateSize;
-            const scaledBoxSize = endplateSize * scale;
-            const scaledCoilRadius = (coilDiameter / 2) * scale;
-
-            const boxX = padding.left;
-            const boxY = padding.top;
-            const centerX = boxX + scaledBoxSize / 2;
-            const centerY = boxY + scaledBoxSize / 2;
-
-            const createElem = (type, attrs) => {
-                const el = document.createElementNS(svgNS, type);
-                for (const key in attrs) el.setAttribute(key, attrs[key]);
-                return el;
-            };
-
-            const boxRect = createElem('rect', {
-                x: boxX, y: boxY, width: scaledBoxSize, height: scaledBoxSize,
-                fill: '#f8f9fa', stroke: '#ced4da', 'stroke-width': '1'
-            });
-            svg.appendChild(boxRect);
-
-            const coilCircle = createElem('circle', {
-                cx: centerX, cy: centerY, r: scaledCoilRadius,
-                fill: 'none', stroke: '#007bff', 'stroke-width': '2'
-            });
-            svg.appendChild(coilCircle);
-
-            const dimLineX = boxX + scaledBoxSize + 25;
-            svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: dimLineX, y1: boxY, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-            const boxSizeTextX = dimLineX + 8;
-            const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
-            boxSizeText.textContent = `${endplateSize.toFixed(0)} mm`;
-            svg.appendChild(boxSizeText);
-            
-            const coilDimY = boxY + scaledBoxSize + 20;
-            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: coilDimY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-            const coilDimText = createElem('text', { x: centerX, y: coilDimY + 12, class: 'dimension-text' });
-            coilDimText.textContent = `Ø ${coilDiameter.toFixed(1)} mm`;
-            svg.appendChild(coilDimText);
-
-            const clearance = (endplateSize - coilDiameter) / 2;
-            if (clearance > 1) {
-                const clearanceDimX = dimLineX + 40;
-                const topY = boxY;
-                const coilTopY = centerY - scaledCoilRadius;
-                svg.appendChild(createElem('line', { x1: centerX, y1: topY, x2: clearanceDimX, y2: topY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-                svg.appendChild(createElem('line', { x1: centerX, y1: coilTopY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-                svg.appendChild(createElem('line', { x1: clearanceDimX, y1: topY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-                const clearanceTextX = clearanceDimX + 8;
-                const clearanceText = createElem('text', { x: clearanceTextX, y: topY + (coilTopY - topY) / 2, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${clearanceTextX}, ${topY + (coilTopY - topY) / 2})` });
-                clearanceText.textContent = `${clearance.toFixed(1)} mm`;
-                svg.appendChild(clearanceText);
-            }
-            
-            container.appendChild(svg);
-        }
-
-        // *** MODIFIED START ***
-        function drawAxleCrossSection(axle, collarSize = 0) {
-            const container = dom['axle-cross-section-container'];
-            container.innerHTML = '';
-            if (!axle) return;
-
-            const outerDia = parseFloat(axle['Diameter']); // This is flat-to-flat for octagonal
-            const wallThick = parseFloat(axle['Wall Thickness']);
-            const shape = (axle['Shape'] || 'circular').toLowerCase();
-
-            if (isNaN(outerDia) || isNaN(wallThick) || outerDia <= 0 || wallThick <= 0) return;
-            
-            const innerDia = outerDia - (2 * wallThick);
-
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 550;
-            const svgHeight = 250;
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-
-            const padding = { top: 20, right: 100, bottom: 20, left: 100 };
-            const graphSize = Math.min(svgWidth - padding.left - padding.right, svgHeight - padding.top - padding.bottom) * 0.75;
-            
-            const displayDiameter = collarSize > outerDia ? collarSize : outerDia;
-            const scale = graphSize / displayDiameter;
-            const cx = svgWidth / 2;
-            const cy = svgHeight / 2;
-
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker');
-            marker.setAttribute('id', 'arrow');
-            marker.setAttribute('viewBox', '0 0 10 10');
-            marker.setAttribute('refX', '1');
-            marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '5');
-            marker.setAttribute('markerHeight', '5');
-            marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path');
-            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-            arrowPath.setAttribute('fill', '#343a40');
-            marker.appendChild(arrowPath);
-            defs.appendChild(marker);
-            svg.appendChild(defs);
-
-            if (shape === 'octagonal') {
-                const createOctagon = (flatToFlat, style) => {
-                    const circumRadius = (flatToFlat / 2) / Math.cos(Math.PI / 8);
-                    const points = [];
-                    for (let i = 0; i < 8; i++) {
-                        const angle = (Math.PI / 8) + i * (Math.PI / 4);
-                        const x = cx + (circumRadius * scale) * Math.cos(angle);
-                        const y = cy - (circumRadius * scale) * Math.sin(angle); // SVG y is inverted
-                        points.push(`${x},${y}`);
-                    }
-                    const polygon = document.createElementNS(svgNS, 'polygon');
-                    polygon.setAttribute('points', points.join(' '));
-                    for (const key in style) polygon.setAttribute(key, style[key]);
-                    return polygon;
-                };
-                const polyStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
-                svg.appendChild(createOctagon(outerDia, polyStyle));
-                svg.appendChild(createOctagon(innerDia, polyStyle));
-
-            } else { // Circular
-                const createCircle = (diameter, style) => {
-                    const circle = document.createElementNS(svgNS, 'circle');
-                    circle.setAttribute('cx', cx);
-                    circle.setAttribute('cy', cy);
-                    circle.setAttribute('r', (diameter / 2) * scale);
-                    for (const key in style) circle.setAttribute(key, style[key]);
-                    return circle;
-                };
-                const circleStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
-                svg.appendChild(createCircle(outerDia, circleStyle));
-                svg.appendChild(createCircle(innerDia, circleStyle));
-            }
-            
-            if (collarSize > outerDia) {
-                const collarRadius = (collarSize / 2) * scale;
-                const collarCircle = document.createElementNS(svgNS, 'circle');
-                collarCircle.setAttribute('cx', cx);
-                collarCircle.setAttribute('cy', cy);
-                collarCircle.setAttribute('r', collarRadius);
-                collarCircle.setAttribute('stroke', 'black');
-                collarCircle.setAttribute('stroke-width', '3');
-                collarCircle.setAttribute('fill', 'none');
-                svg.appendChild(collarCircle);
-            }
-
-            const createElem = (type, attrs) => {
-                const el = document.createElementNS(svgNS, type);
-                for (const key in attrs) el.setAttribute(key, attrs[key]);
-                return el;
-            };
-
-            const outerRadiusScaled = (outerDia / 2) * scale;
-            const innerRadiusScaled = (innerDia / 2) * scale;
-
-            const od_dim_x = cx + outerRadiusScaled + 40;
-            svg.appendChild(createElem('line', { x1: cx, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy - outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: cx, y1: cy + outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: od_dim_x, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
-            const odTextX = od_dim_x + 12;
-            const odText = createElem('text', { x: odTextX, y: cy, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${odTextX}, ${cy})` });
-            odText.textContent = `${outerDia.toFixed(1)}`;
-            svg.appendChild(odText);
-
-            const id_dim_x = cx + innerRadiusScaled + 15;
-            svg.appendChild(createElem('line', { x1: cx, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy - innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: cx, y1: cy + innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: id_dim_x, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
-            const idTextX = id_dim_x + 12;
-            const idText = createElem('text', { x: idTextX, y: cy, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${idTextX}, ${cy})` });
-            idText.textContent = `${innerDia.toFixed(1)}`;
-            svg.appendChild(idText);
-
-            const angle = 135 * Math.PI / 180;
-            const arrowTipX = cx + outerRadiusScaled * Math.cos(angle);
-            const arrowTipY = cy - outerRadiusScaled * Math.sin(angle);
-            const leaderElbowX = cx - outerRadiusScaled - 20;
-            const leaderElbowY = cy - outerRadiusScaled - 20;
-
-            svg.appendChild(createElem('line', {
-                x1: leaderElbowX, y1: leaderElbowY,
-                x2: arrowTipX, y2: arrowTipY,
-                class: 'dimension-line',
-                'marker-end': 'url(#arrow)'
-            }));
-
-            const textLineStartX = leaderElbowX - 30;
-            svg.appendChild(createElem('line', {
-                x1: leaderElbowX, y1: leaderElbowY,
-                x2: textLineStartX, y2: leaderElbowY,
-                class: 'dimension-line'
-            }));
-
-            const wtText = createElem('text', {
-                x: textLineStartX + (leaderElbowX - textLineStartX) / 2,
-                y: leaderElbowY - 5,
-                class: 'dimension-text'
-            });
-            wtText.textContent = `${wallThick.toFixed(1)}`;
-            svg.appendChild(wtText);
-
-            container.appendChild(svg);
-        }
-        // *** MODIFIED END ***
-
         // *** MODIFIED START: Pass selectedEndplate parameter ***
         function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null) {
         // *** MODIFIED END ***
@@ -2580,10 +2076,6 @@
             container.innerHTML = '';
             
             const options = { 
-                showMainDimensions: true,
-                showHeightDim: true,
-                showCurtainWidthDim: true,
-                showAxleCenterline: true,
                 visionOptions: visionData
             };
             
@@ -2617,7 +2109,6 @@
 
             const { 
                 wicket = null, 
-                wicketLathHeight = 0,
                 visionOptions = null
             } = options;
 
@@ -2626,8 +2117,8 @@
 
             const svg = document.createElementNS(svgNS, "svg");
             
-            const padding = { top: 30, right: 90, bottom: 40, left: 120 };
-            const svgWidth = 600; 
+            const padding = { top: 30, right: 120, bottom: 40, left: 120 };
+            const svgWidth = 700; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height'] || mainLathHeight);
@@ -2639,13 +2130,12 @@
             } else {
                 totalRealCompressedHeight = (numLaths * mainLathHeight) + bottomLathHeight;
             }
-            totalRealCompressedHeight += axleDiameter; // Add axle diameter for total height in graphic
+            totalRealCompressedHeight += axleDiameter;
 
             const totalRealAxleWidth = realWidth + (additionalLength || 0);
 
             if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
 
-            // Determine scale based on width, then calculate required height
             const graphWidth = svgWidth - padding.left - padding.right;
             const scale = graphWidth / totalRealAxleWidth;
             const graphHeight = totalRealCompressedHeight * scale;
@@ -2653,15 +2143,12 @@
             
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
-            // --- DEFS for markers ---
             const defs = document.createElementNS(svgNS, 'defs');
             const marker = document.createElementNS(svgNS, 'marker');
             marker.setAttribute('id', 'dim-arrow');
             marker.setAttribute('viewBox', '0 0 10 10');
-            marker.setAttribute('refX', '5');
-            marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '5');
-            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
             marker.setAttribute('orient', 'auto-start-reverse');
             const arrowPath = document.createElementNS(svgNS, 'path');
             arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
@@ -2670,14 +2157,53 @@
             defs.appendChild(marker);
             svg.appendChild(defs);
 
-            // --- Drawing Helpers ---
-            const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal') => {
+            const wordWrap = (text, maxWidth) => {
+                const words = text.split(' ');
+                let lines = [];
+                let currentLine = words[0];
+                for (let i = 1; i < words.length; i++) {
+                    let word = words[i];
+                    if ((currentLine + " " + word).length > maxWidth) {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        currentLine += " " + word;
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            };
+
+            const drawDimension = (p1, p2, offset, label, orientation = 'horizontal') => {
                 const line = document.createElementNS(svgNS, 'line');
-                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                const leader1 = document.createElementNS(svgNS, 'line');
+                const leader2 = document.createElementNS(svgNS, 'line');
+                leader1.setAttribute('class', 'leader-line');
+                leader2.setAttribute('class', 'leader-line');
+
+                if (orientation === 'horizontal') {
+                    const y = p1.y + offset;
+                    line.setAttribute('x1', p1.x); line.setAttribute('y1', y);
+                    line.setAttribute('x2', p2.x); line.setAttribute('y2', y);
+                    leader1.setAttribute('x1', p1.x); leader1.setAttribute('y1', p1.y);
+                    leader1.setAttribute('x2', p1.x); leader1.setAttribute('y2', y);
+                    leader2.setAttribute('x1', p2.x); leader2.setAttribute('y1', p2.y);
+                    leader2.setAttribute('x2', p2.x); leader2.setAttribute('y2', y);
+                } else { // vertical
+                    const x = p1.x + offset;
+                    line.setAttribute('x1', x); line.setAttribute('y1', p1.y);
+                    line.setAttribute('x2', x); line.setAttribute('y2', p2.y);
+                    leader1.setAttribute('x1', p1.x); leader1.setAttribute('y1', p1.y);
+                    leader1.setAttribute('x2', x); leader1.setAttribute('y2', p1.y);
+                    leader2.setAttribute('x1', p2.x); leader2.setAttribute('y1', p2.y);
+                    leader2.setAttribute('x2', x); leader2.setAttribute('y2', p2.y);
+                }
+
                 line.setAttribute('class', 'dimension-line');
                 line.setAttribute('marker-start', 'url(#dim-arrow)');
                 line.setAttribute('marker-end', 'url(#dim-arrow)');
+                svg.appendChild(leader1);
+                svg.appendChild(leader2);
                 svg.appendChild(line);
 
                 const text = document.createElementNS(svgNS, 'text');
@@ -2685,21 +2211,22 @@
                 text.setAttribute('class', 'dimension-text');
 
                 if (orientation === 'horizontal') {
-                    text.setAttribute('x', x1 + (x2 - x1) / 2);
-                    text.setAttribute('y', y1 - 6);
+                    text.setAttribute('x', p1.x + (p2.x - p1.x) / 2);
+                    text.setAttribute('y', p1.y + offset + (offset > 0 ? 12 : -6));
                 } else { // vertical
-                    const textX = x1 + 10;
-                    const textY = y1 + (y2 - y1) / 2;
+                    const textX = p1.x + offset + (offset > 0 ? 6 : -6);
+                    const textY = p1.y + (p2.y - p1.y) / 2;
                     text.setAttribute('x', textX);
                     text.setAttribute('y', textY);
                     text.setAttribute('transform', `rotate(-90, ${textX}, ${textY})`);
+                    text.setAttribute('text-anchor', offset > 0 ? 'start' : 'end');
                 }
                 svg.appendChild(text);
             };
 
             const drawAnnotation = (startY, endY, label) => {
-                const lineX = padding.left - 10;
-                const textX = lineX - 6;
+                const lineX = padding.left - 15;
+                const textX = lineX - 8;
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
                 line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
@@ -2707,18 +2234,34 @@
                 line.setAttribute('marker-start', 'url(#dim-arrow)');
                 line.setAttribute('marker-end', 'url(#dim-arrow)');
                 svg.appendChild(line);
+                
+                const leader1 = document.createElementNS(svgNS, 'line');
+                leader1.setAttribute('x1', lineX); leader1.setAttribute('y1', startY);
+                leader1.setAttribute('x2', lathStartX); leader1.setAttribute('y2', startY);
+                leader1.setAttribute('class', 'leader-line'); svg.appendChild(leader1);
+                const leader2 = document.createElementNS(svgNS, 'line');
+                leader2.setAttribute('x1', lineX); leader2.setAttribute('y1', endY);
+                leader2.setAttribute('x2', lathStartX); leader2.setAttribute('y2', endY);
+                leader2.setAttribute('class', 'leader-line'); svg.appendChild(leader2);
+
                 const text = document.createElementNS(svgNS, 'text');
-                const textY = startY + (endY - startY) / 2;
+                const textLines = wordWrap(label, 16);
+                const textY = startY + (endY - startY) / 2 - (textLines.length - 1) * 6;
                 text.setAttribute('x', textX);
                 text.setAttribute('y', textY);
                 text.setAttribute('class', 'dimension-text');
                 text.setAttribute('text-anchor', 'end');
-                text.setAttribute('dominant-baseline', 'middle');
-                text.textContent = label;
+                
+                textLines.forEach((line, i) => {
+                    const tspan = document.createElementNS(svgNS, 'tspan');
+                    tspan.textContent = line;
+                    tspan.setAttribute('x', textX);
+                    if (i > 0) tspan.setAttribute('dy', '1.2em');
+                    text.appendChild(tspan);
+                });
                 svg.appendChild(text);
             };
-
-            // --- Start Drawing ---
+            
             const scaledTotalAxleWidth = totalRealAxleWidth * scale;
             const scaledShutterWidth = realWidth * scale;
             const startX = padding.left;
@@ -2728,15 +2271,17 @@
             const axleY = currentY;
             const scaledAxleHeight = axleDiameter * scale;
             const axleCenterlineY = axleY + scaledAxleHeight / 2;
+            let endplateTopY = axleCenterlineY, endplateBottomY = axleCenterlineY;
+            let endplateSize = 0;
 
-            // Draw Endplate Box (behind axle)
             if (selectedEndplate) {
-                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
                     const scaledEndplateHeight = endplateSize * scale;
+                    endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                    endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
                     const endplateBox = document.createElementNS(svgNS, 'rect');
-                    endplateBox.setAttribute('x', axleX);
-                    endplateBox.setAttribute('y', axleCenterlineY - (scaledEndplateHeight / 2));
+                    endplateBox.setAttribute('x', axleX); endplateBox.setAttribute('y', endplateTopY);
                     endplateBox.setAttribute('width', scaledTotalAxleWidth);
                     endplateBox.setAttribute('height', scaledEndplateHeight);
                     endplateBox.setAttribute('class', 'endplate-box-graphic');
@@ -2744,81 +2289,67 @@
                 }
             }
 
-            // Draw Axle
             const axleRect = document.createElementNS(svgNS, 'rect');
-            axleRect.setAttribute('x', axleX);
-            axleRect.setAttribute('y', axleY);
-            axleRect.setAttribute('width', scaledTotalAxleWidth);
-            axleRect.setAttribute('height', scaledAxleHeight);
-            axleRect.setAttribute('class', 'shutter-axle-graphic');
-            svg.appendChild(axleRect);
+            axleRect.setAttribute('x', axleX); axleRect.setAttribute('y', axleY);
+            axleRect.setAttribute('width', scaledTotalAxleWidth); axleRect.setAttribute('height', scaledAxleHeight);
+            axleRect.setAttribute('class', 'shutter-axle-graphic'); svg.appendChild(axleRect);
             
             const centerline = document.createElementNS(svgNS, 'line');
             centerline.setAttribute('x1', axleX); centerline.setAttribute('y1', axleCenterlineY);
             centerline.setAttribute('x2', axleX + scaledTotalAxleWidth); centerline.setAttribute('y2', axleCenterlineY);
-            centerline.setAttribute('class', 'axle-centerline-graphic');
-            svg.appendChild(centerline);
+            centerline.setAttribute('class', 'axle-centerline-graphic'); svg.appendChild(centerline);
 
             currentY += scaledAxleHeight;
             const curtainStartY = currentY;
             const lathStartX = axleX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             let lathCounter = 0;
-            const endlockSize = Math.min(4, scaledShutterWidth * 0.05);
+            const endlockSizeVal = Math.min(4, scaledShutterWidth * 0.05);
             const drawEndlocks = (lathY, lathH) => {
-                const endlockY = lathY + (lathH / 2) - (endlockSize / 2);
+                const endlockY = lathY + (lathH / 2) - (endlockSizeVal / 2);
                 const leftEndlock = document.createElementNS(svgNS, 'rect');
                 leftEndlock.setAttribute('x', lathStartX); leftEndlock.setAttribute('y', endlockY);
-                leftEndlock.setAttribute('width', endlockSize); leftEndlock.setAttribute('height', endlockSize);
+                leftEndlock.setAttribute('width', endlockSizeVal); leftEndlock.setAttribute('height', endlockSizeVal);
                 leftEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(leftEndlock);
                 const rightEndlock = document.createElementNS(svgNS, 'rect');
-                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSize); rightEndlock.setAttribute('y', endlockY);
-                rightEndlock.setAttribute('width', endlockSize); rightEndlock.setAttribute('height', endlockSize);
+                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSizeVal); rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockSizeVal); rightEndlock.setAttribute('height', endlockSizeVal);
                 rightEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(rightEndlock);
             };
 
-            // Draw Laths and Annotations
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions;
                 const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
                 const scaledMainLathHeight = mainLathHeight * scale;
                 const scaledVisionLathHeight = visionLathCompHeight * scale;
-                
                 let sectionStartY = currentY;
+
                 for (let i = 0; i < vo.numLathsAbove; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
-                    lathRect.setAttribute('class', 'shutter-lath-graphic');
-                    svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
-                    currentY += scaledMainLathHeight;
-                    lathCounter++;
+                    lathRect.setAttribute('class', 'shutter-lath-graphic'); svg.appendChild(lathRect);
+                    if (endlocksSelected && (lathCounter + 1) % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    currentY += scaledMainLathHeight; lathCounter++;
                 }
                 if (vo.numLathsAbove > 0) drawAnnotation(sectionStartY, currentY, `${lath['Name']} (x${vo.numLathsAbove})`);
-
                 sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsVision; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledVisionLathHeight);
-                    lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
-                    svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
-                    currentY += scaledVisionLathHeight;
-                    lathCounter++;
+                    lathRect.setAttribute('class', 'shutter-vision-lath-graphic'); svg.appendChild(lathRect);
+                    if (endlocksSelected && (lathCounter + 1) % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    currentY += scaledVisionLathHeight; lathCounter++;
                 }
                 if (vo.numLathsVision > 0) drawAnnotation(sectionStartY, currentY, `${vo.visionLath['Name']} (x${vo.numLathsVision})`);
-
                 sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsBelow; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
-                    lathRect.setAttribute('class', 'shutter-lath-graphic');
-                    svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
-                    currentY += scaledMainLathHeight;
-                    lathCounter++;
+                    lathRect.setAttribute('class', 'shutter-lath-graphic'); svg.appendChild(lathRect);
+                    if (endlocksSelected && (lathCounter + 1) % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    currentY += scaledMainLathHeight; lathCounter++;
                 }
                  if (vo.numLathsBelow > 0) drawAnnotation(sectionStartY, currentY, `${lath['Name']} (x${vo.numLathsBelow})`);
             } else if (numLaths > 0) {
@@ -2827,46 +2358,45 @@
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledLathHeight);
-                    lathRect.setAttribute('class', 'shutter-lath-graphic');
-                    svg.appendChild(lathRect);
+                    lathRect.setAttribute('class', 'shutter-lath-graphic'); svg.appendChild(lathRect);
                     if (endlocksSelected && (i + 1) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
                     currentY += scaledLathHeight;
                 }
                 drawAnnotation(curtainStartY, currentY, `${lath['Name']} (x${numLaths})`);
             }
 
-            // Draw Bottom Lath
             const scaledBottomLathHeight = bottomLathHeight * scale;
             const bottomLathRect = document.createElementNS(svgNS, 'rect');
             bottomLathRect.setAttribute('x', lathStartX); bottomLathRect.setAttribute('y', currentY);
             bottomLathRect.setAttribute('width', scaledShutterWidth); bottomLathRect.setAttribute('height', scaledBottomLathHeight);
-            bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic');
-            svg.appendChild(bottomLathRect);
+            bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic'); svg.appendChild(bottomLathRect);
             const bottomY = currentY + scaledBottomLathHeight;
 
-            // Draw Wicket Door
             if (wicket) {
-                const wicketRealHeight = parseFloat(wicket.Height) || 0;
-                const wicketRealWidth = parseFloat(wicket.Width) || 0;
-                const scaledWicketHeight = wicketRealHeight * scale;
-                const scaledWicketWidth = wicketRealWidth * scale;
+                const scaledWicketHeight = (parseFloat(wicket.Height) || 0) * scale;
+                const scaledWicketWidth = (parseFloat(wicket.Width) || 0) * scale;
                 const wicketRect = document.createElementNS(svgNS, 'rect');
                 wicketRect.setAttribute('x', lathStartX); wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
                 wicketRect.setAttribute('width', scaledWicketWidth); wicketRect.setAttribute('height', scaledWicketHeight);
-                wicketRect.setAttribute('class', 'wicket-door-graphic');
-                svg.appendChild(wicketRect);
+                wicketRect.setAttribute('class', 'wicket-door-graphic'); svg.appendChild(wicketRect);
             }
 
-            // --- Draw Dimensions ---
-            const heightDimLineX = axleX + scaledTotalAxleWidth + 15;
-            drawDimensionLine(heightDimLineX, axleCenterlineY, heightDimLineX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
+            // --- Dimensions ---
+            drawDimension({x: axleX, y: axleY}, {x: axleX + scaledTotalAxleWidth, y: axleY}, -15, `${totalRealAxleWidth.toFixed(0)} mm`);
+            drawDimension({x: lathStartX, y: bottomY}, {x: lathStartX + scaledShutterWidth, y: bottomY}, 15, `${realWidth.toFixed(0)} mm`);
             
-            const totalWidthDimY = axleY - 15;
-            drawDimensionLine(axleX, totalWidthDimY, axleX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
+            const heightDimOffset = 20;
+            drawDimension({x: axleX + scaledTotalAxleWidth, y: axleCenterlineY}, {x: axleX + scaledTotalAxleWidth, y: bottomY}, heightDimOffset, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
+            
+            if (endplateSize > 0) {
+                const endplateDimOffset = heightDimOffset + 25;
+                drawDimension({x: axleX + scaledTotalAxleWidth, y: endplateTopY}, {x: axleX + scaledTotalAxleWidth, y: endplateBottomY}, endplateDimOffset, `${endplateSize.toFixed(0)} mm`, 'vertical');
+                
+                const undersideHeight = parseFloat(dom.height.value) - (endplateSize / 2);
+                const undersideDimOffset = endplateDimOffset + 25;
+                drawDimension({x: axleX + scaledTotalAxleWidth, y: endplateBottomY}, {x: axleX + scaledTotalAxleWidth, y: bottomY}, undersideDimOffset, `${undersideHeight.toFixed(0)} mm to underside of housing`, 'vertical');
+            }
 
-            const widthDimLineY = bottomY + 15;
-            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
-            
             return svg;
         }
         // *** MODIFIED END ***
