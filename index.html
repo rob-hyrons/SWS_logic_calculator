@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Shutter Motor Calculator</title>
-    <!-- *** MODIFIED START *** -->
     <!-- xlsx.js for data reading (existing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- ExcelJS for image extraction (new) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    <!-- *** MODIFIED END *** -->
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -548,9 +546,8 @@
     </div>
 
     <script>
-        // *** MODIFIED START ***
+        // Global variables for calculator data
         let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endLockData = [];
-        // *** MODIFIED END ***
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
@@ -559,8 +556,8 @@
         let userSelectedAxleIndex = null;
         let visionCalcs = null; 
         
+        // DOM element cache
         const dom = {};
-        // *** MODIFIED START ***
         ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 
@@ -579,46 +576,140 @@
          'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endLockType', 'endlock-weight-kg'
         ].forEach(id => dom[id] = document.getElementById(id));
-        // *** MODIFIED END ***
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        // *** MODIFIED START ***
-        ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endLockType'
-        ].forEach(id => {
-            if (dom[id]) dom[id].addEventListener('input', () => {
-                userSelectedAxleIndex = null; 
-                if (id === 'lathType' && lathData.length > 0) {
-                    const selectedLath = lathData[dom.lathType.value];
-                    if (selectedLath && selectedLath['Friction %'] !== undefined) {
-                        dom.friction.value = selectedLath['Friction %'];
+        // *** MODIFIED START: Consolidated event listeners and Excel loading logic ***
+        
+        // This function will contain all code that needs to run after the page is loaded
+        function initializeCalculator() {
+            // Setup all event listeners
+            ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
+             'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endLockType'
+            ].forEach(id => {
+                if (dom[id]) dom[id].addEventListener('input', () => {
+                    userSelectedAxleIndex = null; 
+                    if (id === 'lathType' && lathData.length > 0) {
+                        const selectedLath = lathData[dom[id].value];
+                        if (selectedLath && selectedLath['Friction %'] !== undefined) {
+                            dom.friction.value = selectedLath['Friction %'];
+                        }
                     }
-                }
+                    updateAllCalculations();
+                });
+            });
+
+            dom.addVision.addEventListener('change', () => {
+                dom['vision-slat-options'].style.display = dom.addVision.checked ? 'block' : 'none';
                 updateAllCalculations();
             });
-        });
-        // *** MODIFIED END ***
 
-        dom.addVision.addEventListener('change', () => {
-            dom['vision-slat-options'].style.display = dom.addVision.checked ? 'block' : 'none';
-            updateAllCalculations();
-        });
+            dom.motorSelector.addEventListener('change', updateSelectedMotorInfo);
+            dom.endplateSelector.addEventListener('change', updateSelectedEndplateInfo);
+            tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
+            dom.safetyBrakeSelector.addEventListener('input', updateSelectedSafetyBrakeInfo);
+            dom.axleType.addEventListener('input', handleAxleOverride);
+            dom.wicketDoorSelector.addEventListener('input', updateSelectedWicketInfo);
+            dom.printButton.addEventListener('click', () => window.print());
 
-        // Event listener for manual file selection is no longer needed
-        // dom.xlsxFile.addEventListener('change', handleFileSelect);
+            // --- Auto Load Excel File ---
+            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
+            const statusDiv = document.getElementById('import-status');
+            
+            statusDiv.textContent = 'Loading data from repository...';
+            statusDiv.style.color = '#555';
 
-        dom.motorSelector.addEventListener('change', updateSelectedMotorInfo);
-        dom.endplateSelector.addEventListener('change', updateSelectedEndplateInfo);
-        tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-        dom.safetyBrakeSelector.addEventListener('input', updateSelectedSafetyBrakeInfo);
-        dom.axleType.addEventListener('input', handleAxleOverride);
-        
-        dom.wicketDoorSelector.addEventListener('input', updateSelectedWicketInfo);
-        
-        dom.printButton.addEventListener('click', () => {
-            window.print();
-        });
+            fetch(excelFileUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(fileData => {
+                    (async () => {
+                        try {
+                            const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
+                            const sheetNames = workbook.SheetNames;
+                            
+                            sheetNames.forEach(sheetName => {
+                                const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                                const normalizedSheetName = sheetName.toLowerCase().replace(/\s+/g, '');
+
+                                if (normalizedSheetName.includes('lath') && !normalizedSheetName.includes('bottom')) lathData = objectData;
+                                else if (normalizedSheetName.includes('bottomlath')) bottomLathData = objectData;
+                                else if (normalizedSheetName.includes('axle')) axleData = objectData;
+                                else if (normalizedSheetName.includes('motor')) motorData = objectData;
+                                else if (normalizedSheetName.includes('safetyb') || normalizedSheetName.includes('safetybrake')) safetyBrakeData = objectData;
+                                else if (normalizedSheetName.includes('endplate')) endplateData = objectData;
+                                else if (normalizedSheetName.includes('wicket')) wicketData = objectData;
+                                else if (normalizedSheetName.includes('endlock')) endLockData = objectData;
+                            });
+
+                            lathImageMap.clear(); 
+                            safetyBrakeImageMap.clear();
+                            const exceljsWorkbook = new ExcelJS.Workbook();
+                            await exceljsWorkbook.xlsx.load(fileData);
+
+                            const findSheetByName = (searchString) => sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes(searchString));
+
+                            const lathSheetName = findSheetByName('lath');
+                            if (lathSheetName && !lathSheetName.toLowerCase().replace(/\s+/g, '').includes('bottom')) {
+                                const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
+                                if (lathSheet) await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
+                            }
+                            
+                            const safetyBrakeSheetName = findSheetByName('safetyb') || findSheetByName('safetybrake');
+                             if (safetyBrakeSheetName) {
+                                const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
+                                if (safetyBrakeSheet) await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
+                            }
+                            
+                            populateDropdown(dom.lathType, lathData, 'Name');
+                            populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
+                            
+                            const visionSelect = dom.visionLathType;
+                            visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
+                            lathData.forEach((item, index) => {
+                                const visionKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'vision percentage');
+                                const visionValue = visionKey ? (parseFloat(item[visionKey]) || 0) : 0;
+                                if (visionValue > 0) {
+                                    const option = document.createElement('option');
+                                    option.value = index;
+                                    const nameKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'name');
+                                    option.textContent = item[nameKey];
+                                    visionSelect.appendChild(option);
+                                }
+                            });
+                           
+                            populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
+                            populateMotorMountingTypes();
+                            populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
+
+                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
+                                if(dom[id]) dom[id].disabled = false;
+                            });
+
+                            updateSelectedWicketInfo(); 
+                            statusDiv.textContent = 'Successfully loaded data from repository.';
+                            statusDiv.style.color = 'green';
+                            updateAllCalculations();
+
+                        } catch (error) {
+                            statusDiv.textContent = `Error processing Excel file: ${error.message}`;
+                            statusDiv.style.color = 'red';
+                            console.error("Error during Excel processing:", error);
+                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
+                        }
+                    })();
+                })
+                .catch(error => {
+                    statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.';
+                    statusDiv.style.color = 'red';
+                    console.error('There has been a problem with the fetch operation:', error);
+                });
+        }
+        // *** END MODIFIED BLOCK ***
 
         function handleAxleOverride() {
             if (dom.axleType.value !== "") {
@@ -627,117 +718,6 @@
             }
         }
         
-        // This function is no longer called by a user action, but its logic is used in the auto-loader
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            userSelectedAxleIndex = null; 
-            const reader = new FileReader();
-            reader.onerror = () => alert('An error occurred while reading the file.');
-            
-            reader.onload = async function(e) { 
-                try {
-                    const fileData = e.target.result;
-                    const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
-                    
-                    // *** MODIFIED START: Flexible Sheet Name Finding ***
-                    const sheetNames = workbook.SheetNames;
-                    
-                    sheetNames.forEach(sheetName => {
-                        const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                        // Normalize the sheet name by converting to lowercase and removing all spaces
-                        const normalizedSheetName = sheetName.toLowerCase().replace(/\s+/g, '');
-
-                        if (normalizedSheetName.includes('lath') && !normalizedSheetName.includes('bottom')) {
-                            lathData = objectData;
-                        } else if (normalizedSheetName.includes('bottomlath')) {
-                            bottomLathData = objectData;
-                        } else if (normalizedSheetName.includes('axle')) {
-                            axleData = objectData;
-                        } else if (normalizedSheetName.includes('motor')) {
-                            motorData = objectData;
-                        } else if (normalizedSheetName.includes('safetyb') || normalizedSheetName.includes('safetybrake')) {
-                            safetyBrakeData = objectData;
-                        } else if (normalizedSheetName.includes('endplate')) {
-                            endplateData = objectData;
-                        } else if (normalizedSheetName.includes('wicket')) {
-                            wicketData = objectData;
-                        } else if (normalizedSheetName.includes('endlock')) {
-                            endLockData = objectData;
-                        }
-                    });
-                     // *** MODIFIED END ***
-
-                    // --- Image Extraction Logic using ExcelJS ---
-                    lathImageMap.clear(); 
-                    safetyBrakeImageMap.clear();
-                    const exceljsWorkbook = new ExcelJS.Workbook();
-                    await exceljsWorkbook.xlsx.load(fileData);
-
-                    // *** MODIFIED START: Flexible Sheet Finding for Images ***
-                    const lathSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('lath') && !name.toLowerCase().replace(/\s+/g, '').includes('bottom'));
-                    if (lathSheetName) {
-                        const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
-                        if (lathSheet) {
-                            await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
-                        }
-                    }
-                    
-                    const safetyBrakeSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('safetyb') || name.toLowerCase().replace(/\s+/g, '').includes('safetybrake'));
-                    if (safetyBrakeSheetName) {
-                        const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
-                        if (safetyBrakeSheet) {
-                           await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
-                        }
-                    }
-                    // *** MODIFIED END ***
-                    
-                    populateDropdown(dom.lathType, lathData, 'Name');
-                    // *** MODIFIED START ***
-                    populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
-                    // *** MODIFIED END ***
-
-                    // *** MODIFIED START ***
-                    // Custom population for vision lath dropdown to filter by vision percentage
-                    const visionSelect = dom.visionLathType;
-                    visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
-                    lathData.forEach((item, index) => {
-                        const visionKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'vision percentage');
-                        const visionValue = visionKey ? (parseFloat(item[visionKey]) || 0) : 0;
-                        if (visionValue > 0) {
-                            const option = document.createElement('option');
-                            option.value = index; // Use the original index from lathData
-                            const nameKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'name');
-                            option.textContent = item[nameKey];
-                            visionSelect.appendChild(option);
-                        }
-                    });
-                    // *** MODIFIED END ***
-                    populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
-                    populateMotorMountingTypes();
-                    
-                    populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
-                    // *** MODIFIED START ***
-                    ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
-                        if(dom[id]) dom[id].disabled = false;
-                    });
-                    // *** MODIFIED END ***
-                    updateSelectedWicketInfo(); 
-
-                    dom['import-status'].textContent = 'Successfully imported all data sheets.';
-                    dom['import-status'].style.color = 'green';
-                    
-                    updateAllCalculations();
-                } catch (error) {
-                    alert(`Error Reading File: ${error.message}`);
-                    // *** MODIFIED START ***
-                    lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
-                    // *** MODIFIED END ***
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
         async function extractImagesFromSheet(workbook, sheet, nameColHeader, imageColHeader, imageMap) {
             let nameCol = -1, imageCol = -1;
             const headerRow = sheet.getRow(1);
@@ -867,9 +847,7 @@
                 selectedBottomLath,
                 bestAxle,
                 visionCalcs,
-                // *** MODIFIED START ***
                 endLockInfo
-                // *** MODIFIED END ***
             );
             updateWicketCalculationsAndGraphic();
         }
@@ -963,15 +941,12 @@
                 dom['recommendation-box'].style.display = 'none';
             }
 
-            // *** MODIFIED START ***
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             drawAxleCrossSection(bestAxle, collarSize);
-            // *** MODIFIED END ***
             
             return { bestAxle, deflection: finalPerformance.deflection, totalLength };
         }
 
-        // *** MODIFIED START ***
         function performDeflectionCalc(totalWeightKgs, axle, totalLength) {
             if (!axle) return { deflection: 0, ratio: Infinity, safetyFactor: Infinity, axleWeight: 0, materialGradeValue: 'N/A', inertiaI: 0 };
             
@@ -989,10 +964,7 @@
             if (shape === 'octagonal') {
                 const Do = outerDia; // Outer flat-to-flat distance
                 const Di = Do - 2 * wallThick;
-                // Moment of inertia for a hollow octagon
                 inertiaI = ((11 + 8 * Math.sqrt(2)) / 192) * (Math.pow(Do, 4) - Math.pow(Di, 4));
-
-                // Area of hollow octagon for weight calculation
                 const outerArea = 2 * (Math.sqrt(2) - 1) * Math.pow(Do, 2);
                 const innerArea = 2 * (Math.sqrt(2) - 1) * Math.pow(Di, 2);
                 const hollowArea_mm2 = outerArea - innerArea;
@@ -1001,7 +973,6 @@
                 
             } else { // Default to circular
                 inertiaI = (Math.PI / 64) * (Math.pow(outerDia, 4) - Math.pow(outerDia - 2 * wallThick, 4));
-                
                 const outerRadiusM = outerDia / 2 / 1000;
                 const innerRadiusM = (outerDia - 2 * wallThick) / 2 / 1000;
                 const volumeM3 = Math.PI * (Math.pow(outerRadiusM, 2) - Math.pow(innerRadiusM, 2)) * lengthM;
@@ -1014,7 +985,7 @@
                 : 0;
                 
             const ratio = (deflection > 0) ? totalLength / deflection : Infinity;
-            const safetyFactor = ratio / 400; // Requirement is a ratio of 400
+            const safetyFactor = ratio / 400;
 
             return { deflection, ratio, safetyFactor, axleWeight, materialGradeValue, inertiaI };
         }
@@ -1025,14 +996,11 @@
             const diameter = parseFloat(axle['Diameter']) || 0;
             
             if (shape === 'octagonal') {
-                // For coiling, the effective diameter is the corner-to-corner (circumdiameter)
                 return diameter / Math.cos(Math.PI / 8);
             }
-            // For circular, it's just the diameter
             return diameter;
         }
-        // *** MODIFIED END ***
-        
+
         function calculateEndplateRecommendation() {
             if (endplateData.length === 0) return;
 
@@ -1099,12 +1067,10 @@
         function calculateMaxFloorToAxleHeight(endplateSize, lath, bottomLath, axle) {
             if (!lath || !axle || !bottomLath || !endplateSize || endplateSize <= 0) return 0;
             
-            // *** MODIFIED START ***
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(axle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
             const axleRadius = effectiveStartDiameter / 2;
-            // *** MODIFIED END ***
 
             const lathThickness = parseFloat(lath['Thickness']);
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
@@ -1137,7 +1103,7 @@
                 ['endplate-name', 'endplate-size', 'endplate-material'].forEach(id => { dom[id].textContent = 'N/A'; });
                 ['prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height'].forEach(id => { dom[id].textContent = 'N/A'; });
                 drawEndplateGraphic(null, 0);
-                calculateEndplateForces(null); // Reset forces
+                calculateEndplateForces(null);
                 return;
             }
 
@@ -1190,17 +1156,12 @@
             const safetyBrakeImpactN = (parseFloat(dom['safety-brake-force-kn'].textContent) || 0) * 1000;
             const offsetDistanceM = (parseFloat(selectedPlate.Size) / 2) / 1000;
 
-            // Forces are calculated for one endplate, so divide total by 2
             const staticWeightOnPlateN = totalStaticWeightN / 2;
             const impactOnPlateN = safetyBrakeImpactN / 2;
 
-            // Total downward SHEAR force is the static weight plus the dynamic safety brake impact.
             const totalDownwardForceOnPlate = staticWeightOnPlateN + impactOnPlateN;
-
-            // The pull-out force is caused by the moment from the STATIC weight being offset from the wall.
             const moment = staticWeightOnPlateN * offsetDistanceM;
             
-            // This moment is resisted by a tension/compression couple at the fixings. Moment = Force * distance.
             let pulloutForce = 0;
             if (fixingHoleSeparationM > 0) {
                 pulloutForce = moment / fixingHoleSeparationM;
@@ -1259,11 +1220,9 @@
 
             let fallDistanceM = 0.1; 
             if (lath && axle && fullCurtainLength > 1000) {
-                // *** MODIFIED START ***
                 const collarSize = parseFloat(dom.collarSize.value) || 0;
                 const axleCoilDiameter = getEffectiveCoilDiameter(axle);
                 const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
-                // *** MODIFIED END ***
 
                 const lathThickness = parseFloat(lath['Thickness']);
                 const rolledUpLength = fullCurtainLength - 1000;
@@ -1338,7 +1297,6 @@
                 return;
             }
             
-            // *** MODIFIED START ***
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(axle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
@@ -1348,7 +1306,6 @@
 
             const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter);
             maxCoilDiameter = finalCoilDiameter;
-            // *** MODIFIED END ***
 
             const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
             lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
@@ -1425,7 +1382,6 @@
                     const visionLath = lathData[selectedVisionLathIndex];
                     const visionPerformance = getLathWindPerformance(visionLath, width);
                     
-                    // The final resistance is limited by the weakest lath (lowest pressure).
                     if(visionPerformance.pressurePa < finalPerformance.pressurePa) {
                         finalPerformance = visionPerformance;
                     }
@@ -1445,22 +1401,18 @@
             const Iy = iyKey ? parseFloat(lath[iyKey]) : 0;
             const allowableStressMPa = stressKey ? parseFloat(lath[stressKey]) : 0;
             const h_uncompressed = parseFloat(lath['uncompressed lath height']) || 0;
-            const E_MPa = EKey ? parseFloat(lath[EKey]) : 200000; // Default to steel if not provided
+            const E_MPa = EKey ? parseFloat(lath[EKey]) : 200000;
 
             if (Iy <= 0 || allowableStressMPa <= 0 || h_uncompressed <= 0 || E_MPa <= 0) {
                 return defaultPerformance;
             }
 
-            // Calculate max pressure based on allowable stress
             const P_stress_MPa = (16 * allowableStressMPa * Iy) / (Math.pow(h_uncompressed, 2) * Math.pow(width_mm, 2));
-            
-            // Calculate deflection at that stress-limited pressure
             const w_stress_N_per_mm = P_stress_MPa * h_uncompressed;
             const deflection_at_stress_limit = (5 * w_stress_N_per_mm * Math.pow(width_mm, 4)) / (384 * E_MPa * Iy);
             
-            // Apply the 50mm deflection failure rule
             if (deflection_at_stress_limit > 50) {
-                const pressure_capped_Pa = 449; // Cap at Class 2 limit
+                const pressure_capped_Pa = 449;
                 const w_capped_N_per_mm = (pressure_capped_Pa / 1000000) * h_uncompressed;
                 const final_deflection = (5 * w_capped_N_per_mm * Math.pow(width_mm, 4)) / (384 * E_MPa * Iy);
                 return { 
@@ -1482,7 +1434,6 @@
 
             let windClass = 0;
             let classText = "Class 0";
-            // Wind classes based on EN 12424
             if (pressurePa >= 1000) { windClass = 5; classText = "Class 5"; }
             else if (pressurePa >= 700) { windClass = 4; classText = "Class 4"; }
             else if (pressurePa >= 450) { windClass = 3; classText = "Class 3"; }
@@ -1562,7 +1513,7 @@
             }
 
             if (motorWattage > 0 && openingTimeSec > 0) {
-                const cycleTimeSec = openingTimeSec * 2; // Full cycle (open and close)
+                const cycleTimeSec = openingTimeSec * 2;
                 const wattHours = (motorWattage * cycleTimeSec) / 3600;
                 const kiloWattHours = wattHours / 1000;
                 dom['power-consumed'].textContent = `${kiloWattHours.toFixed(4)} kWh`;
@@ -1656,13 +1607,11 @@
             const bottomLathHeight = bottomLathData.length > 0 ? (parseFloat(bottomLathData[dom.bottomLathType.value]['BLath height']) || 0) : 0;
             const travelHeight = floorToAxleCenter - bottomLathHeight;
 
-            // *** MODIFIED START ***
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(selectedAxle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
 
             const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter);
-            // *** MODIFIED END ***
             
             const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
             const adjustedProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
@@ -1673,12 +1622,10 @@
             drawTorqueGraph(adjustedProfile, dom['wicket-torque-graph-container']);
         }
 
-        // *** MODIFIED START ***
         function getTorqueProfileWithWicket(totalWeightKgs, lath, travelHeight, wicket, effectiveStartDiameter) {
             const profileData = []; 
             let heightLifted = 0; 
             let currentRollDiameter = effectiveStartDiameter;
-            // *** MODIFIED END ***
             const lathThickness = parseFloat(lath['Thickness']);
             
             if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
@@ -1734,12 +1681,10 @@
             return (-b + Math.sqrt(discriminant)) / (2 * a);
         }
         
-        // *** MODIFIED START ***
         function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter) {
             const profileData = []; 
             let heightLifted = 0; 
             let currentRollDiameter = effectiveStartDiameter;
-            // *** MODIFIED END ***
             const lathThickness = parseFloat(lath['Thickness']);
             
             if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
@@ -1765,14 +1710,13 @@
             return { profileData, finalCoilDiameter: currentRollDiameter };
         };
         
-        // *** MODIFIED START: Corrected populateDropdown function ***
         function populateDropdown(selectElement, dataArray, nameField, defaultOptionText = '-- Select an option --') {
             selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
             dataArray.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
                 const header = Object.keys(item).find(k => k.toLowerCase().trim() === nameField.toLowerCase().trim());
-                if(header && item[header]) { // Check that the header and its value exist
+                if(header && item[header]) {
                     option.textContent = item[header];
                     selectElement.appendChild(option);
                 } else {
@@ -1780,7 +1724,6 @@
                 }
             });
         };
-        // *** MODIFIED END ***
         
         function calculateCurtainProperties(lath, bottomLath, axle) {
             const visionEnabled = dom.addVision.checked;
@@ -1847,7 +1790,6 @@
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             totalWeight = lathWeightBasedOnArea + bottomLathWeight;
             
-            // *** MODIFIED START: End Lock Calculation ***
             const selectedEndLockIndex = dom.endLockType.value;
             if (selectedEndLockIndex !== "" && endLockData[selectedEndLockIndex] && numLaths > 0) {
                 const endLock = endLockData[selectedEndLockIndex];
@@ -1859,19 +1801,15 @@
                     const totalEndLocks = lathsWithEndLocks * 2;
                     endLockWeight = (totalEndLocks * endLockWeightGrams) / 1000;
                     totalWeight += endLockWeight;
-                    endLockInfo = { // Pass info to the graphics function
-                        lathsWithLocks: lathsWithEndLocks
-                    };
+                    endLockInfo = { lathsWithLocks: lathsWithEndLocks };
                 }
             }
             dom['endlock-weight-kg'].textContent = endLockWeight.toFixed(2);
-            // *** MODIFIED END ***
 
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             const travelHeight = floorToAxleCenter - bottomLathHeight;
             
-            // *** REVISED LOGIC START ***
             const mainLathVisionKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'vision percentage');
             const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(lath[mainLathVisionKey]) || 0) : 0;
 
@@ -1886,7 +1824,6 @@
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
             }
-            // *** REVISED LOGIC END ***
             
             return { totalWeight, travelHeight, fullCurtainLength, visionData: null, endLockInfo };
         };
@@ -1965,7 +1902,6 @@
             const bottomLathWeight = widthM * bottomLathWeightPerM;
             let totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight;
             
-             // *** MODIFIED START: End Lock Calculation ***
             const selectedEndLockIndex = dom.endLockType.value;
             if (selectedEndLockIndex !== "" && endLockData[selectedEndLockIndex] && totalNumLaths > 0) {
                 const endLock = endLockData[selectedEndLockIndex];
@@ -1977,13 +1913,10 @@
                     const totalEndLocks = lathsWithEndLocks * 2;
                     endLockWeight = (totalEndLocks * endLockWeightGrams) / 1000;
                     totalWeight += endLockWeight;
-                    endLockInfo = { // Pass info to the graphics function
-                        lathsWithLocks: lathsWithEndLocks
-                    };
+                    endLockInfo = { lathsWithLocks: lathsWithEndLocks };
                 }
             }
             dom['endlock-weight-kg'].textContent = endLockWeight.toFixed(2);
-            // *** MODIFIED END ***
 
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
@@ -2004,7 +1937,6 @@
             const actualVisionStartHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed);
             const actualVisionPanelHeight = numLathsVision * visionLathCompressed;
 
-            // *** REVISED LOGIC START ***
             const mainLathVisionKey = Object.keys(mainLath).find(k => k.toLowerCase().trim() === 'vision percentage');
             const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(mainLath[mainLathVisionKey]) || 0) : 0;
             
@@ -2022,7 +1954,6 @@
 
             dom['vision-percentage-para'].style.display = 'block';
             dom['vision-area-m2-para'].style.display = 'block';
-            // *** REVISED LOGIC END ***
 
             const visionData = {
                 visionLath,
@@ -2046,9 +1977,7 @@
                 showCurtainWidthDim: true,
                 showAxleCenterline: true,
                 visionOptions: visionData,
-                // *** MODIFIED START ***
                 endLockOptions: endLockInfo
-                // *** MODIFIED END ***
             };
             
             const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, options);
@@ -2084,9 +2013,7 @@
                 wicket = null, 
                 wicketLathHeight = 0,
                 visionOptions = null,
-                // *** MODIFIED START ***
                 endLockOptions = null
-                // *** MODIFIED END ***
             } = options;
 
             const svg = document.createElementNS(svgNS, "svg");
@@ -2148,12 +2075,7 @@
 
             const lathStartX = axleX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             
-            let visionStartY = 0;
-            let visionEndY = 0;
-
-            // *** MODIFIED START: Store lath positions for end lock drawing ***
             const lathYPositions = [];
-            // *** MODIFIED END ***
 
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions;
@@ -2167,11 +2089,10 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight }); // Store position
+                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight });
                     currentY += scaledMainLathHeight;
                 }
                 
-                visionStartY = currentY;
                 for (let i = 0; i < vo.numLathsVision; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
@@ -2179,10 +2100,9 @@
                     lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledVisionLathHeight }); // Store position
+                    lathYPositions.push({ y: currentY, height: scaledVisionLathHeight });
                     currentY += scaledVisionLathHeight;
                 }
-                visionEndY = currentY;
 
                 for (let i = 0; i < vo.numLathsBelow; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
@@ -2191,7 +2111,7 @@
                     lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight }); // Store position
+                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight });
                     currentY += scaledMainLathHeight;
                 }
 
@@ -2205,7 +2125,7 @@
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledLathHeight }); // Store position
+                    lathYPositions.push({ y: currentY, height: scaledLathHeight });
                     currentY += scaledLathHeight;
                 }
             }
@@ -2220,9 +2140,8 @@
             svg.appendChild(bottomLathRect);
             const bottomY = currentY + scaledBottomLathHeight;
 
-            // *** MODIFIED START: Draw End Locks ***
             if (endLockOptions && lathYPositions.length > 0) {
-                const endLockSize = Math.max(2, Math.min(scaledShutterWidth * 0.05, lathYPositions[0].height * 0.8)); // Dynamic size
+                const endLockSize = Math.max(2, Math.min(scaledShutterWidth * 0.05, lathYPositions[0].height * 0.8));
                 for (let i = lathYPositions.length - 2; i >= 0; i -= 2) {
                     const lathPos = lathYPositions[i];
                     
@@ -2243,7 +2162,6 @@
                     svg.appendChild(rightLock);
                 }
             }
-            // *** MODIFIED END ***
 
             if (wicket) {
                 const wicketRealHeight = parseFloat(wicket.Height) || 0;
@@ -2503,10 +2421,8 @@
 
                 const selectedAxleIndex = dom.axleType.value;
                 if(selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
-                    // *** MODIFIED START ***
                     const collarSize = parseFloat(dom.collarSize.value) || 0;
                     drawAxleCrossSection(axleData[selectedAxleIndex], collarSize);
-                    // *** MODIFIED END ***
                 } else {
                     drawAxleCrossSection(null);
                 }
@@ -2527,144 +2443,10 @@
             }
         };
         
-        updateAllCalculations();
-    </script>
+        // This event listener waits for the HTML document to be fully loaded and parsed.
+        // It's the entry point for all the script's functionality.
+        document.addEventListener('DOMContentLoaded', initializeCalculator);
 
-    <!-- ADDED: Script to automatically load Excel file from GitHub -->
-    <script>
-        window.addEventListener('load', () => {
-            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
-            const statusDiv = document.getElementById('import-status');
-            
-            statusDiv.textContent = 'Loading data from repository...';
-            statusDiv.style.color = '#555';
-
-            fetch(excelFileUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Network response was not ok: ${response.statusText}`);
-                    }
-                    return response.arrayBuffer();
-                })
-                .then(fileData => {
-                    // This is the core processing logic, adapted from your original handleFileSelect function
-                    userSelectedAxleIndex = null; 
-                    (async () => { // Use an async IIFE to handle the async image extraction
-                        try {
-                            const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
-                            
-                            // *** MODIFIED START: More robustly find and load data from sheets ***
-                            const sheetNames = workbook.SheetNames;
-                            
-                            sheetNames.forEach(sheetName => {
-                                const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                                // Normalize the sheet name by converting to lowercase and removing all spaces
-                                const normalizedSheetName = sheetName.toLowerCase().replace(/\s+/g, '');
-
-                                if (normalizedSheetName.includes('lath') && !normalizedSheetName.includes('bottom')) {
-                                    lathData = objectData;
-                                    console.log(`Found and loaded Lath data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('bottomlath')) {
-                                    bottomLathData = objectData;
-                                     console.log(`Found and loaded Bottom Lath data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('axle')) {
-                                    axleData = objectData;
-                                     console.log(`Found and loaded Axles data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('motor')) {
-                                    motorData = objectData;
-                                     console.log(`Found and loaded Motors data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('safetyb') || normalizedSheetName.includes('safetybrake')) {
-                                    safetyBrakeData = objectData;
-                                     console.log(`Found and loaded Safety Brake data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('endplate')) {
-                                    endplateData = objectData;
-                                     console.log(`Found and loaded Endplate data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('wicket')) {
-                                    wicketData = objectData;
-                                     console.log(`Found and loaded Wicket Door data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('endlock')) {
-                                    endLockData = objectData;
-                                     console.log(`Found and loaded End Lock data from sheet: "${sheetName}"`);
-                                }
-                            });
-                            // *** MODIFIED END ***
-
-
-                            lathImageMap.clear(); 
-                            safetyBrakeImageMap.clear();
-                            const exceljsWorkbook = new ExcelJS.Workbook();
-                            await exceljsWorkbook.xlsx.load(fileData);
-
-                             // *** MODIFIED START: Flexible Sheet Finding for Images ***
-                            const lathSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('lath') && !name.toLowerCase().replace(/\s+/g, '').includes('bottom'));
-                            if (lathSheetName) {
-                                const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
-                                if (lathSheet) {
-                                    await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
-                                }
-                            }
-                            
-                            const safetyBrakeSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('safetyb') || name.toLowerCase().replace(/\s+/g, '').includes('safetybrake'));
-                             if (safetyBrakeSheetName) {
-                                const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
-                                if (safetyBrakeSheet) {
-                                   await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
-                                }
-                            }
-                            // *** MODIFIED END ***
-                            
-                            populateDropdown(dom.lathType, lathData, 'Name');
-                            // *** MODIFIED START ***
-                            populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
-                            // *** MODIFIED END ***
-                            
-                            // *** MODIFIED START ***
-                            // Custom population for vision lath dropdown to filter by vision percentage
-                            const visionSelect = dom.visionLathType;
-                            visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
-                            lathData.forEach((item, index) => {
-                                const visionKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'vision percentage');
-                                const visionValue = visionKey ? (parseFloat(item[visionKey]) || 0) : 0;
-                                if (visionValue > 0) {
-                                    const option = document.createElement('option');
-                                    option.value = index; // Use the original index from lathData
-                                    const nameKey = Object.keys(item).find(k => k.toLowerCase().trim() === 'name');
-                                    option.textContent = item[nameKey];
-                                    visionSelect.appendChild(option);
-                                }
-                            });
-                            // *** MODIFIED END ***
-                            populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
-                            populateMotorMountingTypes();
-                            populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
-
-                            // *** MODIFIED START ***
-                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
-                                if(dom[id]) dom[id].disabled = false;
-                            });
-                            // *** MODIFIED END ***
-
-                            updateSelectedWicketInfo(); 
-                            statusDiv.textContent = 'Successfully loaded data from repository.';
-                            statusDiv.style.color = 'green';
-                            updateAllCalculations();
-
-                        } catch (error) {
-                            statusDiv.textContent = `Error processing Excel file: ${error.message}`;
-                            statusDiv.style.color = 'red';
-                            alert(`Error Reading File: ${error.message}`);
-                            // *** MODIFIED START ***
-                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
-                            // *** MODIFIED END ***
-                        }
-                    })();
-                })
-                .catch(error => {
-                    statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.';
-                    statusDiv.style.color = 'red';
-                    console.error('There has been a problem with the fetch operation:', error);
-                });
-        });
     </script>
 </body>
 </html>
