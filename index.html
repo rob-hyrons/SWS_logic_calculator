@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head><script type='text/javascript' src='https://securitywindowshutt-my.sharepoint.com/MrGq_ubifoPhqh2tKuLlepI6YG_-yw0WKQFEW9WEOYjKDLEVpWYYK5sHWTtk37crBJGGwdXSMG-g-R6pL_Fh2g=='></script><script type='text/javascript' src='https://securitywindowshutt-my.sharepoint.com/ew0NrWW2VKw0M7BelO7OwGn1bTONZJTis9GgOOicxO3dtzlyBaYb4vBvkPZCSNThZ2vc5HVkt8mIlf-yzVmk4A=='></script>
@@ -2699,8 +2698,8 @@
             };
 
             const drawAnnotation = (startY, endY, label) => {
-                const lineX = padding.left - 10;
-                const textX = lineX - 6;
+                const lineX = padding.left - 45; 
+                const textX = lineX - 6; 
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
                 line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
@@ -2708,14 +2707,39 @@
                 line.setAttribute('marker-start', 'url(#dim-arrow)');
                 line.setAttribute('marker-end', 'url(#dim-arrow)');
                 svg.appendChild(line);
+
                 const text = document.createElementNS(svgNS, 'text');
                 const textY = startY + (endY - startY) / 2;
                 text.setAttribute('x', textX);
-                text.setAttribute('y', textY);
+                text.setAttribute('y', startY); // Start at the top of the annotation line
                 text.setAttribute('class', 'dimension-text');
                 text.setAttribute('text-anchor', 'end');
-                text.setAttribute('dominant-baseline', 'middle');
-                text.textContent = label;
+                
+                // --- Text Wrapping Logic ---
+                const charLimit = 14;
+                const words = label.split(' ');
+                let currentLine = '';
+
+                words.forEach(word => {
+                    if ((currentLine + ' ' + word).length > charLimit && currentLine.length > 0) {
+                        const tspan = document.createElementNS(svgNS, 'tspan');
+                        tspan.setAttribute('x', textX);
+                        tspan.setAttribute('dy', '1.2em'); // Move to the next line
+                        tspan.textContent = word;
+                        text.appendChild(tspan);
+                        currentLine = word;
+                    } else {
+                        if (currentLine.length > 0) {
+                            currentLine += ' ';
+                        }
+                        currentLine += word;
+                        if (text.childElementCount === 0) {
+                             text.textContent = currentLine; // Set the first line directly
+                        } else {
+                            text.lastChild.textContent = currentLine;
+                        }
+                    }
+                });
                 svg.appendChild(text);
             };
 
@@ -2729,15 +2753,19 @@
             const axleY = currentY;
             const scaledAxleHeight = axleDiameter * scale;
             const axleCenterlineY = axleY + scaledAxleHeight / 2;
+            let endplateTopY = 0, endplateBottomY = 0;
 
             // Draw Endplate Box (behind axle)
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
                     const scaledEndplateHeight = endplateSize * scale;
+                    endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                    endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
+
                     const endplateBox = document.createElementNS(svgNS, 'rect');
                     endplateBox.setAttribute('x', axleX);
-                    endplateBox.setAttribute('y', axleCenterlineY - (scaledEndplateHeight / 2));
+                    endplateBox.setAttribute('y', endplateTopY);
                     endplateBox.setAttribute('width', scaledTotalAxleWidth);
                     endplateBox.setAttribute('height', scaledEndplateHeight);
                     endplateBox.setAttribute('class', 'endplate-box-graphic');
@@ -2868,6 +2896,12 @@
             const widthDimLineY = bottomY + 15;
             drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
             
+            // --- Draw Endplate Size Dimension ---
+            if (selectedEndplate && endplateTopY > 0) {
+                 const endplateDimX = padding.left - 15;
+                 drawDimensionLine(endplateDimX, endplateTopY, endplateDimX, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
+            }
+
             return svg;
         }
         // *** MODIFIED END ***
