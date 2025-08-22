@@ -335,6 +335,7 @@
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
                         <!-- *** MODIFIED START *** -->
+                        <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
                         <!-- *** MODIFIED END *** -->
                         <p>Max Wind Resistance: <span id="wind-resistance">0</span> Pa (<span id="wind-class">Class 0</span>)</p>
@@ -563,7 +564,7 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
          'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
-         'vision-percentage', 'vision-percentage-para'
+         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para'
         ].forEach(id => dom[id] = document.getElementById(id));
         // *** MODIFIED END ***
         
@@ -1778,11 +1779,6 @@
                 return calculateVisionCurtainProperties(lath, bottomLath, axle);
             }
         
-            // *** MODIFIED START ***
-            // Hide vision percentage when vision is disabled
-            dom['vision-percentage-para'].style.display = 'none';
-            // *** MODIFIED END ***
-
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             if (!lath || !bottomLath || floorToAxleCenter <= 0) {
                 dom['lath-count'].textContent = '0';
@@ -1790,6 +1786,8 @@
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
+                dom['vision-percentage-para'].style.display = 'none';
+                dom['vision-area-m2-para'].style.display = 'none';
                 return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
             }
 
@@ -1801,11 +1799,8 @@
 
             let axleRadius = 0;
             if (axle) {
-                 // *** MODIFIED START ***
-                const axleCoilDiameter = getEffectiveCoilDiameter(axle);
-                // For lath count, we care about where the curtain hangs from.
+                 const axleCoilDiameter = getEffectiveCoilDiameter(axle);
                 axleRadius = axleCoilDiameter / 2;
-                 // *** MODIFIED END ***
             } else if (axleData.length > 0) {
                 axleRadius = (getEffectiveCoilDiameter(axleData[0])) / 2;
             }
@@ -1814,8 +1809,7 @@
 
             let numLaths = 0;
             if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
-                const lathsToCover = Math.ceil(heightToCoverByLaths / lathCompressedHeight);
-                numLaths = lathsToCover;
+                numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight);
             }
             dom['lath-count'].textContent = numLaths;
 
@@ -1842,6 +1836,23 @@
             
             const travelHeight = floorToAxleCenter - bottomLathHeight;
             
+            // *** REVISED LOGIC START ***
+            const mainLathVisionKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(lath[mainLathVisionKey]) || 0) : 0;
+
+            if (mainLathVisionPercent > 0) {
+                const visionArea = lathCurtainAreaM2 * (mainLathVisionPercent / 100);
+                dom['vision-area-m2'].textContent = visionArea.toFixed(2);
+                dom['vision-percentage'].textContent = mainLathVisionPercent.toFixed(2);
+                
+                dom['vision-percentage-para'].style.display = 'block';
+                dom['vision-area-m2-para'].style.display = 'block';
+            } else {
+                dom['vision-percentage-para'].style.display = 'none';
+                dom['vision-area-m2-para'].style.display = 'none';
+            }
+            // *** REVISED LOGIC END ***
+            
             return { totalWeight, travelHeight, fullCurtainLength, visionData: null };
         };
         
@@ -1858,9 +1869,8 @@
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
-                // *** MODIFIED START ***
                 dom['vision-percentage-para'].style.display = 'none';
-                // *** MODIFIED END ***
+                dom['vision-area-m2-para'].style.display = 'none';
                 return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
             };
 
@@ -1935,12 +1945,25 @@
             const actualVisionStartHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed);
             const actualVisionPanelHeight = numLathsVision * visionLathCompressed;
 
-            // *** MODIFIED START ***
-            // Calculate and display overall vision percentage
-            const visionPercentage = (totalArea > 0) ? (areaVision / totalArea) * 100 : 0;
-            dom['vision-percentage'].textContent = visionPercentage.toFixed(2);
+            // *** REVISED LOGIC START ***
+            const mainLathVisionKey = Object.keys(mainLath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(mainLath[mainLathVisionKey]) || 0) : 0;
+            
+            const visionLathVisionKey = Object.keys(visionLath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const visionLathVisionPercent = visionLathVisionKey ? (parseFloat(visionLath[visionLathVisionKey]) || 0) : 0;
+
+            const visionAreaFromMain = (areaBelow + areaAbove) * (mainLathVisionPercent / 100);
+            const visionAreaFromVisionPanel = areaVision * (visionLathVisionPercent / 100);
+            const totalActualVisionArea = visionAreaFromMain + visionAreaFromVisionPanel;
+            
+            const overallVisionPercentage = (totalArea > 0) ? (totalActualVisionArea / totalArea) * 100 : 0;
+            
+            dom['vision-area-m2'].textContent = totalActualVisionArea.toFixed(2);
+            dom['vision-percentage'].textContent = overallVisionPercentage.toFixed(2);
+
             dom['vision-percentage-para'].style.display = 'block';
-            // *** MODIFIED END ***
+            dom['vision-area-m2-para'].style.display = 'block';
+            // *** REVISED LOGIC END ***
 
             const visionData = {
                 visionLath,
