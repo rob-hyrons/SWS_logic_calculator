@@ -19,7 +19,7 @@
         .container {
             background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             width: 100%;
-            /* *** MODIFIED START *** */
+            /* *** MODIFIED START *** -->
             max-width: 1000px; 
             /* *** MODIFIED END *** */
             display: flex; flex-direction: row;
@@ -2626,7 +2626,7 @@
 
             const svg = document.createElementNS(svgNS, "svg");
             
-            const padding = { top: 30, right: 90, bottom: 40, left: 120 };
+            const padding = { top: 30, right: 120, bottom: 40, left: 120 };
             const svgWidth = 600; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
@@ -2709,9 +2709,7 @@
                 svg.appendChild(line);
 
                 const text = document.createElementNS(svgNS, 'text');
-                const textY = startY + (endY - startY) / 2;
                 text.setAttribute('x', textX);
-                text.setAttribute('y', startY); // Start at the top of the annotation line
                 text.setAttribute('class', 'dimension-text');
                 text.setAttribute('text-anchor', 'end');
                 
@@ -2740,6 +2738,15 @@
                         }
                     }
                 });
+
+                // *** MODIFICATION START: Vertically center the text block ***
+                const numLines = 1 + text.querySelectorAll('tspan').length;
+                const middleY = startY + (endY - startY) / 2;
+                const lineHeight = 12; // approx 1.2em for 10px font
+                const startYForBlock = middleY - ((numLines - 1) * lineHeight / 2);
+                text.setAttribute('y', startYForBlock);
+                // *** MODIFICATION END ***
+
                 svg.appendChild(text);
             };
 
@@ -2901,6 +2908,21 @@
                  const endplateDimX = padding.left - 15;
                  drawDimensionLine(endplateDimX, endplateTopY, endplateDimX, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
             }
+
+            // *** MODIFICATION START: Draw Endplate to Floor Dimension ***
+            if (selectedEndplate && endplateBottomY > 0) {
+                const floorToAxleHeight = parseFloat(dom.height.value) || 0;
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (floorToAxleHeight > 0 && endplateSize > 0) {
+                    const dimValue = floorToAxleHeight - (endplateSize / 2);
+                    // Ensure the dimension value is positive before drawing
+                    if (dimValue > 0) {
+                        const clearanceDimLineX = heightDimLineX + 30; // Position it to the right of the main height dim
+                        drawDimensionLine(clearanceDimLineX, endplateBottomY, clearanceDimLineX, bottomY, `${dimValue.toFixed(0)} mm`, 'vertical');
+                    }
+                }
+            }
+            // *** MODIFICATION END ***
 
             return svg;
         }
