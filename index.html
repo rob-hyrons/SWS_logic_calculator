@@ -181,7 +181,9 @@
         
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
-        .dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
+        /* *** MODIFIED START *** */
+        .dimension-text { font-family: sans-serif; font-size: 5px; fill: #343a40; text-anchor: middle; }
+        /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
             font-size: 10px;
@@ -206,7 +208,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
         #printButton:hover {
             background-color: #0056b3;
@@ -2686,9 +2688,9 @@
 
                 if (orientation === 'horizontal') {
                     text.setAttribute('x', x1 + (x2 - x1) / 2);
-                    text.setAttribute('y', y1 - 6);
+                    text.setAttribute('y', y1 - 4); // Adjusted for smaller font
                 } else { // vertical
-                    const textX = x1 + 10;
+                    const textX = x1 + 4; // Adjusted for smaller font
                     const textY = y1 + (y2 - y1) / 2;
                     text.setAttribute('x', textX);
                     text.setAttribute('y', textY);
@@ -2739,13 +2741,12 @@
                     }
                 });
 
-                // *** MODIFICATION START: Vertically center the text block ***
+                // Vertically center the text block
                 const numLines = 1 + text.querySelectorAll('tspan').length;
                 const middleY = startY + (endY - startY) / 2;
-                const lineHeight = 12; // approx 1.2em for 10px font
+                const lineHeight = 6; // approx 1.2em for 5px font
                 const startYForBlock = middleY - ((numLines - 1) * lineHeight / 2);
                 text.setAttribute('y', startYForBlock);
-                // *** MODIFICATION END ***
 
                 svg.appendChild(text);
             };
@@ -2894,9 +2895,6 @@
             }
 
             // --- Draw Dimensions ---
-            const heightDimLineX = axleX + scaledTotalAxleWidth + 15;
-            drawDimensionLine(heightDimLineX, axleCenterlineY, heightDimLineX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
-            
             const totalWidthDimY = axleY - 15;
             drawDimensionLine(axleX, totalWidthDimY, axleX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
 
@@ -2909,16 +2907,21 @@
                  drawDimensionLine(endplateDimX, endplateTopY, endplateDimX, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
             }
 
-            // *** MODIFICATION START: Draw Endplate to Floor Dimension ***
+            // *** MODIFICATION START: Re-ordered Vertical Dimensions ***
+            const endplateClearanceDimX = axleX + scaledTotalAxleWidth + 15; // Position for the leftmost vertical dim
+            const axleHeightDimX = endplateClearanceDimX + 20; // Position for the dim to its right
+
+            // Draw main axle center to floor height dimension (now on the right)
+            drawDimensionLine(axleHeightDimX, axleCenterlineY, axleHeightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
+
+            // Draw Endplate to Floor Dimension (now on the left)
             if (selectedEndplate && endplateBottomY > 0) {
                 const floorToAxleHeight = parseFloat(dom.height.value) || 0;
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (floorToAxleHeight > 0 && endplateSize > 0) {
                     const dimValue = floorToAxleHeight - (endplateSize / 2);
-                    // Ensure the dimension value is positive before drawing
                     if (dimValue > 0) {
-                        const clearanceDimLineX = heightDimLineX + 30; // Position it to the right of the main height dim
-                        drawDimensionLine(clearanceDimLineX, endplateBottomY, clearanceDimLineX, bottomY, `${dimValue.toFixed(0)} mm`, 'vertical');
+                        drawDimensionLine(endplateClearanceDimX, endplateBottomY, endplateClearanceDimX, bottomY, `${dimValue.toFixed(0)} mm`, 'vertical');
                     }
                 }
             }
