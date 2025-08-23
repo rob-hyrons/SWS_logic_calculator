@@ -121,6 +121,14 @@
             border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08; font-weight: bold;
         }
         .graph-container { margin-top: 1.5em; width: 100%; }
+        /* *** MODIFICATION START *** */
+        #axle-cross-section-container, 
+        #endplate-graphic-container {
+            min-width: 450px; /* Prevents the SVG from shrinking too much on smaller screens */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* *** MODIFICATION END *** */
         .calculation-explainer {
             margin-top: 2em;
             padding: 1em;
