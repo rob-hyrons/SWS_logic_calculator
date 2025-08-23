@@ -181,9 +181,7 @@
         
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
-        /* *** MODIFIED START *** */
         .dimension-text { font-family: sans-serif; font-size: 5px; fill: #343a40; text-anchor: middle; }
-        /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
             font-size: 10px;
@@ -2688,12 +2686,14 @@
 
                 if (orientation === 'horizontal') {
                     text.setAttribute('x', x1 + (x2 - x1) / 2);
-                    text.setAttribute('y', y1 - 4); // Adjusted for smaller font
+                    text.setAttribute('y', y1 - 4);
                 } else { // vertical
-                    const textX = x1 + 4; // Adjusted for smaller font
+                    const textX = x1 - 4; // Move text to the left of the line
                     const textY = y1 + (y2 - y1) / 2;
                     text.setAttribute('x', textX);
                     text.setAttribute('y', textY);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'middle');
                     text.setAttribute('transform', `rotate(-90, ${textX}, ${textY})`);
                 }
                 svg.appendChild(text);
@@ -2701,7 +2701,7 @@
 
             const drawAnnotation = (startY, endY, label) => {
                 const lineX = padding.left - 45; 
-                const textX = lineX - 6; 
+                const textX = lineX - 18; // Move text further left
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
                 line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
@@ -2724,7 +2724,7 @@
                     if ((currentLine + ' ' + word).length > charLimit && currentLine.length > 0) {
                         const tspan = document.createElementNS(svgNS, 'tspan');
                         tspan.setAttribute('x', textX);
-                        tspan.setAttribute('dy', '1.2em'); // Move to the next line
+                        tspan.setAttribute('dy', '1.2em');
                         tspan.textContent = word;
                         text.appendChild(tspan);
                         currentLine = word;
@@ -2734,7 +2734,7 @@
                         }
                         currentLine += word;
                         if (text.childElementCount === 0) {
-                             text.textContent = currentLine; // Set the first line directly
+                             text.textContent = currentLine;
                         } else {
                             text.lastChild.textContent = currentLine;
                         }
@@ -2819,6 +2819,7 @@
                 const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
                 const scaledMainLathHeight = mainLathHeight * scale;
                 const scaledVisionLathHeight = visionLathCompHeight * scale;
+                const totalLaths = parseInt(dom['lath-count'].textContent) || numLaths;
                 
                 let sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsAbove; i++) {
@@ -2827,7 +2828,7 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    if (endlocksSelected && ((lathCounter + 1) % 2) === (totalLaths % 2)) drawEndlocks(currentY, scaledMainLathHeight);
                     currentY += scaledMainLathHeight;
                     lathCounter++;
                 }
@@ -2840,7 +2841,7 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    if (endlocksSelected && ((lathCounter + 1) % 2) === (totalLaths % 2)) drawEndlocks(currentY, scaledVisionLathHeight);
                     currentY += scaledVisionLathHeight;
                     lathCounter++;
                 }
@@ -2853,7 +2854,7 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    if (endlocksSelected && ((lathCounter + 1) % 2) === (totalLaths % 2)) drawEndlocks(currentY, scaledMainLathHeight);
                     currentY += scaledMainLathHeight;
                     lathCounter++;
                 }
@@ -2866,7 +2867,7 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && (i + 1) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
+                    if (endlocksSelected && ((i + 1) % 2) === (numLaths % 2)) drawEndlocks(currentY, scaledLathHeight);
                     currentY += scaledLathHeight;
                 }
                 drawAnnotation(curtainStartY, currentY, `${lath['Name']} (x${numLaths})`);
@@ -2907,14 +2908,11 @@
                  drawDimensionLine(endplateDimX, endplateTopY, endplateDimX, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
             }
 
-            // *** MODIFICATION START: Re-ordered Vertical Dimensions ***
-            const endplateClearanceDimX = axleX + scaledTotalAxleWidth + 15; // Position for the leftmost vertical dim
-            const axleHeightDimX = endplateClearanceDimX + 20; // Position for the dim to its right
+            const endplateClearanceDimX = axleX + scaledTotalAxleWidth + 15;
+            const axleHeightDimX = endplateClearanceDimX + 15;
 
-            // Draw main axle center to floor height dimension (now on the right)
             drawDimensionLine(axleHeightDimX, axleCenterlineY, axleHeightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
 
-            // Draw Endplate to Floor Dimension (now on the left)
             if (selectedEndplate && endplateBottomY > 0) {
                 const floorToAxleHeight = parseFloat(dom.height.value) || 0;
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
@@ -2925,7 +2923,6 @@
                     }
                 }
             }
-            // *** MODIFICATION END ***
 
             return svg;
         }
