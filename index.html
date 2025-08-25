@@ -1173,7 +1173,7 @@
             
             const maxCurtainLength = Math.PI * lathThickness * Math.pow(maxRevolutions, 2) + Math.PI * effectiveStartDiameter * maxRevolutions;
             
-            const numLaths = (maxCurtainLength - bottomLathHeight) / compressedLathHeight;
+            const numLaths = (maxCurtainLength - bottomLathHeight) / uncompressedLathHeight;
             const heightToCoverByLaths = numLaths * lathCompressedHeight;
             const maxFloorToAxleHeight = heightToCoverByLaths + bottomLathHeight - axleRadius;
 
