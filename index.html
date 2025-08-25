@@ -577,6 +577,13 @@
         </div>
     </div>
 
+
+
+    
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    
     <script>
         let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [];
         let lathImageMap = new Map();
@@ -655,7 +662,7 @@
             }
         }
         
-        // This function is no longer called by a user action, but its logic is used in the auto-loader
+        // This function is no longer called by a user action, but its logic is used in the auto-loader , this is where the Excel file is loaded from Github location.
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1023,7 +1030,7 @@
             return { bestAxle, deflection: finalPerformance.deflection, totalLength };
         }
 
-        // *** MODIFIED START ***
+        // *** Calculation of axle defelction START, this is a simple supported beam only, no fixing allowed on these calcs. ***
         function performDeflectionCalc(totalWeightKgs, axle, totalLength) {
             if (!axle) return { deflection: 0, ratio: Infinity, safetyFactor: Infinity, axleWeight: 0, materialGradeValue: 'N/A', inertiaI: 0 };
             
@@ -1083,7 +1090,7 @@
             // For circular, it's just the diameter
             return diameter;
         }
-        // *** MODIFIED END ***
+        // *** axle calc END ***
         
         function calculateEndplateRecommendation() {
             if (endplateData.length === 0) return;
@@ -1170,7 +1177,7 @@
             
             const maxCurtainLength = Math.PI * lathThickness * Math.pow(maxRevolutions, 2) + Math.PI * effectiveStartDiameter * maxRevolutions;
             
-            const numLaths = (maxCurtainLength - bottomLathHeight) / uncompressedLathHeight;
+            const numLaths = (maxCurtainLength - bottomLathHeight) / compressedLathHeight;
             const heightToCoverByLaths = numLaths * lathCompressedHeight;
             const maxFloorToAxleHeight = heightToCoverByLaths + bottomLathHeight - axleRadius;
 
