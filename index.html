@@ -2385,7 +2385,7 @@
             const graphHeight = svgHeight - padding.top - padding.bottom;
             
             // *** MODIFICATION START ***
-            const scale = (graphHeight / endplateSize) * 0.5; // Reduced scale by 50%
+            const scale = graphHeight / endplateSize; // Increased scale
             const scaledBoxSize = endplateSize * scale;
             const scaledCoilRadius = (coilDiameter / 2) * scale;
 
@@ -2469,7 +2469,7 @@
 
             const padding = { top: 20, right: 100, bottom: 20, left: 100 };
             // *** MODIFICATION START ***
-            const graphSize = Math.min(svgWidth - padding.left - padding.right, svgHeight - padding.top - padding.bottom) * 0.375; // Reduced scale by 50%
+            const graphSize = Math.min(svgWidth - padding.left - padding.right, svgHeight - padding.top - padding.bottom) * 0.75; // Increased scale
             // *** MODIFICATION END ***
             
             const displayDiameter = collarSize > outerDia ? collarSize : outerDia;
@@ -2923,33 +2923,24 @@
             const widthDimLineY = bottomY + 15;
             drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
             
-            // --- Draw Endplate Size Dimension ---
+            // *** MODIFICATION START ***
+            // --- Right Side Vertical Dimension (Axle to Floor) ---
+            const rightDimX = axleX + scaledTotalAxleWidth + 25;
+            drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
+
+            // --- Left Side Vertical Dimensions ---
+            const leftDim1X = padding.left - 15;
+            const leftDim2X = padding.left - 30; // A second column for dimensions
+
+            // Draw Endplate Size Dimension
             if (selectedEndplate && endplateTopY > 0) {
-                 const endplateDimX = padding.left - 15;
-                 drawDimensionLine(endplateDimX, endplateTopY, endplateDimX, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
+                 drawDimensionLine(leftDim1X, endplateTopY, leftDim1X, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
             }
 
-            // *** MODIFICATION START: Re-ordered and added Vertical Dimensions ***
-            const endplateClearanceDimX = axleX + scaledTotalAxleWidth + 15; 
-            const axleHeightDimX = endplateClearanceDimX + 20; 
-
-            const totalHeightValue = parseFloat(dom.height.value) || 0;
-            if (totalHeightValue > 0 && bottomLathHeight > 0) {
-                 // Draw dimension for main curtain height (axle to top of bottom lath)
-                drawDimensionLine(axleHeightDimX, axleCenterlineY, axleHeightDimX, currentY, `${(totalHeightValue - bottomLathHeight).toFixed(0)} mm`, 'vertical');
-                // Draw dimension for bottom lath height
-                drawDimensionLine(axleHeightDimX, currentY, axleHeightDimX, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical');
-            }
-            
-            if (selectedEndplate && endplateBottomY > 0) {
-                const floorToAxleHeight = parseFloat(dom.height.value) || 0;
-                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
-                if (floorToAxleHeight > 0 && endplateSize > 0) {
-                    const dimValue = floorToAxleHeight - (endplateSize / 2);
-                    if (dimValue > 0) {
-                        drawDimensionLine(endplateClearanceDimX, endplateBottomY, endplateClearanceDimX, bottomY, `${dimValue.toFixed(0)} mm`, 'vertical');
-                    }
-                }
+            // Draw Bottom Lath Height Dimension (in the second column)
+            // 'currentY' is the Y pos at the top of the bottom lath
+            if (bottomLathHeight > 0) {
+                drawDimensionLine(leftDim2X, currentY, leftDim2X, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical');
             }
             // *** MODIFICATION END ***
 
