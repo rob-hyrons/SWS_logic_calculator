@@ -125,6 +125,7 @@
         #axle-cross-section-container, 
         #endplate-graphic-container {
             min-width: 450px; /* Prevents the SVG from shrinking too much on smaller screens */
+            max-width: 550px; /* Prevents the SVG from scaling up too large */
             margin-left: auto;
             margin-right: auto;
         }
@@ -480,7 +481,7 @@
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                    <div id="endplate-graphic-container" class="graph-container" style="height: 350px;"></div>
+                    <!-- *** MODIFIED START *** -->
                     <div class="results" style="border-left-color: #ffc107;">
                         <h3 style="color: #c79100;">Sizing Details</h3>
                         <p>Maximum Coil Diameter: <span id="max-coil-diameter">0.0</span> mm</p>
@@ -495,6 +496,8 @@
                         <p>For Next Size Down (<span id="prev-endplate-name">N/A</span>): <span id="prev-endplate-height">N/A</span> mm</p>
                         <p>For Next Size Up (<span id="next-endplate-name">N/A</span>): <span id="next-endplate-height">N/A</span> mm</p>
                     </div>
+                    <div id="endplate-graphic-container" class="graph-container"></div>
+                    <!-- *** MODIFIED END *** -->
                     <div class="results page-break-before-print" style="border-left-color: #6f42c1; margin-top: 2em;">
                         <h3 style="color: #5a32a3;">Fixing Forces Analysis (Per Endplate, inc. 20% Safety Factor)</h3>
                         <p>Total Downward Shear Force: <span id="endplate-downward-force">0</span> N</p>
@@ -2926,14 +2929,18 @@
                  drawDimensionLine(endplateDimX, endplateTopY, endplateDimX, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
             }
 
-            // *** MODIFICATION START: Re-ordered Vertical Dimensions ***
-            const endplateClearanceDimX = axleX + scaledTotalAxleWidth + 15; // Position for the leftmost vertical dim
-            const axleHeightDimX = endplateClearanceDimX + 20; // Position for the dim to its right
+            // *** MODIFICATION START: Re-ordered and added Vertical Dimensions ***
+            const endplateClearanceDimX = axleX + scaledTotalAxleWidth + 15; 
+            const axleHeightDimX = endplateClearanceDimX + 20; 
 
-            // Draw main axle center to floor height dimension (now on the right)
-            drawDimensionLine(axleHeightDimX, axleCenterlineY, axleHeightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
-
-            // Draw Endplate to Floor Dimension (now on the left)
+            const totalHeightValue = parseFloat(dom.height.value) || 0;
+            if (totalHeightValue > 0 && bottomLathHeight > 0) {
+                 // Draw dimension for main curtain height (axle to top of bottom lath)
+                drawDimensionLine(axleHeightDimX, axleCenterlineY, axleHeightDimX, currentY, `${(totalHeightValue - bottomLathHeight).toFixed(0)} mm`, 'vertical');
+                // Draw dimension for bottom lath height
+                drawDimensionLine(axleHeightDimX, currentY, axleHeightDimX, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical');
+            }
+            
             if (selectedEndplate && endplateBottomY > 0) {
                 const floorToAxleHeight = parseFloat(dom.height.value) || 0;
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
