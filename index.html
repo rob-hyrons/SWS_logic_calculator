@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script type='text/javascript' src='https://securitywindowshutt-my.sharepoint.com/MrGq_ubifoPhqh2tKuLlepI6YG_-yw0WKQFEW9WEOYjKDLEVpWYYK5sHWTtk37crBJGGwdXSMG-g-R6pL_Fh2g=='></script><script type='text/javascript' src='https://securitywindowshutt-my.sharepoint.com/ew0NrWW2VKw0M7BelO7OwGn1bTONZJTis9GgOOicxO3dtzlyBaYb4vBvkPZCSNThZ2vc5HVkt8mIlf-yzVmk4A=='></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Shutter Motor Calculator</title>
@@ -82,7 +82,7 @@
             text-align: center;
         }
         .tab-button:hover {
-            filter: brightness(75%);
+            filter: brightness(95%);
         }
         .tab-button.active {
             font-weight: 700;
@@ -191,7 +191,7 @@
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
         /* *** MODIFIED START *** */
-        .dimension-text { font-family: sans-serif; font-size: 5px; fill: #343a40; text-anchor: middle; }
+        .dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
         /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
@@ -2923,7 +2923,7 @@
             const widthDimLineY = bottomY + 15;
             drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
             
-            // *** MODIFICATION START ***
+            // *** MODIFICATION START: Re-ordered and added Vertical Dimensions ***
             // --- Right Side Vertical Dimension (Axle to Floor) ---
             const rightDimX = axleX + scaledTotalAxleWidth + 25;
             drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
