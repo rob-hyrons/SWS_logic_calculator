@@ -192,6 +192,7 @@
         .dimension-line { stroke: #343a40; stroke-width: 1; }
         /* *** MODIFIED START *** */
         .dimension-text { font-family: sans-serif; font-size: 5px; fill: #343a40; text-anchor: middle; }
+        .large-dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
         /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
@@ -2417,8 +2418,10 @@
             svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: dimLineX, y1: boxY, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-            const boxSizeTextX = dimLineX + 8;
-            const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
+            // *** MODIFIED START ***
+            const boxSizeTextX = dimLineX + 12;
+            const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
+            // *** MODIFIED END ***
             boxSizeText.textContent = `${endplateSize.toFixed(0)} mm`;
             svg.appendChild(boxSizeText);
             
@@ -2426,7 +2429,9 @@
             svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: coilDimY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-            const coilDimText = createElem('text', { x: centerX, y: coilDimY + 12, class: 'dimension-text' });
+            // *** MODIFIED START ***
+            const coilDimText = createElem('text', { x: centerX, y: coilDimY + 15, class: 'large-dimension-text' });
+            // *** MODIFIED END ***
             coilDimText.textContent = `Ø ${coilDiameter.toFixed(1)} mm`;
             svg.appendChild(coilDimText);
 
@@ -2438,8 +2443,10 @@
                 svg.appendChild(createElem('line', { x1: centerX, y1: topY, x2: clearanceDimX, y2: topY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
                 svg.appendChild(createElem('line', { x1: centerX, y1: coilTopY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
                 svg.appendChild(createElem('line', { x1: clearanceDimX, y1: topY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-                const clearanceTextX = clearanceDimX + 8;
-                const clearanceText = createElem('text', { x: clearanceTextX, y: topY + (coilTopY - topY) / 2, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${clearanceTextX}, ${topY + (coilTopY - topY) / 2})` });
+                // *** MODIFIED START ***
+                const clearanceTextX = clearanceDimX + 12;
+                const clearanceText = createElem('text', { x: clearanceTextX, y: topY + (coilTopY - topY) / 2, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${clearanceTextX}, ${topY + (coilTopY - topY) / 2})` });
+                // *** MODIFIED END ***
                 clearanceText.textContent = `${clearance.toFixed(1)} mm`;
                 svg.appendChild(clearanceText);
             }
@@ -2551,8 +2558,10 @@
             svg.appendChild(createElem('line', { x1: cx, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy - outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: cx, y1: cy + outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: od_dim_x, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
-            const odTextX = od_dim_x + 12;
-            const odText = createElem('text', { x: odTextX, y: cy, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${odTextX}, ${cy})` });
+            // *** MODIFIED START ***
+            const odTextX = od_dim_x + 15;
+            const odText = createElem('text', { x: odTextX, y: cy, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${odTextX}, ${cy})` });
+            // *** MODIFIED END ***
             odText.textContent = `${outerDia.toFixed(1)}`;
             svg.appendChild(odText);
 
@@ -2560,8 +2569,10 @@
             svg.appendChild(createElem('line', { x1: cx, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy - innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: cx, y1: cy + innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: id_dim_x, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
-            const idTextX = id_dim_x + 12;
-            const idText = createElem('text', { x: idTextX, y: cy, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${idTextX}, ${cy})` });
+            // *** MODIFIED START ***
+            const idTextX = id_dim_x + 15;
+            const idText = createElem('text', { x: idTextX, y: cy, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${idTextX}, ${cy})` });
+            // *** MODIFIED END ***
             idText.textContent = `${innerDia.toFixed(1)}`;
             svg.appendChild(idText);
 
@@ -2584,12 +2595,14 @@
                 x2: textLineStartX, y2: leaderElbowY,
                 class: 'dimension-line'
             }));
-
+            
+            // *** MODIFIED START ***
             const wtText = createElem('text', {
                 x: textLineStartX + (leaderElbowX - textLineStartX) / 2,
-                y: leaderElbowY - 5,
-                class: 'dimension-text'
+                y: leaderElbowY - 8,
+                class: 'large-dimension-text'
             });
+            // *** MODIFIED END ***
             wtText.textContent = `${wallThick.toFixed(1)}`;
             svg.appendChild(wtText);
 
@@ -2723,7 +2736,9 @@
 
             const drawAnnotation = (startY, endY, label) => {
                 const lineX = padding.left - 45; 
-                const textX = lineX - 6; 
+                // *** MODIFIED START ***
+                const textX = lineX - 8; 
+                // *** MODIFIED END ***
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
                 line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
@@ -2823,7 +2838,6 @@
             const lathStartX = axleX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             let lathCounter = 0;
             
-            // *** MODIFIED START ***
             const drawEndlocks = (lathY, lathH) => {
                 const endlockSide = lathH * 0.8; // Scaled to 80% of lath height
                 const endlockY = lathY + (lathH - endlockSide) / 2; // Center vertically
@@ -2844,7 +2858,6 @@
                 rightEndlock.setAttribute('class', 'endlock-graphic');
                 svg.appendChild(rightEndlock);
             };
-            // *** MODIFIED END ***
 
             // Draw Laths and Annotations
             if (visionOptions && visionOptions.visionLath) {
@@ -2861,7 +2874,7 @@
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     // *** MODIFIED START ***
-                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    if (endlocksSelected && (numLaths - lathCounter) % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                     // *** MODIFIED END ***
                     currentY += scaledMainLathHeight;
                     lathCounter++;
@@ -2876,7 +2889,7 @@
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
                     // *** MODIFIED START ***
-                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    if (endlocksSelected && (numLaths - lathCounter) % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
                     // *** MODIFIED END ***
                     currentY += scaledVisionLathHeight;
                     lathCounter++;
@@ -2891,7 +2904,7 @@
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     // *** MODIFIED START ***
-                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    if (endlocksSelected && (numLaths - lathCounter) % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                     // *** MODIFIED END ***
                     currentY += scaledMainLathHeight;
                     lathCounter++;
@@ -2906,7 +2919,7 @@
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     // *** MODIFIED START ***
-                    if (endlocksSelected && i % 2 === 0) drawEndlocks(currentY, scaledLathHeight);
+                    if (endlocksSelected && (numLaths - i) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
                     // *** MODIFIED END ***
                     currentY += scaledLathHeight;
                 }
