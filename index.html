@@ -663,7 +663,7 @@
         
         // This function is no longer called by a user action, but its logic is used in the auto-loader , this is where the Excel file is loaded from Github location.
         function handleFileSelect(event) {
-            const file = event.target.files[0];
+            const file = event.target.files;
             if (!file) return;
             userSelectedAxleIndex = null; 
             const reader = new FileReader();
@@ -709,7 +709,7 @@
 
                             const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                             if (sheetData.length > 0) {
-                                const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
+                                const headerRow = sheetData.map(h => String(h).toLowerCase().trim());
                                 for (const requiredCol of coreRequired[sheetName]) {
                                     if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
                                         throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}". Please check spelling.`);
@@ -1280,7 +1280,7 @@
                 .map(b => ({ ...b, MaxTorque: parseFloat(b['Max Safety Torque (Nm)']) }))
                 .filter(b => b.MaxTorque >= impactTorqueNm)
                 .sort((a, b) => a.MaxTorque - b.MaxTorque);
-            return suitableBrakes.length > 0 ? suitableBrakes[0] : null;
+            return suitableBrakes.length > 0 ? suitableBrakes : null;
         }
 
         function populateSafetyBrakeDropdown(requiredTorque) {
@@ -1872,14 +1872,16 @@
                  const axleCoilDiameter = getEffectiveCoilDiameter(axle);
                 axleRadius = axleCoilDiameter / 2;
             } else if (axleData.length > 0) {
-                axleRadius = (getEffectiveCoilDiameter(axleData[0])) / 2;
+                axleRadius = (getEffectiveCoilDiameter(axleData)) / 2;
             }
 
             const heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
 
             let numLaths = 0;
             if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
-                numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight);
+                // *** MODIFIED START ***
+                numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
+                // *** MODIFIED END ***
             }
             dom['lath-count'].textContent = numLaths;
 
@@ -2003,7 +2005,9 @@
             
             let numLathsAbove = 0;
             if (remainingHeightToCover > 0) {
-                numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed);
+                // *** MODIFIED START ***
+                numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2;
+                // *** MODIFIED END ***
             }
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
@@ -3044,7 +3048,7 @@
                                     };
                                     const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                                     if (sheetData.length > 0) {
-                                        const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
+                                        const headerRow = sheetData.map(h => String(h).toLowerCase().trim());
                                         for (const requiredCol of coreRequired[sheetName]) {
                                             if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
                                                 throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
