@@ -18,7 +18,11 @@
         }
         .container {
             background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%; max-width: 800px; display: flex; flex-direction: row;
+            width: 100%;
+            /* *** MODIFIED START *** -->
+            max-width: 1000px; 
+            /* *** MODIFIED END *** */
+            display: flex; flex-direction: row;
             align-items: stretch;
         }
         .content-area {
@@ -28,6 +32,15 @@
         }
         h1 { color: #1a1a1a; text-align: center; margin-bottom: 1em; }
         .form-group { margin-bottom: 1.5em; }
+        /* *** MODIFIED START *** */
+        .form-row {
+            display: flex;
+            gap: 1.5em; /* Spacing between columns */
+        }
+        .form-col {
+            flex: 1; /* Each column takes up equal space */
+        }
+        /* *** MODIFIED END *** */
         label { display: block; margin-bottom: 0.5em; font-weight: 600; }
         input[type="number"], input[type="file"], select, input[type="checkbox"] {
             width: 100%; padding: 0.8em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
@@ -108,6 +121,15 @@
             border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08; font-weight: bold;
         }
         .graph-container { margin-top: 1.5em; width: 100%; }
+        /* *** MODIFICATION START *** */
+        #axle-cross-section-container, 
+        #endplate-graphic-container {
+            min-width: 450px; /* Prevents the SVG from shrinking too much on smaller screens */
+            max-width: 550px; /* Prevents the SVG from scaling up too large */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* *** MODIFICATION END *** */
         .calculation-explainer {
             margin-top: 2em;
             padding: 1em;
@@ -144,7 +166,9 @@
         #shutter-graphic-container, #wicket-graphic-container {
             margin-top: 1.5em;
             width: 100%;
-            height: 250px;
+            /* *** MODIFIED START *** */
+            /* height: 250px; REMOVED to allow aspect ratio to control height */
+            /* *** MODIFIED END *** */
             border: 1px solid #e9ecef;
             border-radius: 4px;
             background-color: #f8f9fa;
@@ -154,10 +178,21 @@
         .shutter-bottomlath-graphic { fill: #ced4da; stroke: #495057; stroke-width: 0.5; }
         .wicket-door-graphic { fill: #a5d6a7; stroke: #388e3c; stroke-width: 1; }
         .shutter-vision-lath-graphic { fill: #a7d8f0; stroke: #6bafd2; stroke-width: 0.5; }
+        /* *** MODIFIED START *** */
+        .endlock-graphic { fill: #000000; }
+        .endplate-box-graphic {
+            fill: rgba(255, 193, 7, 0.2); /* Semi-transparent yellow */
+            stroke: #ffc107;
+            stroke-width: 1;
+            stroke-dasharray: 4, 2;
+        }
+        /* *** MODIFIED END *** */
         
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
+        /* *** MODIFIED START *** */
         .dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
+        /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
             font-size: 10px;
@@ -182,7 +217,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color: 0.2s;
         }
         #printButton:hover {
             background-color: #0056b3;
@@ -269,31 +304,35 @@
                     <div class="form-group">
                          <div id="import-status">Attempting to load data from repository...</div>
                     </div>
-                    <div class="form-group">
-                        <label for="width">Curtain Width (mm)</label>
-                        <input type="number" id="width" placeholder="e.g., 3000">
-                        <div id="width-warning" class="width-validation-warning"></div>
+                    <!-- *** MODIFIED START: Input Layout *** -->
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label for="width">Curtain Width (mm)</label>
+                            <input type="number" id="width" placeholder="e.g., 3000">
+                            <div id="width-warning" class="width-validation-warning"></div>
+                        </div>
+                        <div class="form-group form-col">
+                            <label for="height">Curtain Height (Floor to Axle Centre, mm)</label>
+                            <input type="number" id="height" placeholder="e.g., 4000">
+                        </div>
                     </div>
-                    <div class="form-group">
+                     <div class="form-group">
                         <label for="additionalLength">Additional Axle Width (Total, mm)</label>
                         <input type="number" id="additionalLength" placeholder="e.g., 200" value="200">
                     </div>
-                    <div class="form-group">
-                        <label for="height">Curtain Height (Floor to Axle Centre, mm)</label>
-                        <input type="number" id="height" placeholder="e.g., 4000">
-                    </div>
-                    <div class="form-group">
-                        <label for="lathType">Lath Type</label>
-                        <select id="lathType" disabled>
-                            <option value="">-- Waiting for file import --</option>
-                        </select>
-                    </div>
-                    <!-- *** MODIFIED START *** -->
-                    <div class="form-group">
-                        <label for="endLockType">End Lock Type</label>
-                        <select id="endLockType" disabled>
-                            <option value="">-- None --</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group form-col">
+                            <label for="lathType">Lath Type</label>
+                            <select id="lathType" disabled>
+                                <option value="">-- Waiting for file import --</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-col">
+                            <label for="endlockType">Endlock Type</label>
+                            <select id="endlockType" disabled>
+                                <option value="">-- Waiting for file import --</option>
+                            </select>
+                        </div>
                     </div>
                     <!-- *** MODIFIED END *** -->
                     <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
@@ -342,13 +381,11 @@
                         <h3>Shutter Details</h3>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <!-- *** MODIFIED START *** -->
-                        <p>End Lock Weight: <span id="endlock-weight-kg">0.00</span> kgs</p>
+                        <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
                         <!-- *** MODIFIED END *** -->
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
-                        <!-- *** MODIFIED START *** -->
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
-                        <!-- *** MODIFIED END *** -->
                         <p>Max Wind Resistance: <span id="wind-resistance">0</span> Pa (<span id="wind-class">Class 0</span>)</p>
                         <p>Lath Deflection at Max Load: <span id="lath-deflection">0.00</span> mm</p>
                         <p>Number of Laths: <span id="lath-count">0</span></p>
@@ -368,12 +405,10 @@
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                    <!-- *** MODIFIED START *** -->
                     <div class="form-group">
                         <label for="collarSize">Collar Size (mm)</label>
                         <input type="number" id="collarSize" placeholder="e.g., 150" value="0">
                     </div>
-                    <!-- *** MODIFIED END *** -->
                     <div id="deflection-graphic-container" class="graph-container" style="height: 150px;"></div>
                     <div id="axle-cross-section-container" class="graph-container" style="height: 250px; margin-top: 2.5em;"></div>
                     <div class="results">
@@ -435,26 +470,22 @@
                             <label for="matAluminium">Aluminium</label>
                         </div>
                     </div>
-                    <!-- *** MODIFIED START *** -->
                     <div class="form-group">
                         <label for="includeDeflectionInSizing" style="display: inline-block; font-weight: 500; cursor: pointer;">
                             <input type="checkbox" id="includeDeflectionInSizing" style="width: auto; margin-right: 8px; vertical-align: middle;">Include Axle Deflection in Coil Sizing
                         </label>
                     </div>
-                    <!-- *** MODIFIED END *** -->
                     <div class="form-group">
                         <label for="endplateSelector">Select Endplate (Auto-Selected)</label>
                         <select id="endplateSelector" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                    <div id="endplate-graphic-container" class="graph-container" style="height: 350px;"></div>
+                    <!-- *** MODIFIED START *** -->
                     <div class="results" style="border-left-color: #ffc107;">
                         <h3 style="color: #c79100;">Sizing Details</h3>
                         <p>Maximum Coil Diameter: <span id="max-coil-diameter">0.0</span> mm</p>
-                        <!-- *** MODIFIED START *** -->
                         <p id="effective-coil-para" style="display: none;">Effective Sizing Diameter (inc. deflection): <span id="effective-coil-diameter">0.0</span> mm</p>
-                        <!-- *** MODIFIED END *** -->
                         <hr>
                         <h3>Selected Endplate</h3>
                         <p>Name: <span id="endplate-name">N/A</span></p>
@@ -465,6 +496,8 @@
                         <p>For Next Size Down (<span id="prev-endplate-name">N/A</span>): <span id="prev-endplate-height">N/A</span> mm</p>
                         <p>For Next Size Up (<span id="next-endplate-name">N/A</span>): <span id="next-endplate-height">N/A</span> mm</p>
                     </div>
+                    <div id="endplate-graphic-container" class="graph-container"></div>
+                    <!-- *** MODIFIED END *** -->
                     <div class="results page-break-before-print" style="border-left-color: #6f42c1; margin-top: 2em;">
                         <h3 style="color: #5a32a3;">Fixing Forces Analysis (Per Endplate, inc. 20% Safety Factor)</h3>
                         <p>Total Downward Shear Force: <span id="endplate-downward-force">0</span> N</p>
@@ -539,7 +572,7 @@
                         <h3 style="margin-top: 1.5em;">Adjusted Motor Torque</h3>
                         <p>Max Required Torque (with Wicket): <span id="wicket-max-torque">0.0</span> Nm</p>
                     </div>
-                    <div id="wicket-graphic-container" class="graph-container" style="height: 250px;"></div>
+                    <div id="wicket-graphic-container"></div>
                     <div id="wicket-torque-graph-container" class="graph-container" style="height: 280px;"></div>
                 </div>
 
@@ -547,10 +580,11 @@
         </div>
     </div>
 
+    
+
+    
     <script>
-        // *** MODIFIED START ***
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endLockData = [];
-        // *** MODIFIED END ***
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
@@ -577,7 +611,7 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
          'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
-         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endLockType', 'endlock-weight-kg'
+         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight'
         ].forEach(id => dom[id] = document.getElementById(id));
         // *** MODIFIED END ***
         
@@ -585,7 +619,7 @@
         
         // *** MODIFIED START ***
         ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endLockType'
+         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -627,7 +661,7 @@
             }
         }
         
-        // This function is no longer called by a user action, but its logic is used in the auto-loader
+        // This function is no longer called by a user action, but its logic is used in the auto-loader , this is where the Excel file is loaded from Github location.
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -640,33 +674,64 @@
                     const fileData = e.target.result;
                     const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                     
-                    // *** MODIFIED START: Flexible Sheet Name Finding ***
-                    const sheetNames = workbook.SheetNames;
-                    
-                    sheetNames.forEach(sheetName => {
-                        const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                        // Normalize the sheet name by converting to lowercase and removing all spaces
-                        const normalizedSheetName = sheetName.toLowerCase().replace(/\s+/g, '');
+                    const required = {
+                        // *** MODIFIED START ***
+                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
+                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
+                        'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
+                        'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
+                        'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
+                        'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
+                        'Wicket doors': ['Name', 'Height', 'Width'],
+                        'Endlock': ['Description', 'Weight in grams']
+                        // *** MODIFIED END ***
+                    };
 
-                        if (normalizedSheetName.includes('lath') && !normalizedSheetName.includes('bottom')) {
-                            lathData = objectData;
-                        } else if (normalizedSheetName.includes('bottomlath')) {
-                            bottomLathData = objectData;
-                        } else if (normalizedSheetName.includes('axle')) {
-                            axleData = objectData;
-                        } else if (normalizedSheetName.includes('motor')) {
-                            motorData = objectData;
-                        } else if (normalizedSheetName.includes('safetyb') || normalizedSheetName.includes('safetybrake')) {
-                            safetyBrakeData = objectData;
-                        } else if (normalizedSheetName.includes('endplate')) {
-                            endplateData = objectData;
-                        } else if (normalizedSheetName.includes('wicket')) {
-                            wicketData = objectData;
-                        } else if (normalizedSheetName.includes('endlock')) {
-                            endLockData = objectData;
+                    for (const sheetName in required) {
+                        if (!workbook.Sheets[sheetName]) {
+                            if (sheetName === 'Wicket doors' || sheetName === 'Endlock') {
+                                console.warn(`Optional sheet "${sheetName}" not found.`);
+                                if(sheetName === 'Wicket doors') wicketData = [];
+                                if(sheetName === 'Endlock') endlockData = [];
+                                continue;
+                            }
+                            // Do not throw error for missing optional columns, just check for core ones.
+                            const coreRequired = {
+                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
+                                'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
+                                'Axles': ['Name', 'Diameter', 'Wall Thickness'],
+                                'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
+                                'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
+                                'Endplate': ['Name', 'Size', 'Material'],
+                                'Wicket doors': ['Name', 'Height', 'Width'],
+                                'Endlock': ['Description', 'Weight in grams']
+                            };
+
+                            const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                            if (sheetData.length > 0) {
+                                const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
+                                for (const requiredCol of coreRequired[sheetName]) {
+                                    if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
+                                        throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}". Please check spelling.`);
+                                    }
+                                }
+                            } else {
+                               throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
+                            }
                         }
-                    });
-                     // *** MODIFIED END ***
+                        
+                        const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                        switch (sheetName) {
+                            case 'Lath': lathData = objectData; break;
+                            case 'Bottom lath': bottomLathData = objectData; break;
+                            case 'Axles': axleData = objectData; break;
+                            case 'Motors': motorData = objectData; break;
+                            case 'SafetyB': safetyBrakeData = objectData; break;
+                            case 'Endplate': endplateData = objectData; break;
+                            case 'Wicket doors': wicketData = objectData; break;
+                            case 'Endlock': endlockData = objectData; break;
+                        }
+                    }
 
                     // --- Image Extraction Logic using ExcelJS ---
                     lathImageMap.clear(); 
@@ -674,29 +739,19 @@
                     const exceljsWorkbook = new ExcelJS.Workbook();
                     await exceljsWorkbook.xlsx.load(fileData);
 
-                    // *** MODIFIED START: Flexible Sheet Finding for Images ***
-                    const lathSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('lath') && !name.toLowerCase().replace(/\s+/g, '').includes('bottom'));
-                    if (lathSheetName) {
-                        const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
-                        if (lathSheet) {
-                            await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
-                        }
+                    // Lath Images
+                    const lathSheet = exceljsWorkbook.getWorksheet('Lath');
+                    if (lathSheet) {
+                        await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
                     }
                     
-                    const safetyBrakeSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('safetyb') || name.toLowerCase().replace(/\s+/g, '').includes('safetybrake'));
-                    if (safetyBrakeSheetName) {
-                        const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
-                        if (safetyBrakeSheet) {
-                           await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
-                        }
+                    // Safety Brake Images
+                    const safetyBrakeSheet = exceljsWorkbook.getWorksheet('SafetyB');
+                    if (safetyBrakeSheet) {
+                        await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
                     }
-                    // *** MODIFIED END ***
                     
                     populateDropdown(dom.lathType, lathData, 'Name');
-                    // *** MODIFIED START ***
-                    populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
-                    // *** MODIFIED END ***
-
                     // *** MODIFIED START ***
                     // Custom population for vision lath dropdown to filter by vision percentage
                     const visionSelect = dom.visionLathType;
@@ -714,14 +769,13 @@
                     });
                     // *** MODIFIED END ***
                     populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
+                    populateDropdown(dom.endlockType, endlockData, 'Description');
                     populateMotorMountingTypes();
                     
                     populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
-                    // *** MODIFIED START ***
-                    ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
+                    ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                         if(dom[id]) dom[id].disabled = false;
                     });
-                    // *** MODIFIED END ***
                     updateSelectedWicketInfo(); 
 
                     dom['import-status'].textContent = 'Successfully imported all data sheets.';
@@ -730,9 +784,7 @@
                     updateAllCalculations();
                 } catch (error) {
                     alert(`Error Reading File: ${error.message}`);
-                    // *** MODIFIED START ***
-                    lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
-                    // *** MODIFIED END ***
+                    lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = [];
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -848,17 +900,24 @@
             const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight);
 
             const finalCurtainProps = calculateCurtainProperties(selectedLath, selectedBottomLath, bestAxle);
-            const { totalWeight, travelHeight, fullCurtainLength, visionData, endLockInfo } = finalCurtainProps;
+            const { totalWeight, travelHeight, fullCurtainLength, visionData } = finalCurtainProps;
             visionCalcs = visionData;
 
             calculateWindResistance();
+            calculateEndplateRecommendation(); 
 
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
 
             drawDeflectionGraphic(totalLength, deflection);
             calculateMotorRecommendation(totalWeight, selectedLath, bestAxle, travelHeight);
             calculateSafetyBrakeForce(totalWeight, selectedLath, bestAxle, travelHeight, fullCurtainLength);
-            calculateEndplateRecommendation();
+            
+            // *** MODIFIED START: Pass selected endplate to graphic ***
+            const selectedEndplateIndex = dom.endplateSelector.value;
+            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
+                ? currentFilteredEndplates[selectedEndplateIndex] 
+                : null;
+
             drawShutterGraphic(
                 parseFloat(dom.width.value),
                 parseFloat(dom.additionalLength.value),
@@ -866,11 +925,10 @@
                 selectedLath,
                 selectedBottomLath,
                 bestAxle,
-                visionCalcs,
-                // *** MODIFIED START ***
-                endLockInfo
-                // *** MODIFIED END ***
+                selectedEndplate,
+                visionCalcs
             );
+            // *** MODIFIED END ***
             updateWicketCalculationsAndGraphic();
         }
         
@@ -971,7 +1029,7 @@
             return { bestAxle, deflection: finalPerformance.deflection, totalLength };
         }
 
-        // *** MODIFIED START ***
+        // *** Calculation of axle defelction START, this is a simple supported beam only, no fixing allowed on these calcs. ***
         function performDeflectionCalc(totalWeightKgs, axle, totalLength) {
             if (!axle) return { deflection: 0, ratio: Infinity, safetyFactor: Infinity, axleWeight: 0, materialGradeValue: 'N/A', inertiaI: 0 };
             
@@ -1031,7 +1089,7 @@
             // For circular, it's just the diameter
             return diameter;
         }
-        // *** MODIFIED END ***
+        // *** axle calc END ***
         
         function calculateEndplateRecommendation() {
             if (endplateData.length === 0) return;
@@ -1626,6 +1684,12 @@
             dom['laths-at-wicket'].textContent = lathsAtWicket;
             dom['wicket-lath-height'].textContent = wicketLathHeight.toFixed(0);
             
+            // *** MODIFIED START: Pass selected endplate to graphic ***
+            const selectedEndplateIndex = dom.endplateSelector.value;
+            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
+                ? currentFilteredEndplates[selectedEndplateIndex] 
+                : null;
+            
             drawWicketGraphic(
                 parseFloat(dom.width.value),
                 parseFloat(dom.additionalLength.value),
@@ -1633,9 +1697,11 @@
                 selectedLath,
                 selectedBottomLath,
                 selectedAxle,
+                selectedEndplate,
                 selectedWicket,
                 wicketLathHeight 
             );
+            // *** MODIFIED END ***
             
             calculateWicketTorque();
         }
@@ -1765,22 +1831,16 @@
             return { profileData, finalCoilDiameter: currentRollDiameter };
         };
         
-        // *** MODIFIED START: Corrected populateDropdown function ***
-        function populateDropdown(selectElement, dataArray, nameField, defaultOptionText = '-- Select an option --') {
-            selectElement.innerHTML = `<option value="">${defaultOptionText}</option>`;
+        function populateDropdown(selectElement, dataArray, nameField) {
+            selectElement.innerHTML = `<option value="">-- Select an option --</option>`;
             dataArray.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
                 const header = Object.keys(item).find(k => k.toLowerCase().trim() === nameField.toLowerCase().trim());
-                if(header && item[header]) { // Check that the header and its value exist
-                    option.textContent = item[header];
-                    selectElement.appendChild(option);
-                } else {
-                    console.warn(`Could not find header "${nameField}" or its value in data item:`, item);
-                }
+                option.textContent = item[header];
+                selectElement.appendChild(option);
             });
         };
-        // *** MODIFIED END ***
         
         function calculateCurtainProperties(lath, bottomLath, axle) {
             const visionEnabled = dom.addVision.checked;
@@ -1789,10 +1849,6 @@
             }
         
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
-            let totalWeight = 0;
-            let endLockWeight = 0;
-            let endLockInfo = null;
-
             if (!lath || !bottomLath || floorToAxleCenter <= 0) {
                 dom['lath-count'].textContent = '0';
                 dom['weight-kg'].textContent = '0.00';
@@ -1801,8 +1857,8 @@
                 dom['curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
-                dom['endlock-weight-kg'].textContent = '0.00';
-                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endLockInfo: null };
+                dom['endlock-weight'].textContent = '0.00';
+                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
             }
 
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
@@ -1845,26 +1901,22 @@
 
             const lathWeightBasedOnArea = widthM * (numLaths * lathCoverageForWeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-            totalWeight = lathWeightBasedOnArea + bottomLathWeight;
-            
-            // *** MODIFIED START: End Lock Calculation ***
-            const selectedEndLockIndex = dom.endLockType.value;
-            if (selectedEndLockIndex !== "" && endLockData[selectedEndLockIndex] && numLaths > 0) {
-                const endLock = endLockData[selectedEndLockIndex];
-                const weightGramsKey = Object.keys(endLock).find(k => k.toLowerCase().trim() === 'weight in grams');
-                const endLockWeightGrams = weightGramsKey ? parseFloat(endLock[weightGramsKey]) : 0;
 
-                if (endLockWeightGrams > 0) {
-                    const lathsWithEndLocks = Math.ceil((numLaths - 1) / 2);
-                    const totalEndLocks = lathsWithEndLocks * 2;
-                    endLockWeight = (totalEndLocks * endLockWeightGrams) / 1000;
-                    totalWeight += endLockWeight;
-                    endLockInfo = { // Pass info to the graphics function
-                        lathsWithLocks: lathsWithEndLocks
-                    };
+            // *** MODIFIED START ***
+            let totalEndlockWeight = 0;
+            const selectedEndlockIndex = dom.endlockType.value;
+            if (numLaths > 0 && selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex]) {
+                const selectedEndlock = endlockData[selectedEndlockIndex];
+                const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                const endlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
+                
+                if (endlockWeightG > 0) {
+                    const numEndlockPairs = Math.ceil(numLaths / 2);
+                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
                 }
             }
-            dom['endlock-weight-kg'].textContent = endLockWeight.toFixed(2);
+            dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
+            const totalWeight = lathWeightBasedOnArea + bottomLathWeight + totalEndlockWeight;
             // *** MODIFIED END ***
 
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
@@ -1888,7 +1940,7 @@
             }
             // *** REVISED LOGIC END ***
             
-            return { totalWeight, travelHeight, fullCurtainLength, visionData: null, endLockInfo };
+            return { totalWeight, travelHeight, fullCurtainLength, visionData: null };
         };
         
         function calculateVisionCurtainProperties(mainLath, bottomLath, axle) {
@@ -1897,8 +1949,6 @@
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             const desiredVisionStart = parseFloat(dom.visionStartHeight.value) || 0;
             const desiredVisionPanelHeight = parseFloat(dom.visionPanelHeight.value) || 0;
-            let endLockWeight = 0;
-            let endLockInfo = null;
 
             const resetAndReturn = () => {
                 dom['lath-count'].textContent = '0';
@@ -1908,8 +1958,8 @@
                 dom['curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
-                dom['endlock-weight-kg'].textContent = '0.00';
-                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endLockInfo: null };
+                dom['endlock-weight'].textContent = '0.00';
+                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null };
             };
 
             if (!mainLath || !bottomLath || !visionLath || !axle || floorToAxleCenter <= 0 || widthM <= 0) {
@@ -1963,26 +2013,22 @@
             const weightVision = numLathsVision * (visionLathUncompressed / 1000) * widthM * visionLathKgsM2;
             const weightAbove = numLathsAbove * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
             const bottomLathWeight = widthM * bottomLathWeightPerM;
-            let totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight;
             
-             // *** MODIFIED START: End Lock Calculation ***
-            const selectedEndLockIndex = dom.endLockType.value;
-            if (selectedEndLockIndex !== "" && endLockData[selectedEndLockIndex] && totalNumLaths > 0) {
-                const endLock = endLockData[selectedEndLockIndex];
-                const weightGramsKey = Object.keys(endLock).find(k => k.toLowerCase().trim() === 'weight in grams');
-                const endLockWeightGrams = weightGramsKey ? parseFloat(endLock[weightGramsKey]) : 0;
-
-                if (endLockWeightGrams > 0) {
-                    const lathsWithEndLocks = Math.ceil((totalNumLaths - 1) / 2);
-                    const totalEndLocks = lathsWithEndLocks * 2;
-                    endLockWeight = (totalEndLocks * endLockWeightGrams) / 1000;
-                    totalWeight += endLockWeight;
-                    endLockInfo = { // Pass info to the graphics function
-                        lathsWithLocks: lathsWithEndLocks
-                    };
+            // *** MODIFIED START ***
+            let totalEndlockWeight = 0;
+            const selectedEndlockIndex = dom.endlockType.value;
+            if (totalNumLaths > 0 && selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex]) {
+                const selectedEndlock = endlockData[selectedEndlockIndex];
+                const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                const endlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
+                
+                if (endlockWeightG > 0) {
+                    const numEndlockPairs = Math.ceil(totalNumLaths / 2);
+                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
                 }
             }
-            dom['endlock-weight-kg'].textContent = endLockWeight.toFixed(2);
+            dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
+            const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
             // *** MODIFIED END ***
 
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
@@ -2033,10 +2079,527 @@
                 actualVisionPanelHeight
             };
 
-            return { totalWeight, travelHeight, fullCurtainLength, visionData, endLockInfo };
+            return { totalWeight, travelHeight, fullCurtainLength, visionData };
         }
 
-        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, visionData = null, endLockInfo = null) {
+        function drawTorqueGraph(profileData, container) {
+            container.innerHTML = '';
+            if (!profileData || profileData.length === 0) return;
+            
+            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
+            let svgWidth = container.clientWidth;
+            if (svgWidth === 0) svgWidth = 550; 
+            let svgHeight = container.clientHeight;
+            if (svgHeight === 0) svgHeight = 280;
+            
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+            const padding = { top: 30, right: 20, bottom: 60, left: 40 }; 
+            const graphWidth = svgWidth - padding.left - padding.right;
+            const graphHeight = svgHeight - padding.top - padding.bottom;
+            const maxTorque = Math.max(...profileData.map(p => p.torque)) * 1.1 || 10;
+
+            const yAxis = document.createElementNS(svgNS, 'line');
+            yAxis.setAttribute('x1', padding.left); yAxis.setAttribute('y1', padding.top);
+            yAxis.setAttribute('x2', padding.left); yAxis.setAttribute('y2', padding.top + graphHeight);
+            yAxis.setAttribute('class', 'axis-line');
+            svg.appendChild(yAxis);
+            
+            const xLabel = document.createElementNS(svgNS, 'text');
+            xLabel.setAttribute('class', 'graph-text');
+            xLabel.setAttribute('transform', `translate(${svgWidth/2}, ${svgHeight - 15})`);
+            xLabel.textContent = 'Coil Diameter (mm) / Revolutions';
+            svg.appendChild(xLabel);
+            
+            const barWidth = Math.max(5, graphWidth / profileData.length * 0.8);
+            const barSpacing = Math.max(1, graphWidth / profileData.length * 0.2);
+
+            profileData.forEach((item, index) => {
+                const barHeight = (item.torque / maxTorque) * graphHeight;
+                const x = padding.left + index * (barWidth + barSpacing);
+                const y = padding.top + graphHeight - barHeight;
+                const revs = (index + 1) * 0.5;
+
+                const bar = document.createElementNS(svgNS, 'rect');
+                bar.setAttribute('x', x);
+                bar.setAttribute('y', y);
+                bar.setAttribute('width', barWidth);
+                bar.setAttribute('height', barHeight);
+                bar.setAttribute('class', 'torque-bar');
+                
+                const title = document.createElementNS(svgNS, 'title');
+                title.textContent = `Rev ${revs.toFixed(1)}: ${item.torque.toFixed(1)} Nm | Dia: ${item.diameter.toFixed(0)} mm`;
+                bar.appendChild(title);
+                svg.appendChild(bar);
+
+                const textX = x + barWidth / 2;
+
+                if (barHeight > 15) {
+                    const torqueText = document.createElementNS(svgNS, 'text');
+                    torqueText.setAttribute('x', textX);
+                    torqueText.setAttribute('y', y - 5); 
+                    torqueText.setAttribute('class', 'graph-data-label'); 
+                    torqueText.textContent = `${item.torque.toFixed(1)} Nm`;
+                    svg.appendChild(torqueText);
+                }
+
+                const showAxisLabel = profileData.length < 15 || index % Math.ceil(profileData.length / 15) === 0;
+                if (showAxisLabel) {
+                    const diaText = document.createElementNS(svgNS, 'text');
+                    diaText.setAttribute('x', textX);
+                    diaText.setAttribute('y', padding.top + graphHeight + 15); 
+                    diaText.setAttribute('class', 'graph-data-label');
+                    diaText.textContent = `Ø${item.diameter.toFixed(0)}`;
+                    svg.appendChild(diaText);
+                
+                    const revText = document.createElementNS(svgNS, 'text');
+                    revText.setAttribute('x', textX);
+                    revText.setAttribute('y', padding.top + graphHeight + 28);
+                    revText.setAttribute('class', 'graph-data-label');
+                    revText.textContent = `(${revs.toFixed(1)}r)`;
+                    svg.appendChild(revText);
+                }
+            });
+            container.appendChild(svg);
+        }
+        
+        function drawDeflectionGraphic(length, deflection, isWarning = false) {
+            const container = dom['deflection-graphic-container'];
+            container.innerHTML = '';
+            
+            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
+            let svgWidth = container.clientWidth;
+            if (svgWidth === 0) svgWidth = 550;
+            let svgHeight = container.clientHeight;
+            if (svgHeight === 0) svgHeight = 150;
+
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const padding = 30, beamY = svgHeight / 2 + 10;
+            const maxVisualDeflection = svgHeight * 0.3;
+            const numericDeflection = parseFloat(deflection) || 0;
+            const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 25));
+
+            const startX = padding, endX = svgWidth - padding;
+            
+            const refPath = document.createElementNS(svgNS, 'path');
+            refPath.setAttribute('d', `M ${startX} ${beamY} H ${endX}`);
+            refPath.setAttribute('class', 'beam-path');
+            svg.appendChild(refPath);
+
+            const deflectedPath = document.createElementNS(svgNS, 'path');
+            const controlX = svgWidth / 2, controlY = beamY + visualDeflection;
+            deflectedPath.setAttribute('d', `M ${startX},${beamY} Q ${controlX},${controlY} ${endX},${beamY}`);
+            deflectedPath.setAttribute('class', 'deflected-path');
+            
+            const ratio = (numericDeflection > 0) ? length / numericDeflection : Infinity;
+            if (isWarning || numericDeflection > 25 || ratio < 400) {
+                 deflectedPath.classList.add('warning');
+            }
+            svg.appendChild(deflectedPath);
+
+            const supportSize = 10;
+            const leftSupport = document.createElementNS(svgNS, 'path');
+            leftSupport.setAttribute('d', `M ${startX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`);
+            leftSupport.setAttribute('class', 'support-symbol');
+            svg.appendChild(leftSupport);
+            
+            const rightSupport = document.createElementNS(svgNS, 'path');
+            rightSupport.setAttribute('d', `M ${endX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`);
+            rightSupport.setAttribute('class', 'support-symbol');
+            svg.appendChild(rightSupport);
+
+            if (numericDeflection > 0.1) {
+                const text = document.createElementNS(svgNS, 'text');
+                text.setAttribute('x', controlX);
+                text.setAttribute('y', controlY + 15);
+                text.setAttribute('class', 'graph-text');
+                text.textContent = `${numericDeflection.toFixed(2)} mm`;
+                svg.appendChild(text);
+            }
+            container.appendChild(svg);
+        }
+
+        function drawWindDeflectionGraphic(length, deflection, isWarning = false) {
+            const container = dom['wind-deflection-graphic-container'];
+            container.innerHTML = ''; // Clear previous graphic
+            if (!length || length <= 0) return;
+
+            // This function is now essentially the same as the axle one, but in a different container.
+            // We can reuse the core logic by passing the correct container.
+            drawDeflectionGraphic(length, deflection, isWarning);
+            // Manually swap the container to the correct one for this specific call.
+            const tempGraphic = dom['deflection-graphic-container'].innerHTML;
+            dom['deflection-graphic-container'].innerHTML = '';
+            container.innerHTML = tempGraphic;
+        }
+
+        function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSeparation, endplateSize) {
+            const container = dom['endplate-force-diagram-container'];
+            container.innerHTML = '';
+            if (downwardForce <= 0 && pulloutForce <= 0) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 550;
+            const svgHeight = 250;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const createMarker = (id, color) => {
+                const marker = document.createElementNS(svgNS, 'marker');
+                marker.setAttribute('id', id);
+                marker.setAttribute('viewBox', '0 0 10 10');
+                marker.setAttribute('refX', '10');
+                marker.setAttribute('refY', '5');
+                marker.setAttribute('markerWidth', '6');
+                marker.setAttribute('markerHeight', '6');
+                marker.setAttribute('orient', 'auto');
+                const arrowPath = document.createElementNS(svgNS, 'path');
+                arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+                arrowPath.setAttribute('fill', color);
+                marker.appendChild(arrowPath);
+                return marker;
+            };
+
+            defs.appendChild(createMarker('arrow-force-red', '#d93025'));
+            defs.appendChild(createMarker('arrow-force-blue', '#007bff'));
+            defs.appendChild(createMarker('arrow-dim', '#343a40'));
+            svg.appendChild(defs);
+            
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
+            const wallX = 150;
+            const wallTop = 20;
+            // *** MODIFICATION START ***
+            const wallBottom = svgHeight - 40; // Increased bottom margin
+            // *** MODIFICATION END ***
+            
+            svg.appendChild(createElem('line', { x1: wallX, y1: wallTop, x2: wallX, y2: wallBottom, stroke: '#343a40', 'stroke-width': '4' }));
+            const wallLabel = createElem('text', { x: wallX - 10, y: wallBottom, class: 'dimension-text', 'text-anchor': 'end' });
+            wallLabel.textContent = "Wall";
+            svg.appendChild(wallLabel);
+
+            const plateWidth = 20;
+            const plateHeight = 160;
+            const plateY = (svgHeight - plateHeight) / 2;
+            svg.appendChild(createElem('rect', { x: wallX, y: plateY, width: plateWidth, height: plateHeight, fill: '#adb5bd', stroke: '#495057', 'stroke-width': '1' }));
+
+            const plateCenterY = plateY + plateHeight / 2;
+            const scaledFixingSep = Math.min(plateHeight * 0.7, fixingSeparation * 0.4); 
+            const topFixingY = plateCenterY - scaledFixingSep / 2;
+            const bottomFixingY = plateCenterY + scaledFixingSep / 2;
+            const fixingX = wallX + plateWidth / 2;
+            svg.appendChild(createElem('circle', { cx: fixingX, cy: topFixingY, r: 4, fill: '#495057' }));
+            svg.appendChild(createElem('circle', { cx: fixingX, cy: bottomFixingY, r: 4, fill: '#495057' }));
+
+            const coilCenterX = wallX + plateWidth + (offsetM * 1000 * 0.4);
+            const coilCenterY = plateCenterY;
+            const coilRadius = 40;
+            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: coilCenterY, r: coilRadius, fill: '#e9ecef', stroke: '#adb5bd', 'stroke-width': '2', 'stroke-dasharray': '4,2' }));
+            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: coilCenterY, r: 5, fill: '#6c757d' }));
+
+            const redForceArrow = { stroke: '#d93025', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-red)' };
+            const redForceText = { fill: '#d93025', 'font-size': '11px', 'font-weight': 'bold' };
+            const blueForceArrow = { stroke: '#007bff', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-blue)' };
+            const blueForceText = { fill: '#007bff', 'font-size': '11px', 'font-weight': 'bold' };
+            const dimLineStyle = { class: 'dimension-line', 'marker-start': 'url(#arrow-dim)', 'marker-end': 'url(#arrow-dim)' };
+
+            const mainForceYEnd = coilCenterY + coilRadius + 40;
+            svg.appendChild(createElem('line', { x1: coilCenterX, y1: coilCenterY, x2: coilCenterX, y2: mainForceYEnd, ...redForceArrow }));
+            const mainForceTextEl = createElem('text', { x: coilCenterX + 5, y: mainForceYEnd, 'text-anchor': 'start', ...redForceText });
+            mainForceTextEl.textContent = `Shear Force on Plate: ${downwardForce.toFixed(0)} N`;
+            svg.appendChild(mainForceTextEl);
+            
+            const pulloutXEnd = wallX - 50;
+            svg.appendChild(createElem('line', { x1: wallX, y1: topFixingY, x2: pulloutXEnd, y2: topFixingY, ...redForceArrow }));
+            const pulloutTextEl = createElem('text', { x: pulloutXEnd - 5, y: topFixingY - 5, 'text-anchor': 'end', ...redForceText });
+            pulloutTextEl.textContent = `Pull-out: ${pulloutForce.toFixed(0)} N`;
+            svg.appendChild(pulloutTextEl);
+
+            const compressionXStart = wallX - 50;
+            svg.appendChild(createElem('line', { x1: compressionXStart, y1: bottomFixingY, x2: wallX, y2: bottomFixingY, ...blueForceArrow }));
+            const compressionTextEl = createElem('text', { x: compressionXStart - 5, y: bottomFixingY - 5, 'text-anchor': 'end', ...blueForceText });
+            compressionTextEl.textContent = `Compression: ${pulloutForce.toFixed(0)} N`;
+            svg.appendChild(compressionTextEl);
+
+            const shearForce = downwardForce / 2; // Assuming 2 fixings per plate
+            const shearYEnd = 40;
+            svg.appendChild(createElem('line', { x1: fixingX, y1: topFixingY, x2: fixingX, y2: topFixingY + shearYEnd, ...redForceArrow }));
+            svg.appendChild(createElem('line', { x1: fixingX, y1: bottomFixingY, x2: fixingX, y2: bottomFixingY + shearYEnd, ...redForceArrow }));
+            const shearTextEl = createElem('text', { x: fixingX + 5, y: bottomFixingY + shearYEnd, 'text-anchor': 'start', ...redForceText });
+            shearTextEl.textContent = `Shear (each): ${shearForce.toFixed(0)} N`;
+            svg.appendChild(shearTextEl);
+            
+            const fixDimX = wallX + plateWidth + 25;
+            svg.appendChild(createElem('line', { x1: fixDimX, y1: topFixingY, x2: fixDimX, y2: bottomFixingY, ...dimLineStyle }));
+            const fixTextEl = createElem('text', { x: fixDimX + 8, y: plateCenterY, class: 'dimension-text', 'dominant-baseline': 'middle', 'text-anchor': 'middle', transform: `rotate(-90, ${fixDimX + 8}, ${plateCenterY})` });
+            fixTextEl.textContent = `${fixingSeparation.toFixed(0)} mm`;
+            svg.appendChild(fixTextEl);
+
+            // *** MODIFICATION START ***
+            const offsetDimY = wallBottom + 15;
+            // *** MODIFICATION END ***
+            svg.appendChild(createElem('line', { x1: wallX, y1: offsetDimY, x2: coilCenterX, y2: offsetDimY, ...dimLineStyle }));
+            const offsetTextEl = createElem('text', { x: wallX + (coilCenterX - wallX)/2, y: offsetDimY + 12, class: 'dimension-text' });
+            offsetTextEl.textContent = `Offset: ${(offsetM * 1000).toFixed(0)} mm`;
+            svg.appendChild(offsetTextEl);
+
+            container.appendChild(svg);
+        }
+
+        function drawEndplateGraphic(endplate, coilDiameter) {
+            const container = dom['endplate-graphic-container'];
+            container.innerHTML = '';
+            if (!endplate || !coilDiameter || coilDiameter <= 0) return;
+
+            const endplateSize = parseFloat(endplate.Size);
+            if (isNaN(endplateSize) || endplateSize <= 0) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 550;
+            const svgHeight = 250;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'arrow-endplate');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '1');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            const padding = { top: 20, right: 120, bottom: 20, left: 20 };
+            const graphHeight = svgHeight - padding.top - padding.bottom;
+            
+            // *** MODIFICATION START ***
+            const scale = graphHeight / endplateSize; // Increased scale
+            const scaledBoxSize = endplateSize * scale;
+            const scaledCoilRadius = (coilDiameter / 2) * scale;
+
+            const boxX = padding.left;
+            const boxY = padding.top + (graphHeight - scaledBoxSize) / 2; // Re-center vertically
+            // *** MODIFICATION END ***
+            const centerX = boxX + scaledBoxSize / 2;
+            const centerY = boxY + scaledBoxSize / 2;
+
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
+            const boxRect = createElem('rect', {
+                x: boxX, y: boxY, width: scaledBoxSize, height: scaledBoxSize,
+                fill: '#f8f9fa', stroke: '#ced4da', 'stroke-width': '1'
+            });
+            svg.appendChild(boxRect);
+
+            const coilCircle = createElem('circle', {
+                cx: centerX, cy: centerY, r: scaledCoilRadius,
+                fill: 'none', stroke: '#007bff', 'stroke-width': '2'
+            });
+            svg.appendChild(coilCircle);
+
+            const dimLineX = boxX + scaledBoxSize + 25;
+            svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: dimLineX, y1: boxY, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
+            const boxSizeTextX = dimLineX + 8;
+            const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
+            boxSizeText.textContent = `${endplateSize.toFixed(0)} mm`;
+            svg.appendChild(boxSizeText);
+            
+            const coilDimY = boxY + scaledBoxSize + 20;
+            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: coilDimY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
+            const coilDimText = createElem('text', { x: centerX, y: coilDimY + 12, class: 'dimension-text' });
+            coilDimText.textContent = `Ø ${coilDiameter.toFixed(1)} mm`;
+            svg.appendChild(coilDimText);
+
+            const clearance = (endplateSize - coilDiameter) / 2;
+            if (clearance > 1) {
+                const clearanceDimX = dimLineX + 40;
+                const topY = boxY;
+                const coilTopY = centerY - scaledCoilRadius;
+                svg.appendChild(createElem('line', { x1: centerX, y1: topY, x2: clearanceDimX, y2: topY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+                svg.appendChild(createElem('line', { x1: centerX, y1: coilTopY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+                svg.appendChild(createElem('line', { x1: clearanceDimX, y1: topY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
+                const clearanceTextX = clearanceDimX + 8;
+                const clearanceText = createElem('text', { x: clearanceTextX, y: topY + (coilTopY - topY) / 2, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${clearanceTextX}, ${topY + (coilTopY - topY) / 2})` });
+                clearanceText.textContent = `${clearance.toFixed(1)} mm`;
+                svg.appendChild(clearanceText);
+            }
+            
+            container.appendChild(svg);
+        }
+
+        // *** MODIFIED START ***
+        function drawAxleCrossSection(axle, collarSize = 0) {
+            const container = dom['axle-cross-section-container'];
+            container.innerHTML = '';
+            if (!axle) return;
+
+            const outerDia = parseFloat(axle['Diameter']); // This is flat-to-flat for octagonal
+            const wallThick = parseFloat(axle['Wall Thickness']);
+            const shape = (axle['Shape'] || 'circular').toLowerCase();
+
+            if (isNaN(outerDia) || isNaN(wallThick) || outerDia <= 0 || wallThick <= 0) return;
+            
+            const innerDia = outerDia - (2 * wallThick);
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 550;
+            const svgHeight = 250;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const padding = { top: 20, right: 100, bottom: 20, left: 100 };
+            // *** MODIFICATION START ***
+            const graphSize = Math.min(svgWidth - padding.left - padding.right, svgHeight - padding.top - padding.bottom) * 0.75; // Increased scale
+            // *** MODIFICATION END ***
+            
+            const displayDiameter = collarSize > outerDia ? collarSize : outerDia;
+            const scale = graphSize / displayDiameter;
+            const cx = svgWidth / 2;
+            const cy = svgHeight / 2;
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'arrow');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '1');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            if (shape === 'octagonal') {
+                const createOctagon = (flatToFlat, style) => {
+                    const circumRadius = (flatToFlat / 2) / Math.cos(Math.PI / 8);
+                    const points = [];
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI / 8) + i * (Math.PI / 4);
+                        const x = cx + (circumRadius * scale) * Math.cos(angle);
+                        const y = cy - (circumRadius * scale) * Math.sin(angle); // SVG y is inverted
+                        points.push(`${x},${y}`);
+                    }
+                    const polygon = document.createElementNS(svgNS, 'polygon');
+                    polygon.setAttribute('points', points.join(' '));
+                    for (const key in style) polygon.setAttribute(key, style[key]);
+                    return polygon;
+                };
+                const polyStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
+                svg.appendChild(createOctagon(outerDia, polyStyle));
+                svg.appendChild(createOctagon(innerDia, polyStyle));
+
+            } else { // Circular
+                const createCircle = (diameter, style) => {
+                    const circle = document.createElementNS(svgNS, 'circle');
+                    circle.setAttribute('cx', cx);
+                    circle.setAttribute('cy', cy);
+                    circle.setAttribute('r', (diameter / 2) * scale);
+                    for (const key in style) circle.setAttribute(key, style[key]);
+                    return circle;
+                };
+                const circleStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
+                svg.appendChild(createCircle(outerDia, circleStyle));
+                svg.appendChild(createCircle(innerDia, circleStyle));
+            }
+            
+            if (collarSize > outerDia) {
+                const collarRadius = (collarSize / 2) * scale;
+                const collarCircle = document.createElementNS(svgNS, 'circle');
+                collarCircle.setAttribute('cx', cx);
+                collarCircle.setAttribute('cy', cy);
+                collarCircle.setAttribute('r', collarRadius);
+                collarCircle.setAttribute('stroke', 'black');
+                collarCircle.setAttribute('stroke-width', '3');
+                collarCircle.setAttribute('fill', 'none');
+                svg.appendChild(collarCircle);
+            }
+
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
+            const outerRadiusScaled = (outerDia / 2) * scale;
+            const innerRadiusScaled = (innerDia / 2) * scale;
+
+            const od_dim_x = cx + outerRadiusScaled + 40;
+            svg.appendChild(createElem('line', { x1: cx, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy - outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: cx, y1: cy + outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: od_dim_x, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
+            const odTextX = od_dim_x + 12;
+            const odText = createElem('text', { x: odTextX, y: cy, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${odTextX}, ${cy})` });
+            odText.textContent = `${outerDia.toFixed(1)}`;
+            svg.appendChild(odText);
+
+            const id_dim_x = cx + innerRadiusScaled + 15;
+            svg.appendChild(createElem('line', { x1: cx, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy - innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: cx, y1: cy + innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: id_dim_x, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
+            const idTextX = id_dim_x + 12;
+            const idText = createElem('text', { x: idTextX, y: cy, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${idTextX}, ${cy})` });
+            idText.textContent = `${innerDia.toFixed(1)}`;
+            svg.appendChild(idText);
+
+            const angle = 135 * Math.PI / 180;
+            const arrowTipX = cx + outerRadiusScaled * Math.cos(angle);
+            const arrowTipY = cy - outerRadiusScaled * Math.sin(angle);
+            const leaderElbowX = cx - outerRadiusScaled - 20;
+            const leaderElbowY = cy - outerRadiusScaled - 20;
+
+            svg.appendChild(createElem('line', {
+                x1: leaderElbowX, y1: leaderElbowY,
+                x2: arrowTipX, y2: arrowTipY,
+                class: 'dimension-line',
+                'marker-end': 'url(#arrow)'
+            }));
+
+            const textLineStartX = leaderElbowX - 30;
+            svg.appendChild(createElem('line', {
+                x1: leaderElbowX, y1: leaderElbowY,
+                x2: textLineStartX, y2: leaderElbowY,
+                class: 'dimension-line'
+            }));
+
+            const wtText = createElem('text', {
+                x: textLineStartX + (leaderElbowX - textLineStartX) / 2,
+                y: leaderElbowY - 5,
+                class: 'dimension-text'
+            });
+            wtText.textContent = `${wallThick.toFixed(1)}`;
+            svg.appendChild(wtText);
+
+            container.appendChild(svg);
+        }
+        // *** MODIFIED END ***
+
+        // *** MODIFIED START: Pass selectedEndplate parameter ***
+        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null) {
+        // *** MODIFIED END ***
             const container = dom['shutter-graphic-container'];
             container.innerHTML = '';
             
@@ -2045,22 +2608,21 @@
                 showHeightDim: true,
                 showCurtainWidthDim: true,
                 showAxleCenterline: true,
-                visionOptions: visionData,
-                // *** MODIFIED START ***
-                endLockOptions: endLockInfo
-                // *** MODIFIED END ***
+                visionOptions: visionData
             };
             
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, options);
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options);
             if(graphic) {
                 container.appendChild(graphic);
             }
         }
         
-        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, wicket, wicketLathHeight) {
+        // *** MODIFIED START: Pass selectedEndplate parameter ***
+        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight) {
+        // *** MODIFIED END ***
             const container = dom['wicket-graphic-container'];
             container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, { 
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { 
                 wicket: wicket, 
                 wicketLathHeight: wicketLathHeight 
             });
@@ -2069,35 +2631,27 @@
             }
         }
 
-        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, options = {}) {
+        // *** MODIFIED START: Complete rewrite of the graphic drawing function ***
+        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}) {
             const svgNS = "http://www.w3.org/2000/svg";
 
-            if (!realWidth || !numLaths || !lath || !bottomLath || !axle) {
+            if (!realWidth || !lath || !bottomLath || !axle) {
                 return null;
             }
 
             const { 
-                showMainDimensions = false, 
-                showHeightDim = false, 
-                showCurtainWidthDim = false,
-                showAxleCenterline = false,
                 wicket = null, 
                 wicketLathHeight = 0,
-                visionOptions = null,
-                // *** MODIFIED START ***
-                endLockOptions = null
-                // *** MODIFIED END ***
+                visionOptions = null
             } = options;
 
-            const svg = document.createElementNS(svgNS, "svg");
-            let svgWidth = 550; 
-            let svgHeight = 250;
-            
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+            const selectedEndlockIndex = dom.endlockType.value;
+            const endlocksSelected = selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex];
 
-            const padding = { top: 30, right: 60, bottom: 40, left: 60 };
-            const graphWidth = svgWidth - padding.left - padding.right;
-            const graphHeight = svgHeight - padding.top - padding.bottom;
+            const svg = document.createElementNS(svgNS, "svg");
+            
+            const padding = { top: 30, right: 120, bottom: 40, left: 120 };
+            const svgWidth = 600; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height'] || mainLathHeight);
@@ -2107,24 +2661,149 @@
             if (visionOptions) {
                 totalRealCompressedHeight = parseFloat(dom['curtain-height-compressed'].textContent);
             } else {
-                totalRealCompressedHeight = (numLaths * mainLathHeight) + bottomLathHeight + axleDiameter;
+                totalRealCompressedHeight = (numLaths * mainLathHeight) + bottomLathHeight;
             }
+            totalRealCompressedHeight += axleDiameter; // Add axle diameter for total height in graphic
+
             const totalRealAxleWidth = realWidth + (additionalLength || 0);
 
             if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
 
-            const scale = Math.min(graphWidth / totalRealAxleWidth, graphHeight / totalRealCompressedHeight);
+            // Determine scale based on width, then calculate required height
+            const graphWidth = svgWidth - padding.left - padding.right;
+            const scale = graphWidth / totalRealAxleWidth;
+            const graphHeight = totalRealCompressedHeight * scale;
+            const svgHeight = graphHeight + padding.top + padding.bottom;
+            
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
+            // --- DEFS for markers ---
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'dim-arrow');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '5');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            // --- Drawing Helpers ---
+            const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal') => {
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow)');
+                line.setAttribute('marker-end', 'url(#dim-arrow)');
+                svg.appendChild(line);
+
+                const text = document.createElementNS(svgNS, 'text');
+                text.textContent = label;
+                text.setAttribute('class', 'dimension-text');
+
+                if (orientation === 'horizontal') {
+                    text.setAttribute('x', x1 + (x2 - x1) / 2);
+                    text.setAttribute('y', y1 - 4); // Adjusted for smaller font
+                } else { // vertical
+                    const textX = x1 + 4; // Adjusted for smaller font
+                    const textY = y1 + (y2 - y1) / 2;
+                    text.setAttribute('x', textX);
+                    text.setAttribute('y', textY);
+                    text.setAttribute('transform', `rotate(-90, ${textX}, ${textY})`);
+                }
+                svg.appendChild(text);
+            };
+
+            const drawAnnotation = (startY, endY, label) => {
+                const lineX = padding.left - 45; 
+                const textX = lineX - 6; 
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
+                line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow)');
+                line.setAttribute('marker-end', 'url(#dim-arrow)');
+                svg.appendChild(line);
+
+                const text = document.createElementNS(svgNS, 'text');
+                text.setAttribute('x', textX);
+                text.setAttribute('class', 'dimension-text');
+                text.setAttribute('text-anchor', 'end');
+                
+                // --- Text Wrapping Logic ---
+                const charLimit = 14;
+                const words = label.split(' ');
+                let currentLine = '';
+
+                words.forEach(word => {
+                    if ((currentLine + ' ' + word).length > charLimit && currentLine.length > 0) {
+                        const tspan = document.createElementNS(svgNS, 'tspan');
+                        tspan.setAttribute('x', textX);
+                        tspan.setAttribute('dy', '1.2em'); // Move to the next line
+                        tspan.textContent = word;
+                        text.appendChild(tspan);
+                        currentLine = word;
+                    } else {
+                        if (currentLine.length > 0) {
+                            currentLine += ' ';
+                        }
+                        currentLine += word;
+                        if (text.childElementCount === 0) {
+                             text.textContent = currentLine; // Set the first line directly
+                        } else {
+                            text.lastChild.textContent = currentLine;
+                        }
+                    }
+                });
+
+                // Vertically center the text block
+                const numLines = 1 + text.querySelectorAll('tspan').length;
+                const middleY = startY + (endY - startY) / 2;
+                const lineHeight = 6; // approx 1.2em for 5px font
+                const startYForBlock = middleY - ((numLines - 1) * lineHeight / 2);
+                text.setAttribute('y', startYForBlock);
+
+                svg.appendChild(text);
+            };
+
+            // --- Start Drawing ---
             const scaledTotalAxleWidth = totalRealAxleWidth * scale;
             const scaledShutterWidth = realWidth * scale;
-            
-            const startX = padding.left + (graphWidth - scaledTotalAxleWidth) / 2;
+            const startX = padding.left;
             let currentY = padding.top;
             
             const axleX = startX;
             const axleY = currentY;
             const scaledAxleHeight = axleDiameter * scale;
-            
+            const axleCenterlineY = axleY + scaledAxleHeight / 2;
+            let endplateTopY = 0, endplateBottomY = 0;
+
+            // Draw Endplate Box (behind axle)
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    const scaledEndplateHeight = endplateSize * scale;
+                    endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                    endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
+
+                    const endplateBox = document.createElementNS(svgNS, 'rect');
+                    endplateBox.setAttribute('x', axleX);
+                    endplateBox.setAttribute('y', endplateTopY);
+                    endplateBox.setAttribute('width', scaledTotalAxleWidth);
+                    endplateBox.setAttribute('height', scaledEndplateHeight);
+                    endplateBox.setAttribute('class', 'endplate-box-graphic');
+                    svg.appendChild(endplateBox);
+                }
+            }
+
+            // Draw Axle
             const axleRect = document.createElementNS(svgNS, 'rect');
             axleRect.setAttribute('x', axleX);
             axleRect.setAttribute('y', axleY);
@@ -2133,363 +2812,142 @@
             axleRect.setAttribute('class', 'shutter-axle-graphic');
             svg.appendChild(axleRect);
             
-            const axleCenterlineY = axleY + scaledAxleHeight / 2;
-            if (showAxleCenterline) {
-                const centerline = document.createElementNS(svgNS, 'line');
-                centerline.setAttribute('x1', axleX);
-                centerline.setAttribute('y1', axleCenterlineY);
-                centerline.setAttribute('x2', axleX + scaledTotalAxleWidth);
-                centerline.setAttribute('y2', axleCenterlineY);
-                centerline.setAttribute('class', 'axle-centerline-graphic');
-                svg.appendChild(centerline);
-            }
-            
+            const centerline = document.createElementNS(svgNS, 'line');
+            centerline.setAttribute('x1', axleX); centerline.setAttribute('y1', axleCenterlineY);
+            centerline.setAttribute('x2', axleX + scaledTotalAxleWidth); centerline.setAttribute('y2', axleCenterlineY);
+            centerline.setAttribute('class', 'axle-centerline-graphic');
+            svg.appendChild(centerline);
+
             currentY += scaledAxleHeight;
-
+            const curtainStartY = currentY;
             const lathStartX = axleX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
-            
-            let visionStartY = 0;
-            let visionEndY = 0;
+            let lathCounter = 0;
+            const endlockSize = Math.min(4, scaledShutterWidth * 0.05);
+            const drawEndlocks = (lathY, lathH) => {
+                const endlockY = lathY + (lathH / 2) - (endlockSize / 2);
+                const leftEndlock = document.createElementNS(svgNS, 'rect');
+                leftEndlock.setAttribute('x', lathStartX); leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockSize); leftEndlock.setAttribute('height', endlockSize);
+                leftEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(leftEndlock);
+                const rightEndlock = document.createElementNS(svgNS, 'rect');
+                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSize); rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockSize); rightEndlock.setAttribute('height', endlockSize);
+                rightEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(rightEndlock);
+            };
 
-            // *** MODIFIED START: Store lath positions for end lock drawing ***
-            const lathYPositions = [];
-            // *** MODIFIED END ***
-
+            // Draw Laths and Annotations
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions;
                 const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
                 const scaledMainLathHeight = mainLathHeight * scale;
                 const scaledVisionLathHeight = visionLathCompHeight * scale;
-
+                
+                let sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsAbove; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight }); // Store position
+                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                     currentY += scaledMainLathHeight;
+                    lathCounter++;
                 }
-                
-                visionStartY = currentY;
+                if (vo.numLathsAbove > 0) drawAnnotation(sectionStartY, currentY, `${lath['Name']} (x${vo.numLathsAbove})`);
+
+                sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsVision; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledVisionLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledVisionLathHeight }); // Store position
+                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
                     currentY += scaledVisionLathHeight;
+                    lathCounter++;
                 }
-                visionEndY = currentY;
+                if (vo.numLathsVision > 0) drawAnnotation(sectionStartY, currentY, `${vo.visionLath['Name']} (x${vo.numLathsVision})`);
 
+                sectionStartY = currentY;
                 for (let i = 0; i < vo.numLathsBelow; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledMainLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledMainLathHeight }); // Store position
+                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                     currentY += scaledMainLathHeight;
+                    lathCounter++;
                 }
-
-            } else {
+                 if (vo.numLathsBelow > 0) drawAnnotation(sectionStartY, currentY, `${lath['Name']} (x${vo.numLathsBelow})`);
+            } else if (numLaths > 0) {
                  const scaledLathHeight = mainLathHeight * scale;
                  for (let i = 0; i < numLaths; i++) {
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX);
-                    lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledLathHeight);
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    lathYPositions.push({ y: currentY, height: scaledLathHeight }); // Store position
+                    if (endlocksSelected && (i + 1) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
                     currentY += scaledLathHeight;
                 }
+                drawAnnotation(curtainStartY, currentY, `${lath['Name']} (x${numLaths})`);
             }
 
+            // Draw Bottom Lath
             const scaledBottomLathHeight = bottomLathHeight * scale;
             const bottomLathRect = document.createElementNS(svgNS, 'rect');
-            bottomLathRect.setAttribute('x', lathStartX);
-            bottomLathRect.setAttribute('y', currentY);
-            bottomLathRect.setAttribute('width', scaledShutterWidth);
-            bottomLathRect.setAttribute('height', scaledBottomLathHeight);
+            bottomLathRect.setAttribute('x', lathStartX); bottomLathRect.setAttribute('y', currentY);
+            bottomLathRect.setAttribute('width', scaledShutterWidth); bottomLathRect.setAttribute('height', scaledBottomLathHeight);
             bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic');
             svg.appendChild(bottomLathRect);
             const bottomY = currentY + scaledBottomLathHeight;
 
-            // *** MODIFIED START: Draw End Locks ***
-            if (endLockOptions && lathYPositions.length > 0) {
-                const endLockSize = Math.max(2, Math.min(scaledShutterWidth * 0.05, lathYPositions[0].height * 0.8)); // Dynamic size
-                for (let i = lathYPositions.length - 2; i >= 0; i -= 2) {
-                    const lathPos = lathYPositions[i];
-                    
-                    const leftLock = document.createElementNS(svgNS, 'rect');
-                    leftLock.setAttribute('x', lathStartX);
-                    leftLock.setAttribute('y', lathPos.y + (lathPos.height - endLockSize) / 2);
-                    leftLock.setAttribute('width', endLockSize);
-                    leftLock.setAttribute('height', endLockSize);
-                    leftLock.setAttribute('fill', 'black');
-                    svg.appendChild(leftLock);
-
-                    const rightLock = document.createElementNS(svgNS, 'rect');
-                    rightLock.setAttribute('x', lathStartX + scaledShutterWidth - endLockSize);
-                    rightLock.setAttribute('y', lathPos.y + (lathPos.height - endLockSize) / 2);
-                    rightLock.setAttribute('width', endLockSize);
-                    rightLock.setAttribute('height', endLockSize);
-                    rightLock.setAttribute('fill', 'black');
-                    svg.appendChild(rightLock);
-                }
-            }
-            // *** MODIFIED END ***
-
+            // Draw Wicket Door
             if (wicket) {
                 const wicketRealHeight = parseFloat(wicket.Height) || 0;
                 const wicketRealWidth = parseFloat(wicket.Width) || 0;
                 const scaledWicketHeight = wicketRealHeight * scale;
                 const scaledWicketWidth = wicketRealWidth * scale;
-                
                 const wicketRect = document.createElementNS(svgNS, 'rect');
-                wicketRect.setAttribute('x', lathStartX);
-                wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
-                wicketRect.setAttribute('width', scaledWicketWidth);
-                wicketRect.setAttribute('height', scaledWicketHeight);
+                wicketRect.setAttribute('x', lathStartX); wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
+                wicketRect.setAttribute('width', scaledWicketWidth); wicketRect.setAttribute('height', scaledWicketHeight);
                 wicketRect.setAttribute('class', 'wicket-door-graphic');
                 svg.appendChild(wicketRect);
             }
+
+            // --- Draw Dimensions ---
+            const totalWidthDimY = axleY - 15;
+            drawDimensionLine(axleX, totalWidthDimY, axleX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
+
+            const widthDimLineY = bottomY + 15;
+            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
             
-            const textOverlayX = lathStartX + scaledShutterWidth / 2;
-            
-            function createOverlayText(content, x, y, ns) {
-                const textElem = document.createElementNS(ns, 'text');
-                textElem.setAttribute('x', x);
-                textElem.setAttribute('y', y);
-                textElem.setAttribute('class', 'shutter-overlay-text');
-                textElem.setAttribute('dominant-baseline', 'middle');
-                textElem.textContent = content;
-                return textElem;
+            // *** MODIFICATION START: Re-ordered and added Vertical Dimensions ***
+            // --- Right Side Vertical Dimension (Axle to Floor) ---
+            const rightDimX = axleX + scaledTotalAxleWidth + 25;
+            drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical');
+
+            // --- Left Side Vertical Dimensions ---
+            const leftDim1X = padding.left - 15;
+            const leftDim2X = padding.left - 30; // A second column for dimensions
+
+            // Draw Endplate Size Dimension
+            if (selectedEndplate && endplateTopY > 0) {
+                 drawDimensionLine(leftDim1X, endplateTopY, leftDim1X, endplateBottomY, `${selectedEndplate.Size} mm`, 'vertical');
             }
 
-            if (visionOptions && visionOptions.visionLath) {
-                const vo = visionOptions;
-                const mainLathName = lath['Name'];
-                const visionLathName = vo.visionLath['Name'];
-                const scaledMainLathHeight = mainLathHeight * scale;
-                const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
-                const scaledVisionLathHeight = visionLathCompHeight * scale;
-
-                const topSectionStartY = axleY + scaledAxleHeight;
-                const topSectionHeight = vo.numLathsAbove * scaledMainLathHeight;
-                if (vo.numLathsAbove > 0) {
-                    const topTextY = topSectionStartY + topSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${mainLathName} (x${vo.numLathsAbove})`, textOverlayX, topTextY, svgNS));
-                }
-
-                const visionSectionStartY = topSectionStartY + topSectionHeight;
-                const visionSectionHeight = vo.numLathsVision * scaledVisionLathHeight;
-                if (vo.numLathsVision > 0) {
-                    const visionTextY = visionSectionStartY + visionSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${visionLathName} (x${vo.numLathsVision})`, textOverlayX, visionTextY, svgNS));
-                }
-                
-                const bottomSectionStartY = visionSectionStartY + visionSectionHeight;
-                const bottomSectionHeight = vo.numLathsBelow * scaledMainLathHeight;
-                if (vo.numLathsBelow > 0) {
-                    const bottomTextY = bottomSectionStartY + bottomSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${mainLathName} (x${vo.numLathsBelow})`, textOverlayX, bottomTextY, svgNS));
-                }
-            } else {
-                const mainLathName = lath['Name'];
-                if (numLaths > 0) {
-                    const lathSectionStartY = axleY + scaledAxleHeight;
-                    const lathSectionHeight = numLaths * (mainLathHeight * scale);
-                    const textY = lathSectionStartY + lathSectionHeight / 2;
-                    svg.appendChild(createOverlayText(`${mainLathName} (x${numLaths})`, textOverlayX, textY, svgNS));
-                }
+            // Draw Bottom Lath Height Dimension (in the second column)
+            // 'currentY' is the Y pos at the top of the bottom lath
+            if (bottomLathHeight > 0) {
+                drawDimensionLine(leftDim2X, currentY, leftDim2X, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical');
             }
+            // *** MODIFICATION END ***
 
-            if (showMainDimensions) {
-                const totalWidthDimY = axleY - 10;
-                const mainTotalWidthLine = document.createElementNS(svgNS, 'line');
-                mainTotalWidthLine.setAttribute('x1', axleX); mainTotalWidthLine.setAttribute('y1', totalWidthDimY);
-                mainTotalWidthLine.setAttribute('x2', axleX + scaledTotalAxleWidth); mainTotalWidthLine.setAttribute('y2', totalWidthDimY);
-                mainTotalWidthLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(mainTotalWidthLine);
-
-                const leftTotalTick = document.createElementNS(svgNS, 'line');
-                leftTotalTick.setAttribute('x1', axleX); leftTotalTick.setAttribute('y1', totalWidthDimY - 4);
-                leftTotalTick.setAttribute('x2', axleX); leftTotalTick.setAttribute('y2', totalWidthDimY + 4);
-                leftTotalTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(leftTotalTick);
-
-                const rightTotalTick = document.createElementNS(svgNS, 'line');
-                rightTotalTick.setAttribute('x1', axleX + scaledTotalAxleWidth); rightTotalTick.setAttribute('y1', totalWidthDimY - 4);
-                rightTotalTick.setAttribute('x2', axleX + scaledTotalAxleWidth); rightTotalTick.setAttribute('y2', totalWidthDimY + 4);
-                rightTotalTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(rightTotalTick);
-                
-                const totalWidthText = document.createElementNS(svgNS, 'text');
-                totalWidthText.setAttribute('x', axleX + scaledTotalAxleWidth / 2);
-                totalWidthText.setAttribute('y', totalWidthDimY - 8);
-                totalWidthText.setAttribute('class', 'dimension-text');
-                totalWidthText.textContent = `${totalRealAxleWidth.toFixed(0)} mm`;
-                svg.appendChild(totalWidthText);
-            }
-
-            if (showHeightDim) {
-                const heightDimLineX = axleX + scaledTotalAxleWidth + 15;
-                const heightDimLineTopY = axleCenterlineY;
-                const heightDimLineBottomY = bottomY;
-
-                const mainHeightDimLine = document.createElementNS(svgNS, 'line');
-                mainHeightDimLine.setAttribute('x1', heightDimLineX); mainHeightDimLine.setAttribute('y1', heightDimLineTopY);
-                mainHeightDimLine.setAttribute('x2', heightDimLineX); mainHeightDimLine.setAttribute('y2', heightDimLineBottomY);
-                mainHeightDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(mainHeightDimLine);
-
-                const topTickH = document.createElementNS(svgNS, 'line');
-                topTickH.setAttribute('x1', heightDimLineX - 4); topTickH.setAttribute('y1', heightDimLineTopY);
-                topTickH.setAttribute('x2', heightDimLineX + 4); topTickH.setAttribute('y2', heightDimLineTopY);
-                topTickH.setAttribute('class', 'dimension-line');
-                svg.appendChild(topTickH);
-                
-                const bottomTickH = document.createElementNS(svgNS, 'line');
-                bottomTickH.setAttribute('x1', heightDimLineX - 4); bottomTickH.setAttribute('y1', heightDimLineBottomY);
-                bottomTickH.setAttribute('x2', heightDimLineX + 4); bottomTickH.setAttribute('y2', heightDimLineBottomY);
-                bottomTickH.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomTickH);
-
-                const heightDimText = document.createElementNS(svgNS, 'text');
-                const heightTextX = heightDimLineX + 10;
-                const heightTextY = heightDimLineTopY + (heightDimLineBottomY - heightDimLineTopY) / 2;
-                heightDimText.setAttribute('transform', `translate(${heightTextX}, ${heightTextY}) rotate(-90)`);
-                heightDimText.setAttribute('class', 'dimension-text');
-                heightDimText.textContent = `${parseFloat(dom.height.value).toFixed(0)} mm`;
-                svg.appendChild(heightDimText);
-            }
-
-            if (showCurtainWidthDim) {
-                const widthDimLineY = bottomY + 15;
-                const widthDimStartX = lathStartX;
-                const widthDimEndX = lathStartX + scaledShutterWidth;
-
-                const mainWidthDimLine = document.createElementNS(svgNS, 'line');
-                mainWidthDimLine.setAttribute('x1', widthDimStartX); mainWidthDimLine.setAttribute('y1', widthDimLineY);
-                mainWidthDimLine.setAttribute('x2', widthDimEndX); mainWidthDimLine.setAttribute('y2', widthDimLineY);
-                mainWidthDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(mainWidthDimLine);
-
-                const leftWidthTick = document.createElementNS(svgNS, 'line');
-                leftWidthTick.setAttribute('x1', widthDimStartX); leftWidthTick.setAttribute('y1', widthDimLineY - 4);
-                leftWidthTick.setAttribute('x2', widthDimStartX); leftWidthTick.setAttribute('y2', widthDimLineY + 4);
-                leftWidthTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(leftWidthTick);
-                
-                const rightWidthTick = document.createElementNS(svgNS, 'line');
-                rightWidthTick.setAttribute('x1', widthDimEndX); rightWidthTick.setAttribute('y1', widthDimLineY - 4);
-                rightWidthTick.setAttribute('x2', widthDimEndX); rightWidthTick.setAttribute('y2', widthDimLineY + 4);
-                rightWidthTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(rightWidthTick);
-
-                const widthDimText = document.createElementNS(svgNS, 'text');
-                widthDimText.setAttribute('x', widthDimStartX + (scaledShutterWidth / 2));
-                widthDimText.setAttribute('y', widthDimLineY + 12);
-                widthDimText.setAttribute('class', 'dimension-text');
-                widthDimText.textContent = `${realWidth.toFixed(0)} mm`;
-                svg.appendChild(widthDimText);
-            }
-            
-            if (wicketLathHeight > 0 && wicket) {
-                const dimLineX = lathStartX - 15;
-                const scaledWicketLathHeight = wicketLathHeight * scale;
-                const wicketDimY = bottomY - scaledWicketLathHeight;
-
-                const wicketDimLine = document.createElementNS(svgNS, 'line');
-                wicketDimLine.setAttribute('x1', dimLineX); wicketDimLine.setAttribute('y1', wicketDimY);
-                wicketDimLine.setAttribute('x2', dimLineX); wicketDimLine.setAttribute('y2', bottomY);
-                wicketDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(wicketDimLine);
-
-                const topTick = document.createElementNS(svgNS, 'line');
-                topTick.setAttribute('x1', dimLineX - 4); topTick.setAttribute('y1', wicketDimY);
-                topTick.setAttribute('x2', dimLineX + 4); topTick.setAttribute('y2', wicketDimY);
-                topTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(topTick);
-
-                const bottomTick = document.createElementNS(svgNS, 'line');
-                bottomTick.setAttribute('x1', dimLineX - 4); bottomTick.setAttribute('y1', bottomY);
-                bottomTick.setAttribute('x2', dimLineX + 4); bottomTick.setAttribute('y2', bottomY);
-                bottomTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomTick);
-                
-                const textElem = document.createElementNS(svgNS, 'text');
-                const textX = dimLineX - 10;
-                const textY = wicketDimY + (scaledWicketLathHeight / 2);
-                textElem.setAttribute('transform', `translate(${textX}, ${textY}) rotate(-90)`);
-                textElem.setAttribute('class', 'dimension-text');
-                textElem.textContent = `${wicketLathHeight.toFixed(0)} mm`;
-                svg.appendChild(textElem);
-            }
-
-            if (visionOptions && visionOptions.visionLath) {
-                const dimLineX = lathStartX - 15;
-                
-                const startDimY = bottomY - (visionOptions.actualVisionStartHeight * scale);
-
-                const panelDimLineTop = startDimY - (visionOptions.actualVisionPanelHeight * scale);
-
-                const panelDimLine = document.createElementNS(svgNS, 'line');
-                panelDimLine.setAttribute('x1', dimLineX); panelDimLine.setAttribute('y1', panelDimLineTop);
-                panelDimLine.setAttribute('x2', dimLineX); panelDimLine.setAttribute('y2', startDimY);
-                panelDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(panelDimLine);
-
-                const topPanelTick = document.createElementNS(svgNS, 'line');
-                topPanelTick.setAttribute('x1', dimLineX - 4); topPanelTick.setAttribute('y1', panelDimLineTop);
-                topPanelTick.setAttribute('x2', dimLineX + 4); topPanelTick.setAttribute('y2', panelDimLineTop);
-                topPanelTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(topPanelTick);
-
-                const bottomPanelTick = document.createElementNS(svgNS, 'line');
-                bottomPanelTick.setAttribute('x1', dimLineX - 4); bottomPanelTick.setAttribute('y1', startDimY);
-                bottomPanelTick.setAttribute('x2', dimLineX + 4); bottomPanelTick.setAttribute('y2', startDimY);
-                bottomPanelTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomPanelTick);
-                
-                const panelDimText = document.createElementNS(svgNS, 'text');
-                const panelTextX = dimLineX - 10;
-                const panelTextY = panelDimLineTop + (startDimY - panelDimLineTop) / 2;
-                panelDimText.setAttribute('transform', `translate(${panelTextX}, ${panelTextY}) rotate(-90)`);
-                panelDimText.setAttribute('class', 'dimension-text');
-                panelDimText.textContent = `${visionOptions.actualVisionPanelHeight.toFixed(0)} mm`;
-                svg.appendChild(panelDimText);
-                
-                const startDimLine = document.createElementNS(svgNS, 'line');
-                startDimLine.setAttribute('x1', dimLineX); startDimLine.setAttribute('y1', startDimY);
-                startDimLine.setAttribute('x2', dimLineX); startDimLine.setAttribute('y2', bottomY);
-                startDimLine.setAttribute('class', 'dimension-line');
-                svg.appendChild(startDimLine);
-                
-                const bottomStartTick = document.createElementNS(svgNS, 'line');
-                bottomStartTick.setAttribute('x1', dimLineX - 4); bottomStartTick.setAttribute('y1', bottomY);
-                bottomStartTick.setAttribute('x2', dimLineX + 4); bottomStartTick.setAttribute('y2', bottomY);
-                bottomStartTick.setAttribute('class', 'dimension-line');
-                svg.appendChild(bottomStartTick);
-                
-                const startDimText = document.createElementNS(svgNS, 'text');
-                const startTextX = dimLineX - 10;
-                const startTextY = startDimY + (bottomY - startDimY) / 2;
-                startDimText.setAttribute('transform', `translate(${startTextX}, ${startTextY}) rotate(-90)`);
-                startDimText.setAttribute('class', 'dimension-text');
-                startDimText.textContent = `${visionOptions.actualVisionStartHeight.toFixed(0)} mm`;
-                svg.appendChild(startDimText);
-            }
-            
             return svg;
         }
-        
+        // *** MODIFIED END ***
+
         function switchTab(targetTabId) {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             tabButtons.forEach(b => b.classList.remove('active'));
@@ -2553,71 +3011,79 @@
                         try {
                             const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                             
-                            // *** MODIFIED START: More robustly find and load data from sheets ***
-                            const sheetNames = workbook.SheetNames;
-                            
-                            sheetNames.forEach(sheetName => {
-                                const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                                // Normalize the sheet name by converting to lowercase and removing all spaces
-                                const normalizedSheetName = sheetName.toLowerCase().replace(/\s+/g, '');
+                            const required = {
+                                // *** MODIFIED START ***
+                                'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
+                                'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
+                                'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
+                                'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
+                                'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
+                                'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
+                                'Wicket doors': ['Name', 'Height', 'Width'],
+                                'Endlock': ['Description', 'Weight in grams']
+                                // *** MODIFIED END ***
+                            };
 
-                                if (normalizedSheetName.includes('lath') && !normalizedSheetName.includes('bottom')) {
-                                    lathData = objectData;
-                                    console.log(`Found and loaded Lath data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('bottomlath')) {
-                                    bottomLathData = objectData;
-                                     console.log(`Found and loaded Bottom Lath data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('axle')) {
-                                    axleData = objectData;
-                                     console.log(`Found and loaded Axles data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('motor')) {
-                                    motorData = objectData;
-                                     console.log(`Found and loaded Motors data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('safetyb') || normalizedSheetName.includes('safetybrake')) {
-                                    safetyBrakeData = objectData;
-                                     console.log(`Found and loaded Safety Brake data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('endplate')) {
-                                    endplateData = objectData;
-                                     console.log(`Found and loaded Endplate data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('wicket')) {
-                                    wicketData = objectData;
-                                     console.log(`Found and loaded Wicket Door data from sheet: "${sheetName}"`);
-                                } else if (normalizedSheetName.includes('endlock')) {
-                                    endLockData = objectData;
-                                     console.log(`Found and loaded End Lock data from sheet: "${sheetName}"`);
+                            for (const sheetName in required) {
+                                if (!workbook.Sheets[sheetName]) {
+                                    if (sheetName === 'Wicket doors' || sheetName === 'Endlock') {
+                                        console.warn(`Optional sheet "${sheetName}" not found.`);
+                                        if (sheetName === 'Wicket doors') wicketData = [];
+                                        if (sheetName === 'Endlock') endlockData = [];
+                                        continue;
+                                    }
+                                    const coreRequired = {
+                                        'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
+                                        'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
+                                        'Axles': ['Name', 'Diameter', 'Wall Thickness'],
+                                        'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
+                                        'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
+                                        'Endplate': ['Name', 'Size', 'Material'],
+                                        'Wicket doors': ['Name', 'Height', 'Width'],
+                                        'Endlock': ['Description', 'Weight in grams']
+                                    };
+                                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                                    if (sheetData.length > 0) {
+                                        const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
+                                        for (const requiredCol of coreRequired[sheetName]) {
+                                            if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
+                                                throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
+                                            }
+                                        }
+                                    } else {
+                                      throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
+                                    }
                                 }
-                            });
-                            // *** MODIFIED END ***
-
+                                
+                                const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                                switch (sheetName) {
+                                    case 'Lath': lathData = objectData; break;
+                                    case 'Bottom lath': bottomLathData = objectData; break;
+                                    case 'Axles': axleData = objectData; break;
+                                    case 'Motors': motorData = objectData; break;
+                                    case 'SafetyB': safetyBrakeData = objectData; break;
+                                    case 'Endplate': endplateData = objectData; break;
+                                    case 'Wicket doors': wicketData = objectData; break;
+                                    case 'Endlock': endlockData = objectData; break;
+                                }
+                            }
 
                             lathImageMap.clear(); 
                             safetyBrakeImageMap.clear();
                             const exceljsWorkbook = new ExcelJS.Workbook();
                             await exceljsWorkbook.xlsx.load(fileData);
 
-                             // *** MODIFIED START: Flexible Sheet Finding for Images ***
-                            const lathSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('lath') && !name.toLowerCase().replace(/\s+/g, '').includes('bottom'));
-                            if (lathSheetName) {
-                                const lathSheet = exceljsWorkbook.getWorksheet(lathSheetName);
-                                if (lathSheet) {
-                                    await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
-                                }
+                            const lathSheet = exceljsWorkbook.getWorksheet('Lath');
+                            if (lathSheet) {
+                                await extractImagesFromSheet(exceljsWorkbook, lathSheet, 'name', 'lath image', lathImageMap);
                             }
                             
-                            const safetyBrakeSheetName = sheetNames.find(name => name.toLowerCase().replace(/\s+/g, '').includes('safetyb') || name.toLowerCase().replace(/\s+/g, '').includes('safetybrake'));
-                             if (safetyBrakeSheetName) {
-                                const safetyBrakeSheet = exceljsWorkbook.getWorksheet(safetyBrakeSheetName);
-                                if (safetyBrakeSheet) {
-                                   await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
-                                }
+                            const safetyBrakeSheet = exceljsWorkbook.getWorksheet('SafetyB');
+                            if (safetyBrakeSheet) {
+                                await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
                             }
-                            // *** MODIFIED END ***
                             
                             populateDropdown(dom.lathType, lathData, 'Name');
-                            // *** MODIFIED START ***
-                            populateDropdown(dom.endLockType, endLockData, 'Description', '-- None --');
-                            // *** MODIFIED END ***
-                            
                             // *** MODIFIED START ***
                             // Custom population for vision lath dropdown to filter by vision percentage
                             const visionSelect = dom.visionLathType;
@@ -2635,14 +3101,13 @@
                             });
                             // *** MODIFIED END ***
                             populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
+                            populateDropdown(dom.endlockType, endlockData, 'Description');
                             populateMotorMountingTypes();
                             populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                            // *** MODIFIED START ***
-                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endLockType'].forEach(id => {
+                            ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                                 if(dom[id]) dom[id].disabled = false;
                             });
-                            // *** MODIFIED END ***
 
                             updateSelectedWicketInfo(); 
                             statusDiv.textContent = 'Successfully loaded data from repository.';
@@ -2653,9 +3118,7 @@
                             statusDiv.textContent = `Error processing Excel file: ${error.message}`;
                             statusDiv.style.color = 'red';
                             alert(`Error Reading File: ${error.message}`);
-                            // *** MODIFIED START ***
-                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endLockData = [];
-                            // *** MODIFIED END ***
+                            lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = [];
                         }
                     })();
                 })
