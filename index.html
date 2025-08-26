@@ -124,8 +124,8 @@
         /* *** MODIFICATION START *** */
         #axle-cross-section-container, 
         #endplate-graphic-container {
-            min-width: 450px; /* Prevents the SVG from shrinking too much on smaller screens */
-            max-width: 550px; /* Prevents the SVG from scaling up too large */
+            min-width: 550px; /* Prevents the SVG from shrinking too much on smaller screens */
+            max-width: 600px; /* Prevents the SVG from scaling up too large */
             margin-left: auto;
             margin-right: auto;
         }
@@ -151,7 +151,7 @@
         .axis-line { stroke: #ced4da; stroke-width: 1; }
         .torque-bar { fill: #007bff; transition: all 0.2s ease-out; }
         .torque-bar:hover { fill: #0056b3; }
-        .graph-data-label { font-size: 10px; text-anchor: middle; fill: #495057; }
+        .graph-data-label { font-size: 12px; text-anchor: middle; fill: #495057; }
         
         .support-symbol { fill: #868e96; stroke: #495057; stroke-width: 1; }
         
@@ -195,7 +195,7 @@
         /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
             fill: #343a40;
             text-anchor: middle;
@@ -2414,8 +2414,8 @@
             svg.appendChild(coilCircle);
 
             const dimLineX = boxX + scaledBoxSize + 25;
-            svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-width': '1'' }));
+            svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-width': '1' }));
             svg.appendChild(createElem('line', { x1: dimLineX, y1: boxY, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
             const boxSizeTextX = dimLineX + 8;
             const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
@@ -2423,8 +2423,8 @@
             svg.appendChild(boxSizeText);
             
             const coilDimY = boxY + scaledBoxSize + 20;
-            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-width': '1' }));
+            svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-width': '1' }));
             svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: coilDimY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
             const coilDimText = createElem('text', { x: centerX, y: coilDimY + 12, class: 'dimension-text' });
             coilDimText.textContent = `Ø ${coilDiameter.toFixed(1)} mm`;
