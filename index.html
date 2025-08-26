@@ -663,7 +663,7 @@
         
         // This function is no longer called by a user action, but its logic is used in the auto-loader , this is where the Excel file is loaded from Github location.
         function handleFileSelect(event) {
-            const file = event.target.files;
+            const file = event.target.files[0];
             if (!file) return;
             userSelectedAxleIndex = null; 
             const reader = new FileReader();
@@ -709,7 +709,7 @@
 
                             const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                             if (sheetData.length > 0) {
-                                const headerRow = sheetData.map(h => String(h).toLowerCase().trim());
+                                const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
                                 for (const requiredCol of coreRequired[sheetName]) {
                                     if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
                                         throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}". Please check spelling.`);
@@ -1280,7 +1280,7 @@
                 .map(b => ({ ...b, MaxTorque: parseFloat(b['Max Safety Torque (Nm)']) }))
                 .filter(b => b.MaxTorque >= impactTorqueNm)
                 .sort((a, b) => a.MaxTorque - b.MaxTorque);
-            return suitableBrakes.length > 0 ? suitableBrakes : null;
+            return suitableBrakes.length > 0 ? suitableBrakes[0] : null;
         }
 
         function populateSafetyBrakeDropdown(requiredTorque) {
@@ -1872,16 +1872,14 @@
                  const axleCoilDiameter = getEffectiveCoilDiameter(axle);
                 axleRadius = axleCoilDiameter / 2;
             } else if (axleData.length > 0) {
-                axleRadius = (getEffectiveCoilDiameter(axleData)) / 2;
+                axleRadius = (getEffectiveCoilDiameter(axleData[0])) / 2;
             }
 
             const heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
 
             let numLaths = 0;
             if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
-                // *** MODIFIED START ***
                 numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
-                // *** MODIFIED END ***
             }
             dom['lath-count'].textContent = numLaths;
 
@@ -2005,9 +2003,7 @@
             
             let numLathsAbove = 0;
             if (remainingHeightToCover > 0) {
-                // *** MODIFIED START ***
                 numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2;
-                // *** MODIFIED END ***
             }
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
@@ -2826,18 +2822,29 @@
             const curtainStartY = currentY;
             const lathStartX = axleX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             let lathCounter = 0;
-            const endlockSize = Math.min(4, scaledShutterWidth * 0.05);
+            
+            // *** MODIFIED START ***
             const drawEndlocks = (lathY, lathH) => {
-                const endlockY = lathY + (lathH / 2) - (endlockSize / 2);
+                const endlockSide = lathH * 0.8; // Scaled to 80% of lath height
+                const endlockY = lathY + (lathH - endlockSide) / 2; // Center vertically
+
                 const leftEndlock = document.createElementNS(svgNS, 'rect');
-                leftEndlock.setAttribute('x', lathStartX); leftEndlock.setAttribute('y', endlockY);
-                leftEndlock.setAttribute('width', endlockSize); leftEndlock.setAttribute('height', endlockSize);
-                leftEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(leftEndlock);
+                leftEndlock.setAttribute('x', lathStartX);
+                leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockSide);
+                leftEndlock.setAttribute('height', endlockSide);
+                leftEndlock.setAttribute('class', 'endlock-graphic');
+                svg.appendChild(leftEndlock);
+                
                 const rightEndlock = document.createElementNS(svgNS, 'rect');
-                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSize); rightEndlock.setAttribute('y', endlockY);
-                rightEndlock.setAttribute('width', endlockSize); rightEndlock.setAttribute('height', endlockSize);
-                rightEndlock.setAttribute('class', 'endlock-graphic'); svg.appendChild(rightEndlock);
+                rightEndlock.setAttribute('x', lathStartX + scaledShutterWidth - endlockSide);
+                rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockSide);
+                rightEndlock.setAttribute('height', endlockSide);
+                rightEndlock.setAttribute('class', 'endlock-graphic');
+                svg.appendChild(rightEndlock);
             };
+            // *** MODIFIED END ***
 
             // Draw Laths and Annotations
             if (visionOptions && visionOptions.visionLath) {
@@ -2853,7 +2860,9 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    // *** MODIFIED START ***
+                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    // *** MODIFIED END ***
                     currentY += scaledMainLathHeight;
                     lathCounter++;
                 }
@@ -2866,7 +2875,9 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    // *** MODIFIED START ***
+                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    // *** MODIFIED END ***
                     currentY += scaledVisionLathHeight;
                     lathCounter++;
                 }
@@ -2879,7 +2890,9 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    // *** MODIFIED START ***
+                    if (endlocksSelected && lathCounter % 2 === 0) drawEndlocks(currentY, scaledMainLathHeight);
+                    // *** MODIFIED END ***
                     currentY += scaledMainLathHeight;
                     lathCounter++;
                 }
@@ -2892,7 +2905,9 @@
                     lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && (i + 1) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
+                    // *** MODIFIED START ***
+                    if (endlocksSelected && i % 2 === 0) drawEndlocks(currentY, scaledLathHeight);
+                    // *** MODIFIED END ***
                     currentY += scaledLathHeight;
                 }
                 drawAnnotation(curtainStartY, currentY, `${lath['Name']} (x${numLaths})`);
@@ -3048,7 +3063,7 @@
                                     };
                                     const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                                     if (sheetData.length > 0) {
-                                        const headerRow = sheetData.map(h => String(h).toLowerCase().trim());
+                                        const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
                                         for (const requiredCol of coreRequired[sheetName]) {
                                             if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
                                                 throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
