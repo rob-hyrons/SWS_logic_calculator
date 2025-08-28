@@ -2503,19 +2503,19 @@
         function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null) {
             const container = dom['shutter-graphic-container'];
             container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData });
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData }, 'shutter');
             if(graphic) container.appendChild(graphic);
         }
         
         function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight) {
             const container = dom['wicket-graphic-container'];
             container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket });
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket }, 'wicket');
             if(graphic) container.appendChild(graphic);
         }
 
         // *** MODIFIED START: Complete rewrite of the graphic drawing function for correctness ***
-        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}) {
+        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
 
             if (!realWidth || !lath || !bottomLath || !axle) {
@@ -2553,7 +2553,7 @@
 
             const defs = document.createElementNS(svgNS, 'defs');
             const marker = document.createElementNS(svgNS, 'marker');
-            marker.setAttribute('id', 'dim-arrow');
+            marker.setAttribute('id', `dim-arrow-${idSuffix}`);
             marker.setAttribute('viewBox', '0 0 10 10');
             marker.setAttribute('refX', '5');
             marker.setAttribute('refY', '5');
@@ -2572,8 +2572,8 @@
                 line.setAttribute('x1', x1); line.setAttribute('y1', y1);
                 line.setAttribute('x2', x2); line.setAttribute('y2', y2);
                 line.setAttribute('class', 'dimension-line');
-                line.setAttribute('marker-start', 'url(#dim-arrow)');
-                line.setAttribute('marker-end', 'url(#dim-arrow)');
+                line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`);
+                line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`);
                 svg.appendChild(line);
 
                 const text = document.createElementNS(svgNS, 'text');
@@ -2608,8 +2608,8 @@
                 line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
                 line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
                 line.setAttribute('class', 'dimension-line');
-                line.setAttribute('marker-start', 'url(#dim-arrow)');
-                line.setAttribute('marker-end', 'url(#dim-arrow)');
+                line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`);
+                line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`);
                 svg.appendChild(line);
 
                 const text = document.createElementNS(svgNS, 'text');
@@ -2655,6 +2655,11 @@
             const bottomY = padding.top + graphHeight;
             let currentY = bottomY;
 
+            const wicketRealHeight = wicket ? (parseFloat(wicket.Height) || 0) : 0;
+            const wicketRealWidth = wicket ? (parseFloat(wicket.Width) || 0) : 0;
+            const scaledWicketWidth = wicketRealWidth * scale;
+            const wicketTopY = bottomY - (wicketRealHeight * scale);
+
             // --- DRAW CURTAIN FROM BOTTOM UP ---
             const scaledBottomLathHeight = bottomLathHeight * scale;
             currentY -= scaledBottomLathHeight;
@@ -2667,11 +2672,11 @@
             svg.appendChild(bottomLathRect);
             const bottomLathTopY = currentY;
 
-            const drawEndlocks = (lathY, lathH) => {
+            const drawEndlocks = (lathY, lathH, leftOffset = 0) => {
                 const endlockSide = lathH * 0.8;
                 const endlockY = lathY + (lathH - endlockSide) / 2;
                 const leftEndlock = document.createElementNS(svgNS, 'rect');
-                leftEndlock.setAttribute('x', lathStartX);
+                leftEndlock.setAttribute('x', lathStartX + leftOffset);
                 leftEndlock.setAttribute('y', endlockY);
                 leftEndlock.setAttribute('width', endlockSide);
                 leftEndlock.setAttribute('height', endlockSide);
@@ -2741,10 +2746,15 @@
                     currentY -= scaledLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && (i + 1) % 2 !== 0) drawEndlocks(currentY, scaledLathHeight);
+                    if (endlocksSelected && (i + 1) % 2 !== 0) {
+                        const lathBottomEdgeY = currentY + scaledLathHeight;
+                        const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+                        drawEndlocks(currentY, scaledLathHeight, leftOffset);
+                    }
                 }
                 drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
             }
@@ -2783,10 +2793,7 @@
             svg.appendChild(centerline);
 
             if (wicket) {
-                const wicketRealHeight = parseFloat(wicket.Height) || 0;
-                const wicketRealWidth = parseFloat(wicket.Width) || 0;
                 const scaledWicketHeight = wicketRealHeight * scale;
-                const scaledWicketWidth = wicketRealWidth * scale;
                 const wicketRect = document.createElementNS(svgNS, 'rect');
                 wicketRect.setAttribute('x', lathStartX);
                 wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
