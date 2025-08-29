@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Shutter Motor Calculator</title>
-    <!-- *** MODIFIED START *** -->
     <!-- xlsx.js for data reading (existing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- ExcelJS for image extraction (new) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <!-- *** MODIFIED START: Added Papa Parse for CSV importing *** -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <!-- *** MODIFIED END *** -->
     <style>
         body {
@@ -19,9 +20,7 @@
         .container {
             background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             width: 100%;
-            /* *** MODIFIED START *** -->
             max-width: 1000px; 
-            /* *** MODIFIED END *** */
             display: flex; flex-direction: row;
             align-items: stretch;
         }
@@ -32,7 +31,6 @@
         }
         h1 { color: #1a1a1a; text-align: center; margin-bottom: 1em; }
         .form-group { margin-bottom: 1.5em; }
-        /* *** MODIFIED START *** */
         .form-row {
             display: flex;
             gap: 1.5em; /* Spacing between columns */
@@ -40,7 +38,6 @@
         .form-col {
             flex: 1; /* Each column takes up equal space */
         }
-        /* *** MODIFIED END *** */
         label { display: block; margin-bottom: 0.5em; font-weight: 600; }
         input[type="number"], input[type="file"], select, input[type="checkbox"] {
             width: 100%; padding: 0.8em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
@@ -68,9 +65,7 @@
             border-bottom-left-radius: 8px;
         }
         .tab-button {
-            /* *** MODIFIED START *** */
             height: 120px;
-            /* *** MODIFIED END *** */
             padding: 0.5em;
             border: none;
             cursor: pointer;
@@ -189,9 +184,7 @@
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
         .dimension-text { font-family: sans-serif; font-size: 5px; fill: #343a40; text-anchor: middle; }
-        /* *** MODIFIED START *** */
         .large-dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
-        /* *** MODIFIED END *** */
         .shutter-overlay-text {
             font-family: sans-serif;
             font-size: 10px;
@@ -222,7 +215,7 @@
             background-color: #0056b3;
         }
 
-        /* *** MODIFIED START: Admin Page Styles *** */
+        /* Admin Page Styles */
         .admin-section {
             margin-bottom: 2em;
             padding: 1.5em;
@@ -252,7 +245,7 @@
             gap: 1em;
             margin-bottom: 1.5em;
         }
-        .admin-button-group button {
+        .admin-button-group button, #importCsvButton {
             padding: 0.5em 1em;
             font-size: 0.8em;
             font-weight: 500;
@@ -262,10 +255,11 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .admin-button-group button:hover {
+        .admin-button-group button:hover, #importCsvButton:hover {
             background-color: #5a6268;
         }
-        /* *** MODIFIED END *** */
+        #importCsvButton { background-color: #28a745; }
+        #importCsvButton:hover { background-color: #218838; }
 
 
         @media print {
@@ -616,6 +610,18 @@
                 <!-- Admin Tab -->
                 <div id="admin-content" class="tab-pane">
                     <h2>Admin Controls</h2>
+                    
+                    <!-- *** MODIFIED START: Added CSV Import Section *** -->
+                    <div class="admin-section">
+                        <h3>Import from CSV</h3>
+                        <div class="form-group" style="display: flex; align-items: center; gap: 1em;">
+                            <input type="file" id="csvFileInput" accept=".csv" style="flex-grow: 1;">
+                            <button id="importCsvButton">Import</button>
+                        </div>
+                        <div id="import-status-admin" style="font-style: italic; color: #555;"></div>
+                    </div>
+                    <!-- *** MODIFIED END *** -->
+
                     <div class="admin-section">
                         <h3>Tab Visibility</h3>
                         <div class="admin-button-group">
@@ -670,7 +676,7 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content'
+         'admin-content', 'tab-content', 'importCsvButton'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -704,8 +710,9 @@
         dom.printButton.addEventListener('click', () => {
             window.print();
         });
+        dom.importCsvButton.addEventListener('click', handleCsvImport);
 
-        // *** MODIFIED START: Admin Page Logic ***
+        // Admin Page Logic
         function initializeAdminControls() {
             const tabContainer = document.getElementById('tab-controls-container');
             const inputContainer = document.getElementById('input-controls-container');
@@ -755,7 +762,6 @@
                 });
             });
 
-             // Add event listeners for bulk actions
             const setupBulkActions = (selectAllId, deselectAllId, containerId) => {
                 document.getElementById(selectAllId).addEventListener('click', () => {
                     document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(cb => {
@@ -778,7 +784,6 @@
             setupBulkActions('tabsSelectAll', 'tabsDeselectAll', 'tab-controls-container');
             setupBulkActions('inputsSelectAll', 'inputsDeselectAll', 'input-controls-container');
         }
-        // *** MODIFIED END ***
 
         function handleAxleOverride() {
             if (dom.axleType.value !== "") {
@@ -898,6 +903,114 @@
             }
         }
 
+        // *** MODIFIED START: CSV Import Logic ***
+        function handleCsvImport() {
+            const csvFileInput = document.getElementById('csvFileInput');
+            const statusDiv = document.getElementById('import-status-admin');
+            
+            if (!csvFileInput.files || csvFileInput.files.length === 0) {
+                statusDiv.textContent = 'Please select a CSV file first.';
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            const file = csvFileInput.files[0];
+            statusDiv.textContent = 'Importing...';
+            statusDiv.style.color = '#555';
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.errors.length > 0) {
+                        statusDiv.textContent = `Error parsing CSV: ${results.errors[0].message}`;
+                        statusDiv.style.color = 'red';
+                        return;
+                    }
+                    if (results.data.length === 0) {
+                        statusDiv.textContent = 'CSV file is empty or contains only headers.';
+                        statusDiv.style.color = 'red';
+                        return;
+                    }
+                    
+                    populateFieldsFromCsv(results.data[0]);
+                    statusDiv.textContent = `Successfully imported data for "${results.data[0].Calculation_ID || 'N/A'}".`;
+                    statusDiv.style.color = 'green';
+                },
+                error: function(err) {
+                     statusDiv.textContent = `An error occurred: ${err}`;
+                     statusDiv.style.color = 'red';
+                }
+            });
+        }
+
+        function populateFieldsFromCsv(data) {
+            const getVal = (key) => (data[key] || '').trim();
+
+            const mappings = {
+                'Curtain_Width_mm': { id: 'width', type: 'number' },
+                'Curtain_Height_mm': { id: 'height', type: 'number' },
+                'Additional_Axle_Width_mm': { id: 'additionalLength', type: 'number' },
+                'Collar_Size_mm': { id: 'collarSize', type: 'number' },
+                'Friction_Allowance_Percent': { id: 'friction', type: 'number' },
+                'Vision_Start_Height_mm': { id: 'visionStartHeight', type: 'number' },
+                'Vision_Panel_Height_mm': { id: 'visionPanelHeight', type: 'number' },
+
+                'Is_Powder_Coated': { id: 'powderCoated', type: 'checkbox' },
+                'Has_Vision_Slats': { id: 'addVision', type: 'checkbox' },
+                'Include_Deflection_In_Sizing': { id: 'includeDeflectionInSizing', type: 'checkbox' },
+
+                'Lath_Type_Name': { id: 'lathType', type: 'select' },
+                'Endlock_Type_Name': { id: 'endlockType', type: 'select' },
+                'Bottom_Lath_Name': { id: 'bottomLathType', type: 'select' },
+                'Vision_Lath_Name': { id: 'visionLathType', type: 'select' },
+                'Motor_Mounting_Type': { id: 'motorMountingType', type: 'select' },
+                'Wicket_Door_Name': { id: 'wicketDoorSelector', type: 'select' },
+                
+                'Endplate_Material': { name: 'material', type: 'radio' },
+            };
+
+            for (const key in mappings) {
+                const value = getVal(key);
+                if (value === '') continue;
+
+                const config = mappings[key];
+                const el = document.getElementById(config.id);
+
+                switch (config.type) {
+                    case 'number':
+                        if (el) el.value = value;
+                        break;
+                    case 'checkbox':
+                        if (el) el.checked = (value.toLowerCase() === 'true');
+                        break;
+                    case 'select':
+                        if (el) {
+                            for (let i = 0; i < el.options.length; i++) {
+                                if (el.options[i].text === value) {
+                                    el.value = el.options[i].value;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case 'radio':
+                        const radioEl = document.querySelector(`input[name="${config.name}"][value="${value}"]`);
+                        if (radioEl) radioEl.checked = true;
+                        break;
+                }
+            }
+
+            // Manually trigger change events for checkboxes that control visibility
+            dom.addVision.dispatchEvent(new Event('change'));
+
+            updateAllCalculations();
+            
+            // Switch back to the inputs tab to show the user the result
+            switchTab('inputs-content');
+        }
+        // *** MODIFIED END ***
+
         async function extractImagesFromSheet(workbook, sheet, nameColHeader, imageColHeader, imageMap) {
             let nameCol = -1, imageCol = -1;
             const headerRow = sheet.getRow(1);
@@ -1008,8 +1121,7 @@
             const finalCurtainProps = calculateCurtainProperties(selectedLath, selectedBottomLath, bestAxle);
             const { totalWeight, travelHeight, fullCurtainLength, visionData } = finalCurtainProps;
             visionCalcs = visionData;
-
-            // calculateWindResistance(); // REMOVED
+            
             calculateEndplateRecommendation(); 
 
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
@@ -2750,7 +2862,8 @@
                     currentY -= scaledMainLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     if (endlocksSelected && lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
@@ -2930,14 +3043,13 @@
 
     <script>
         window.addEventListener('load', () => {
-            // *** MODIFIED START: Set default hidden tabs ***
+            // Set default hidden tabs
             ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
                 const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
                 if(tabButton) {
                     tabButton.style.display = 'none';
                 }
             });
-            // *** MODIFIED END ***
 
             initializeAdminControls(); 
 
