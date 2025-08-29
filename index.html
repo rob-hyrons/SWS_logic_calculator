@@ -8,9 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- ExcelJS for image extraction (new) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    <!-- *** MODIFIED START: Added Papa Parse for CSV importing *** -->
+    <!-- Papa Parse for CSV importing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <!-- *** MODIFIED END *** -->
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -611,7 +610,6 @@
                 <div id="admin-content" class="tab-pane">
                     <h2>Admin Controls</h2>
                     
-                    <!-- *** MODIFIED START: Added CSV Import Section *** -->
                     <div class="admin-section">
                         <h3>Import from CSV</h3>
                         <div class="form-group" style="display: flex; align-items: center; gap: 1em;">
@@ -620,7 +618,6 @@
                         </div>
                         <div id="import-status-admin" style="font-style: italic; color: #555;"></div>
                     </div>
-                    <!-- *** MODIFIED END *** -->
 
                     <div class="admin-section">
                         <h3>Tab Visibility</h3>
@@ -903,7 +900,7 @@
             }
         }
 
-        // *** MODIFIED START: CSV Import Logic ***
+        // CSV Import Logic
         function handleCsvImport() {
             const csvFileInput = document.getElementById('csvFileInput');
             const statusDiv = document.getElementById('import-status-admin');
@@ -975,20 +972,22 @@
                 if (value === '') continue;
 
                 const config = mappings[key];
-                const el = document.getElementById(config.id);
-
+                
                 switch (config.type) {
                     case 'number':
-                        if (el) el.value = value;
+                        const numEl = document.getElementById(config.id);
+                        if (numEl) numEl.value = value;
                         break;
                     case 'checkbox':
-                        if (el) el.checked = (value.toLowerCase() === 'true');
+                        const checkEl = document.getElementById(config.id);
+                        if (checkEl) checkEl.checked = (value.toLowerCase() === 'true');
                         break;
                     case 'select':
-                        if (el) {
-                            for (let i = 0; i < el.options.length; i++) {
-                                if (el.options[i].text === value) {
-                                    el.value = el.options[i].value;
+                        const selectEl = document.getElementById(config.id);
+                        if (selectEl) {
+                            for (let i = 0; i < selectEl.options.length; i++) {
+                                if (selectEl.options[i].text.trim() === value.trim()) {
+                                    selectEl.value = selectEl.options[i].value;
                                     break;
                                 }
                             }
@@ -1009,7 +1008,6 @@
             // Switch back to the inputs tab to show the user the result
             switchTab('inputs-content');
         }
-        // *** MODIFIED END ***
 
         async function extractImagesFromSheet(workbook, sheet, nameColHeader, imageColHeader, imageMap) {
             let nameCol = -1, imageCol = -1;
@@ -2904,7 +2902,8 @@
                  for (let i = 0; i < numLaths; i++) {
                     currentY -= scaledLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX);
+                    lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
