@@ -1,1 +1,2 @@
 Calculation_ID,Curtain_Width_mm,Curtain_Height_mm,Additional_Axle_Width_mm,Lath_Type_Name,Endlock_Type_Name,Is_Powder_Coated,Bottom_Lath_Name,Has_Vision_Slats,Vision_Lath_Name,Vision_Start_Height_mm,Vision_Panel_Height_mm,Collar_Size_mm,Motor_Mounting_Type,Friction_Allowance_Percent,Endplate_Material,Include_Deflection_In_Sizing,Wicket_Door_Name
+,4000,2540,120,"75mm 22swg, Solid 10.2kg/sqm",75mm plastic,FALSE,T-Rail 3.2kg/m,TRUE,"75mm 22swg, Perforated 8.3kg/sqm",500,1000,,,,,,
