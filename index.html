@@ -260,6 +260,33 @@
         #importCsvButton { background-color: #28a745; }
         #importCsvButton:hover { background-color: #218838; }
 
+        /* Axle Shape Toggle Styles */
+        .shape-toggle {
+            display: flex;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .shape-toggle input[type="radio"] {
+            display: none;
+        }
+        .shape-toggle label {
+            flex: 1;
+            text-align: center;
+            padding: 0.8em;
+            margin: 0;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            color: #495057;
+            transition: background-color 0.2s;
+            font-weight: 500;
+        }
+        .shape-toggle input[type="radio"]:checked + label {
+            background-color: #007bff;
+            color: white;
+            font-weight: 600;
+        }
+
 
         @media print {
             body {
@@ -431,16 +458,29 @@
                 <!-- Axle Analysis Tab -->
                 <div id="axle-content" class="tab-pane">
                     <h2>Axle Deflection Analysis</h2>
+                    
+                    <div class="form-group" data-admin-label="Axle Shape">
+                        <label>Axle Shape</label>
+                        <div class="shape-toggle">
+                            <input type="radio" id="shapeCircular" name="axleShape" value="circular" checked>
+                            <label for="shapeCircular">Circular</label>
+                            <input type="radio" id="shapeOctagonal" name="axleShape" value="octagonal">
+                            <label for="shapeOctagonal">Octagonal</label>
+                        </div>
+                    </div>
+                    
                     <div class="form-group" data-admin-label="Axle Type Selector">
-                        <label for="axleType">Axle Type (Auto-Selected)</label>
+                        <label for="axleType">Axle Section (Auto-Selected)</label>
                         <select id="axleType" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                    <div class="form-group" data-admin-label="Collar Size">
+                    
+                    <div class="form-group" id="collar-size-group" data-admin-label="Collar Size" style="display: none;">
                         <label for="collarSize">Collar Size (mm)</label>
                         <input type="number" id="collarSize" placeholder="e.g., 150" value="0">
                     </div>
+
                     <div id="deflection-graphic-container" class="graph-container" style="height: 150px;"></div>
                     <div id="axle-cross-section-container" class="graph-container" style="height: 250px; margin-top: 2.5em;"></div>
                     <div class="results">
@@ -673,7 +713,7 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content', 'importCsvButton'
+         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -696,6 +736,10 @@
         dom.addVision.addEventListener('change', () => {
             dom['vision-slat-options'].style.display = dom.addVision.checked ? 'block' : 'none';
             updateAllCalculations();
+        });
+
+        ['shapeCircular', 'shapeOctagonal'].forEach(id => {
+            if (dom[id]) dom[id].addEventListener('change', handleShapeChange);
         });
 
         dom.motorSelector.addEventListener('change', updateSelectedMotorInfo);
@@ -780,6 +824,21 @@
 
             setupBulkActions('tabsSelectAll', 'tabsDeselectAll', 'tab-controls-container');
             setupBulkActions('inputsSelectAll', 'inputsDeselectAll', 'input-controls-container');
+        }
+
+        function handleShapeChange() {
+            const selectedShape = document.querySelector('input[name="axleShape"]:checked').value;
+            const collarGroup = dom['collar-size-group'];
+
+            if (selectedShape === 'octagonal') {
+                collarGroup.style.display = 'block';
+            } else {
+                collarGroup.style.display = 'none';
+                dom.collarSize.value = 0; // Reset value when hidden to avoid calculation errors
+            }
+            
+            userSelectedAxleIndex = null; // Reset user override when shape changes
+            updateAllCalculations();
         }
 
         function handleAxleOverride() {
@@ -1152,6 +1211,8 @@
             const totalLength = width + additionalLength;
             dom['total-axle-length'].textContent = totalLength.toFixed(0);
 
+            const selectedShape = document.querySelector('input[name="axleShape"]:checked')?.value || 'circular';
+
             if (totalLength <= 0 || axleData.length === 0) {
                  ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
                 dom['axle-material-grade'].textContent = 'N/A';
@@ -1160,53 +1221,73 @@
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
             }
 
-            let recommendedAxleIndex = -1;
+            const axlesForShape = axleData
+                .map((axle, index) => ({ ...axle, originalIndex: index }))
+                .filter(axle => {
+                    const axleShapeInSheet = (axle.Shape || 'circular').toLowerCase().trim();
+                    return axleShapeInSheet === selectedShape;
+                });
+
+            if (axlesForShape.length === 0) {
+                dom.axleType.innerHTML = `<option>-- No ${selectedShape} axles available --</option>`;
+                ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
+                dom['axle-material-grade'].textContent = 'N/A';
+                drawAxleCrossSection(null);
+                return { bestAxle: null, deflection: 0, totalLength: 0 };
+            }
+
+            let recommendedAxleOriginalIndex = -1;
             const axlePerformances = [];
 
-            for (let i = 0; i < axleData.length; i++) {
-                const currentAxle = axleData[i];
+            axlesForShape.forEach(currentAxle => {
                 const perf = performDeflectionCalc(totalWeightKgs, currentAxle, totalLength);
                 axlePerformances.push(perf);
                 const passesTest = perf.ratio >= 400 && perf.deflection <= 25;
-                if (passesTest && recommendedAxleIndex === -1) {
-                    recommendedAxleIndex = i; 
+                if (passesTest && recommendedAxleOriginalIndex === -1) {
+                    recommendedAxleOriginalIndex = currentAxle.originalIndex;
                 }
-            }
-            if (recommendedAxleIndex === -1) recommendedAxleIndex = axleData.length > 0 ? 0 : -1;
+            });
 
-            const finalSelectedIndex = userSelectedAxleIndex !== null ? userSelectedAxleIndex : recommendedAxleIndex;
+            if (recommendedAxleOriginalIndex === -1) {
+                recommendedAxleOriginalIndex = axlesForShape.length > 0 ? axlesForShape[0].originalIndex : -1;
+            }
+
+            let finalSelectedOriginalIndex = userSelectedAxleIndex !== null ? userSelectedAxleIndex : recommendedAxleOriginalIndex;
+            
+            const isUserSelectionValidForShape = axlesForShape.some(axle => axle.originalIndex == finalSelectedOriginalIndex);
+            if (userSelectedAxleIndex !== null && !isUserSelectionValidForShape) {
+                finalSelectedOriginalIndex = recommendedAxleOriginalIndex;
+            }
 
             const select = dom.axleType;
             select.innerHTML = '';
-            axleData.forEach((axle, index) => {
+            axlesForShape.forEach((axle, index) => {
                 const perf = axlePerformances[index];
                 const option = document.createElement('option');
-                option.value = index;
+                option.value = axle.originalIndex;
                 let optionText = axle['Name'];
                 if (axle['Alternate name']) optionText += ` (${axle['Alternate name']})`;
                 option.textContent = optionText;
                 
                 const passesTest = perf.ratio >= 400 && perf.deflection <= 25;
-                if (passesTest) {
-                    option.classList.add('option-pass');
-                } else {
-                    option.classList.add('option-fail');
-                    option.disabled = true;
-                }
+                option.classList.toggle('option-pass', passesTest);
+                option.classList.toggle('option-fail', !passesTest);
+                if (!passesTest) option.disabled = true;
+                
                 select.appendChild(option);
             });
             
-            if (finalSelectedIndex > -1) {
-                select.value = finalSelectedIndex;
+            if (finalSelectedOriginalIndex > -1) {
+                select.value = finalSelectedOriginalIndex;
             }
             
-            if (finalSelectedIndex === -1 || axlePerformances.length === 0) {
+            const selectedAxleData = axleData[select.value];
+            if (!selectedAxleData) {
                 drawAxleCrossSection(null);
                 return { bestAxle: null, deflection: 0, totalLength };
             }
 
-            const finalPerformance = axlePerformances[finalSelectedIndex];
-            const bestAxle = axleData[finalSelectedIndex];
+            const finalPerformance = performDeflectionCalc(totalWeightKgs, selectedAxleData, totalLength);
             
             dom['axle-weight'].textContent = finalPerformance.axleWeight.toFixed(2);
             const totalDeflectionWeight = totalWeightKgs + finalPerformance.axleWeight;
@@ -1222,12 +1303,16 @@
                 dom['ratio-paragraph'].classList.add('warning-text');
                 dom['axle-safety-factor'].parentElement.classList.add('warning-text');
                 dom['recommendation-box'].style.display = 'block';
-                const nextBestIndex = axleData.findIndex((axle, index) => axlePerformances[index].ratio >= 400 && axlePerformances[index].deflection <= 25);
 
-                if (nextBestIndex > -1) {
-                    dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle may fail. Consider using <strong>${axleData[nextBestIndex]['Name']}</strong>.`;
+                const nextBest = axlesForShape.find(axle => {
+                    const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
+                    return perf.ratio >= 400 && perf.deflection <= 25;
+                });
+
+                if (nextBest) {
+                    dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle may fail. Consider using <strong>${nextBest['Name']}</strong>.`;
                 } else {
-                    dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available axle passes the deflection test for this specification.`;
+                    dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available ${selectedShape} axle passes the deflection test for this specification.`;
                 }
             } else {
                 dom['ratio-paragraph'].classList.remove('warning-text');
@@ -1236,9 +1321,9 @@
             }
 
             const collarSize = parseFloat(dom.collarSize.value) || 0;
-            drawAxleCrossSection(bestAxle, collarSize);
+            drawAxleCrossSection(selectedAxleData, collarSize);
             
-            return { bestAxle, deflection: finalPerformance.deflection, totalLength };
+            return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
         }
 
         function performDeflectionCalc(totalWeightKgs, axle, totalLength) {
