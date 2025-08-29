@@ -98,6 +98,7 @@
         .tab-button:nth-child(4) { background-color: #fce4ec; }
         .tab-button:nth-child(5) { background-color: #ede7f6; }
         .tab-button:nth-child(6) { background-color: #e0f7fa; }
+        .tab-button:nth-child(7) { background-color: #e9ecef; } /* Admin Tab Color */
 
         .tab-button.active:nth-child(1) { background-color: #cce5ff; }
         .tab-button.active:nth-child(2) { background-color: #d1e7dd; }
@@ -105,6 +106,7 @@
         .tab-button.active:nth-child(4) { background-color: #f8d7da; }
         .tab-button.active:nth-child(5) { background-color: #dcd0ff; }
         .tab-button.active:nth-child(6) { background-color: #b2ebf2; }
+        .tab-button.active:nth-child(7) { background-color: #ced4da; } /* Admin Tab Active Color */
         
         .tab-pane { display: block; }
         .tab-pane:not(.active) { display: none; }
@@ -201,12 +203,11 @@
 
         .print-container {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            justify-content: flex-end;
             padding: 0;
             margin-bottom: 1em;
         }
-        #printButton, #adminButton, #backButton {
+        #printButton {
             padding: 0.8em 1.5em;
             font-size: 0.9em;
             font-weight: 600;
@@ -217,15 +218,11 @@
             cursor: pointer;
             transition: background-color: 0.2s;
         }
-        #printButton:hover, #adminButton:hover, #backButton:hover {
+        #printButton:hover {
             background-color: #0056b3;
         }
 
         /* *** MODIFIED START: Admin Page Styles *** */
-        #admin-page {
-            display: none;
-            padding: 1em;
-        }
         .admin-section {
             margin-bottom: 2em;
             padding: 1.5em;
@@ -278,7 +275,7 @@
             @page {
                 size: A4; margin: 15mm;
             }
-            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #adminButton, #admin-page {
+            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #admin-content {
                 display: none !important;
             }
             .tab-pane {
@@ -337,22 +334,19 @@
             <button class="tab-button" data-tab="endplate-content">Endplate</button>
             <button class="tab-button" data-tab="safety-brake-content">Safety Brake</button>
             <button class="tab-button" data-tab="wicket-content">Wicket Door</button>
+            <button class="tab-button" data-tab="admin-content">Admin</button>
         </div>
         <div class="content-area">
             <h1>Complete Shutter Calculator</h1>
             
-            <!-- *** MODIFIED START: Added Admin Button *** -->
             <div class="print-container">
-                <button id="adminButton">Admin</button>
                 <button id="printButton">Print Report to PDF</button>
             </div>
-            <!-- *** MODIFIED END *** -->
 
             <div class="tab-content">
                 <!-- Inputs Tab -->
                 <div id="inputs-content" class="tab-pane active">
                     <h2>Shutter Specification</h2>
-                    <!-- REMOVED: Excel File Import Button -->
                     <div class="form-group" data-admin-label="File Import Status">
                          <div id="import-status">Attempting to load data from repository...</div>
                     </div>
@@ -434,14 +428,11 @@
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
-                        <p>Max Wind Resistance: <span id="wind-resistance">0</span> Pa (<span id="wind-class">Class 0</span>)</p>
-                        <p>Lath Deflection at Max Load: <span id="lath-deflection">0.00</span> mm</p>
                         <p>Number of Laths: <span id="lath-count">0</span></p>
                         <p>Uncompressed Curtain Height: <span id="curtain-height-extended">0</span> mm</p>
                         <p>Compressed Curtain Height: <span id="curtain-height-compressed">0</span> mm</p>
                     </div>
                     <div id="shutter-graphic-container"></div>
-                    <div id="wind-deflection-graphic-container" class="graph-container" style="height: 150px;"></div>
                 </div>
 
                 <!-- Axle Analysis Tab -->
@@ -622,44 +613,35 @@
                     <div id="wicket-torque-graph-container" class="graph-container" style="height: 280px;"></div>
                 </div>
 
-            </div>
-            
-            <!-- *** MODIFIED START: Admin Page Content *** -->
-            <div id="admin-page">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5em;">
+                <!-- Admin Tab -->
+                <div id="admin-content" class="tab-pane">
                     <h2>Admin Controls</h2>
-                    <button id="backButton">Back to Calculator</button>
+                    <div class="admin-section">
+                        <h3>Tab Visibility</h3>
+                        <div class="admin-button-group">
+                            <button id="tabsSelectAll">Select All</button>
+                            <button id="tabsDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="tab-controls-container" class="admin-controls">
+                            <!-- Tab controls will be generated here by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>Input Option Visibility</h3>
+                         <div class="admin-button-group">
+                            <button id="inputsSelectAll">Select All</button>
+                            <button id="inputsDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="input-controls-container" class="admin-controls">
+                            <!-- Input controls will be generated here by JavaScript -->
+                        </div>
+                    </div>
                 </div>
 
-                <div class="admin-section">
-                    <h3>Tab Visibility</h3>
-                    <div class="admin-button-group">
-                        <button id="tabsSelectAll">Select All</button>
-                        <button id="tabsDeselectAll">Deselect All</button>
-                    </div>
-                    <div id="tab-controls-container" class="admin-controls">
-                        <!-- Tab controls will be generated here by JavaScript -->
-                    </div>
-                </div>
-
-                <div class="admin-section">
-                    <h3>Input Option Visibility</h3>
-                     <div class="admin-button-group">
-                        <button id="inputsSelectAll">Select All</button>
-                        <button id="inputsDeselectAll">Deselect All</button>
-                    </div>
-                    <div id="input-controls-container" class="admin-controls">
-                        <!-- Input controls will be generated here by JavaScript -->
-                    </div>
-                </div>
             </div>
-            <!-- *** MODIFIED END *** -->
-
         </div>
     </div>
-
-    
-
     
     <script>
         let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [];
@@ -686,10 +668,9 @@
          'addVision', 'vision-slat-options', 'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'axle-safety-factor', 'power-consumed',
          'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity', 
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
-         'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
-         'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
+         'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'adminButton', 'backButton', 'admin-page', 'tab-content' // *** MODIFIED: Added admin elements to dom object
+         'admin-content', 'tab-content'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -725,41 +706,6 @@
         });
 
         // *** MODIFIED START: Admin Page Logic ***
-        function setView(isAdminVisible) {
-            dom['admin-page'].style.display = isAdminVisible ? 'block' : 'none';
-            dom['tab-content'].style.display = isAdminVisible ? 'none' : 'block';
-            dom['printButton'].style.display = isAdminVisible ? 'none' : 'inline-block';
-            dom['adminButton'].style.display = isAdminVisible ? 'none' : 'inline-block';
-            document.querySelector('.tabs').style.display = isAdminVisible ? 'none' : 'flex';
-
-            if(isAdminVisible) {
-                syncAdminControls();
-            }
-        }
-
-        dom.adminButton.addEventListener('click', () => setView(true));
-        dom.backButton.addEventListener('click', () => setView(false));
-        
-        function syncAdminControls() {
-            // Sync tab controls
-            document.querySelectorAll('#tab-controls-container input[type="checkbox"]').forEach(checkbox => {
-                const targetId = checkbox.dataset.target;
-                const targetElement = document.querySelector(`.tab-button[data-tab="${targetId}"]`);
-                if(targetElement) {
-                    checkbox.checked = targetElement.style.display !== 'none';
-                }
-            });
-
-            // Sync input controls
-            document.querySelectorAll('#input-controls-container input[type="checkbox"]').forEach(checkbox => {
-                const targetId = checkbox.dataset.target;
-                const targetElement = document.getElementById(targetId);
-                 if(targetElement) {
-                    checkbox.checked = targetElement.style.display !== 'none';
-                }
-            });
-        }
-
         function initializeAdminControls() {
             const tabContainer = document.getElementById('tab-controls-container');
             const inputContainer = document.getElementById('input-controls-container');
@@ -772,9 +718,12 @@
                 const labelText = tab.textContent.trim();
                 const controlItem = document.createElement('div');
                 controlItem.className = 'admin-control-item';
+                
+                const isChecked = tab.style.display !== 'none';
+
                 controlItem.innerHTML = `
                     <label>
-                        <input type="checkbox" data-target="${tabId}" checked>
+                        <input type="checkbox" data-target="${tabId}" ${isChecked ? 'checked' : ''}>
                         ${labelText}
                     </label>
                 `;
@@ -1060,7 +1009,7 @@
             const { totalWeight, travelHeight, fullCurtainLength, visionData } = finalCurtainProps;
             visionCalcs = visionData;
 
-            calculateWindResistance();
+            // calculateWindResistance(); // REMOVED
             calculateEndplateRecommendation(); 
 
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
@@ -1598,94 +1547,6 @@
             }
 
             updateSelectedMotorInfo();
-        }
-
-        function calculateWindResistance() {
-            const selectedLathIndex = dom.lathType.value;
-            if (selectedLathIndex === "" || !lathData[selectedLathIndex]) {
-                updateWindUI({ pressurePa: 0, deflectionMm: 0, isDeflectionLimited: false });
-                return;
-            }
-
-            const mainLath = lathData[selectedLathIndex];
-            const width = parseFloat(dom.width.value) || 0;
-            let finalPerformance = getLathWindPerformance(mainLath, width);
-
-            if (dom.addVision.checked) {
-                const selectedVisionLathIndex = dom.visionLathType.value;
-                if (selectedVisionLathIndex !== "" && lathData[selectedVisionLathIndex]) {
-                    const visionLath = lathData[selectedVisionLathIndex];
-                    const visionPerformance = getLathWindPerformance(visionLath, width);
-                    
-                    if(visionPerformance.pressurePa < finalPerformance.pressurePa) {
-                        finalPerformance = visionPerformance;
-                    }
-                }
-            }
-            updateWindUI(finalPerformance);
-        }
-
-        function getLathWindPerformance(lath, width_mm) {
-            const defaultPerformance = { pressurePa: 0, deflectionMm: 0, isDeflectionLimited: false };
-            if (!lath || width_mm <= 0) return defaultPerformance;
-            
-            const iyKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'moment of inertia iy');
-            const stressKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'allowable bending stress (mpa)');
-            const EKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'youngs modulus e (mpa)');
-
-            const Iy = iyKey ? parseFloat(lath[iyKey]) : 0;
-            const allowableStressMPa = stressKey ? parseFloat(lath[stressKey]) : 0;
-            const h_uncompressed = parseFloat(lath['uncompressed lath height']) || 0;
-            const E_MPa = EKey ? parseFloat(lath[EKey]) : 200000;
-
-            if (Iy <= 0 || allowableStressMPa <= 0 || h_uncompressed <= 0 || E_MPa <= 0) {
-                return defaultPerformance;
-            }
-
-            const P_stress_MPa = (16 * allowableStressMPa * Iy) / (Math.pow(h_uncompressed, 2) * Math.pow(width_mm, 2));
-            const w_stress_N_per_mm = P_stress_MPa * h_uncompressed;
-            const deflection_at_stress_limit = (5 * w_stress_N_per_mm * Math.pow(width_mm, 4)) / (384 * E_MPa * Iy);
-            
-            if (deflection_at_stress_limit > 50) {
-                const pressure_capped_Pa = 449;
-                const w_capped_N_per_mm = (pressure_capped_Pa / 1000000) * h_uncompressed;
-                const final_deflection = (5 * w_capped_N_per_mm * Math.pow(width_mm, 4)) / (384 * E_MPa * Iy);
-                return { 
-                    pressurePa: pressure_capped_Pa, 
-                    deflectionMm: final_deflection, 
-                    isDeflectionLimited: true 
-                };
-            } else {
-                return { 
-                    pressurePa: P_stress_MPa * 1000000, 
-                    deflectionMm: deflection_at_stress_limit, 
-                    isDeflectionLimited: false 
-                };
-            }
-        }
-
-        function updateWindUI(performance) {
-            const { pressurePa, deflectionMm, isDeflectionLimited } = performance;
-
-            let windClass = 0;
-            let classText = "Class 0";
-            if (pressurePa >= 1000) { windClass = 5; classText = "Class 5"; }
-            else if (pressurePa >= 700) { windClass = 4; classText = "Class 4"; }
-            else if (pressurePa >= 450) { windClass = 3; classText = "Class 3"; }
-            else if (pressurePa >= 200) { windClass = 2; classText = "Class 2"; }
-            else if (pressurePa > 0) { windClass = 1; classText = "Class 1"; }
-            
-            if (isDeflectionLimited) {
-                classText += " (Deflection limited)";
-                dom['wind-class'].classList.add('warning-text');
-            } else {
-                dom['wind-class'].classList.remove('warning-text');
-            }
-
-            dom['wind-resistance'].textContent = pressurePa.toFixed(0);
-            dom['wind-class'].textContent = classText;
-            dom['lath-deflection'].textContent = deflectionMm.toFixed(2);
-            drawWindDeflectionGraphic(parseFloat(dom.width.value), deflectionMm, isDeflectionLimited);
         }
         
         function updateSelectedSafetyBrakeInfo() {
@@ -2331,17 +2192,6 @@
             container.appendChild(svg);
         }
 
-        function drawWindDeflectionGraphic(length, deflection, isWarning = false) {
-            const container = dom['wind-deflection-graphic-container'];
-            container.innerHTML = ''; // Clear previous graphic
-            if (!length || length <= 0) return;
-
-            drawDeflectionGraphic(length, deflection, isWarning);
-            const tempGraphic = dom['deflection-graphic-container'].innerHTML;
-            dom['deflection-graphic-container'].innerHTML = '';
-            container.innerHTML = tempGraphic;
-        }
-
         function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSeparation, endplateSize) {
             const container = dom['endplate-force-diagram-container'];
             container.innerHTML = '';
@@ -2710,7 +2560,6 @@
             if(graphic) container.appendChild(graphic);
         }
 
-        // *** MODIFIED START: Complete rewrite of the graphic drawing function for correctness ***
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
 
@@ -2928,7 +2777,8 @@
                     currentY -= scaledMainLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth); lathRect.setAttribute('height', scaledMainLathHeight);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     if (endlocksSelected && lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
@@ -3078,10 +2928,18 @@
         updateAllCalculations();
     </script>
 
-    <!-- ADDED: Script to automatically load Excel file from GitHub -->
     <script>
         window.addEventListener('load', () => {
-            initializeAdminControls(); // *** MODIFIED: Initialize admin controls on page load ***
+            // *** MODIFIED START: Set default hidden tabs ***
+            ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
+                const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+                if(tabButton) {
+                    tabButton.style.display = 'none';
+                }
+            });
+            // *** MODIFIED END ***
+
+            initializeAdminControls(); 
 
             const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
             const statusDiv = document.getElementById('import-status');
