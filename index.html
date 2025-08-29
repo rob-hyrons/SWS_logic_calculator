@@ -106,7 +106,8 @@
         .tab-button.active:nth-child(5) { background-color: #dcd0ff; }
         .tab-button.active:nth-child(6) { background-color: #b2ebf2; }
         
-        .tab-pane { display: none; }
+        .tab-pane { display: block; }
+        .tab-pane:not(.active) { display: none; }
         .tab-pane.active { display: block; padding-bottom: 2em; }
         .warning-text, p .warning-text, span.warning-text { color: #d93025 !important; font-weight: bold; }
         
@@ -200,11 +201,12 @@
 
         .print-container {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             padding: 0;
             margin-bottom: 1em;
         }
-        #printButton {
+        #printButton, #adminButton, #backButton {
             padding: 0.8em 1.5em;
             font-size: 0.9em;
             font-weight: 600;
@@ -215,9 +217,59 @@
             cursor: pointer;
             transition: background-color: 0.2s;
         }
-        #printButton:hover {
+        #printButton:hover, #adminButton:hover, #backButton:hover {
             background-color: #0056b3;
         }
+
+        /* *** MODIFIED START: Admin Page Styles *** */
+        #admin-page {
+            display: none;
+            padding: 1em;
+        }
+        .admin-section {
+            margin-bottom: 2em;
+            padding: 1.5em;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
+        .admin-section h3 {
+            margin-top: 0;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 0.5em;
+        }
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1em;
+            margin-top: 1em;
+        }
+        .admin-control-item label {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .admin-button-group {
+            display: flex;
+            gap: 1em;
+            margin-bottom: 1.5em;
+        }
+        .admin-button-group button {
+            padding: 0.5em 1em;
+            font-size: 0.8em;
+            font-weight: 500;
+            color: #fff;
+            background-color: #6c757d;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .admin-button-group button:hover {
+            background-color: #5a6268;
+        }
+        /* *** MODIFIED END *** */
+
 
         @media print {
             body {
@@ -226,7 +278,7 @@
             @page {
                 size: A4; margin: 15mm;
             }
-            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box {
+            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #adminButton, #admin-page {
                 display: none !important;
             }
             .tab-pane {
@@ -288,41 +340,45 @@
         </div>
         <div class="content-area">
             <h1>Complete Shutter Calculator</h1>
+            
+            <!-- *** MODIFIED START: Added Admin Button *** -->
             <div class="print-container">
+                <button id="adminButton">Admin</button>
                 <button id="printButton">Print Report to PDF</button>
             </div>
-            
+            <!-- *** MODIFIED END *** -->
+
             <div class="tab-content">
                 <!-- Inputs Tab -->
                 <div id="inputs-content" class="tab-pane active">
                     <h2>Shutter Specification</h2>
                     <!-- REMOVED: Excel File Import Button -->
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="File Import Status">
                          <div id="import-status">Attempting to load data from repository...</div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group form-col">
+                        <div class="form-group form-col" data-admin-label="Curtain Width">
                             <label for="width">Curtain Width (mm)</label>
                             <input type="number" id="width" placeholder="e.g., 3000">
                             <div id="width-warning" class="width-validation-warning"></div>
                         </div>
-                        <div class="form-group form-col">
+                        <div class="form-group form-col" data-admin-label="Curtain Height">
                             <label for="height">Curtain Height (Floor to Axle Centre, mm)</label>
                             <input type="number" id="height" placeholder="e.g., 4000">
                         </div>
                     </div>
-                     <div class="form-group">
+                     <div class="form-group" data-admin-label="Additional Axle Width">
                         <label for="additionalLength">Additional Axle Width (Total, mm)</label>
                         <input type="number" id="additionalLength" placeholder="e.g., 100" value="100">
                     </div>
                     <div class="form-row">
-                        <div class="form-group form-col">
+                        <div class="form-group form-col" data-admin-label="Lath Type">
                             <label for="lathType">Lath Type</label>
                             <select id="lathType" disabled>
                                 <option value="">-- Waiting for file import --</option>
                             </select>
                         </div>
-                        <div class="form-group form-col">
+                        <div class="form-group form-col" data-admin-label="Endlock Type">
                             <label for="endlockType">Endlock Type</label>
                             <select id="endlockType" disabled>
                                 <option value="">-- Waiting for file import --</option>
@@ -332,24 +388,24 @@
                     <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
                         <img id="lathImageDisplay" src="" alt="Lath Image" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Powder Coated Option">
                         <label for="powderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
                             <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+1 kg/m²)
                         </label>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Bottom Lath Type">
                         <label for="bottomLathType">Bottom Lath Type</label>
                         <select id="bottomLathType" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Add Vision Slats Option">
                         <label for="addVision" style="display: inline-block; font-weight: 500; cursor: pointer;">
                             <input type="checkbox" id="addVision" style="width: auto; margin-right: 8px; vertical-align: middle;">Add Vision Slats
                         </label>
                     </div>
-                    <div id="vision-slat-options" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
+                    <div id="vision-slat-options" data-admin-label="Vision Slat Details" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
                         <div class="form-group">
                             <label for="visionLathType">Vision Lath Type</label>
                             <select id="visionLathType" disabled>
@@ -391,13 +447,13 @@
                 <!-- Axle Analysis Tab -->
                 <div id="axle-content" class="tab-pane">
                     <h2>Axle Deflection Analysis</h2>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Axle Type Selector">
                         <label for="axleType">Axle Type (Auto-Selected)</label>
                         <select id="axleType" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Collar Size">
                         <label for="collarSize">Collar Size (mm)</label>
                         <input type="number" id="collarSize" placeholder="e.g., 150" value="0">
                     </div>
@@ -420,13 +476,13 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Motor Mounting Type">
                         <label for="motorMountingType">Motor Mounting Type</label>
                         <select id="motorMountingType" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Lath Friction Allowance">
                         <label for="friction">Lath Friction Allowance (%)</label>
                         <input type="number" id="friction" value="10" title="Automatically updated from Lath data. Can be overridden.">
                     </div>
@@ -436,7 +492,7 @@
                         <p>Max Required Torque: <span id="max-torque">0.0</span> Nm</p>
                         <p>Total Revolutions: <span id="total-revolutions">0.0</span></p>
                         <hr>
-                        <div class="form-group">
+                        <div class="form-group" data-admin-label="Motor Selector">
                             <label for="motorSelector">Select Motor</label>
                             <select id="motorSelector" disabled>
                                 <option>-- First select a mounting type --</option>
@@ -453,7 +509,7 @@
                 
                 <div id="endplate-content" class="tab-pane page-break-before-print">
                     <h2>Endplate Selection</h2>
-                     <div class="form-group">
+                     <div class="form-group" data-admin-label="Endplate Material">
                         <label>Endplate Material</label>
                         <div class="radio-group">
                             <input type="radio" id="matSteel" name="material" value="Steel" checked>
@@ -462,12 +518,12 @@
                             <label for="matAluminium">Aluminium</label>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Include Deflection in Sizing">
                         <label for="includeDeflectionInSizing" style="display: inline-block; font-weight: 500; cursor: pointer;">
                             <input type="checkbox" id="includeDeflectionInSizing" style="width: auto; margin-right: 8px; vertical-align: middle;">Include Axle Deflection in Coil Sizing
                         </label>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Endplate Selector">
                         <label for="endplateSelector">Select Endplate (Auto-Selected)</label>
                         <select id="endplateSelector" disabled>
                             <option value="">-- Waiting for file import --</option>
@@ -500,7 +556,7 @@
                 <div id="safety-brake-content" class="tab-pane">
                     <h2>Safety Brake Force Analysis</h2>
                     
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Safety Brake Selector">
                         <label for="safetyBrakeSelector">Available Safety Brakes (Auto-Selected)</label>
                         <select id="safetyBrakeSelector" disabled>
                             <option value="">-- Waiting for file import --</option>
@@ -545,7 +601,7 @@
                 
                 <div id="wicket-content" class="tab-pane">
                     <h2>Wicket Door Selection</h2>
-                    <div class="form-group">
+                    <div class="form-group" data-admin-label="Wicket Door Selector">
                         <label for="wicketDoorSelector">Available Wicket Doors</label>
                         <select id="wicketDoorSelector" disabled>
                             <option value="">-- Waiting for file import --</option>
@@ -567,6 +623,38 @@
                 </div>
 
             </div>
+            
+            <!-- *** MODIFIED START: Admin Page Content *** -->
+            <div id="admin-page">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5em;">
+                    <h2>Admin Controls</h2>
+                    <button id="backButton">Back to Calculator</button>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Tab Visibility</h3>
+                    <div class="admin-button-group">
+                        <button id="tabsSelectAll">Select All</button>
+                        <button id="tabsDeselectAll">Deselect All</button>
+                    </div>
+                    <div id="tab-controls-container" class="admin-controls">
+                        <!-- Tab controls will be generated here by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3>Input Option Visibility</h3>
+                     <div class="admin-button-group">
+                        <button id="inputsSelectAll">Select All</button>
+                        <button id="inputsDeselectAll">Deselect All</button>
+                    </div>
+                    <div id="input-controls-container" class="admin-controls">
+                        <!-- Input controls will be generated here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <!-- *** MODIFIED END *** -->
+
         </div>
     </div>
 
@@ -600,7 +688,8 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'wind-resistance', 'wind-class', 'lath-deflection',
          'wind-deflection-graphic-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
-         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight'
+         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
+         'adminButton', 'backButton', 'admin-page', 'tab-content' // *** MODIFIED: Added admin elements to dom object
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -634,6 +723,113 @@
         dom.printButton.addEventListener('click', () => {
             window.print();
         });
+
+        // *** MODIFIED START: Admin Page Logic ***
+        function setView(isAdminVisible) {
+            dom['admin-page'].style.display = isAdminVisible ? 'block' : 'none';
+            dom['tab-content'].style.display = isAdminVisible ? 'none' : 'block';
+            dom['printButton'].style.display = isAdminVisible ? 'none' : 'inline-block';
+            dom['adminButton'].style.display = isAdminVisible ? 'none' : 'inline-block';
+            document.querySelector('.tabs').style.display = isAdminVisible ? 'none' : 'flex';
+
+            if(isAdminVisible) {
+                syncAdminControls();
+            }
+        }
+
+        dom.adminButton.addEventListener('click', () => setView(true));
+        dom.backButton.addEventListener('click', () => setView(false));
+        
+        function syncAdminControls() {
+            // Sync tab controls
+            document.querySelectorAll('#tab-controls-container input[type="checkbox"]').forEach(checkbox => {
+                const targetId = checkbox.dataset.target;
+                const targetElement = document.querySelector(`.tab-button[data-tab="${targetId}"]`);
+                if(targetElement) {
+                    checkbox.checked = targetElement.style.display !== 'none';
+                }
+            });
+
+            // Sync input controls
+            document.querySelectorAll('#input-controls-container input[type="checkbox"]').forEach(checkbox => {
+                const targetId = checkbox.dataset.target;
+                const targetElement = document.getElementById(targetId);
+                 if(targetElement) {
+                    checkbox.checked = targetElement.style.display !== 'none';
+                }
+            });
+        }
+
+        function initializeAdminControls() {
+            const tabContainer = document.getElementById('tab-controls-container');
+            const inputContainer = document.getElementById('input-controls-container');
+            tabContainer.innerHTML = '';
+            inputContainer.innerHTML = '';
+
+            // Generate Tab Controls
+            document.querySelectorAll('.tab-button').forEach(tab => {
+                const tabId = tab.dataset.tab;
+                const labelText = tab.textContent.trim();
+                const controlItem = document.createElement('div');
+                controlItem.className = 'admin-control-item';
+                controlItem.innerHTML = `
+                    <label>
+                        <input type="checkbox" data-target="${tabId}" checked>
+                        ${labelText}
+                    </label>
+                `;
+                tabContainer.appendChild(controlItem);
+
+                controlItem.querySelector('input').addEventListener('change', (e) => {
+                    tab.style.display = e.target.checked ? '' : 'none';
+                });
+            });
+
+            // Generate Input Controls
+            document.querySelectorAll('[data-admin-label]').forEach((inputGroup, index) => {
+                const labelText = inputGroup.dataset.adminLabel;
+                const groupId = `admin-input-${index}`;
+                inputGroup.id = groupId; // Ensure the target has an ID
+
+                const controlItem = document.createElement('div');
+                controlItem.className = 'admin-control-item';
+                controlItem.innerHTML = `
+                    <label>
+                        <input type="checkbox" data-target="${groupId}" checked>
+                        ${labelText}
+                    </label>
+                `;
+                inputContainer.appendChild(controlItem);
+                 
+                 controlItem.querySelector('input').addEventListener('change', (e) => {
+                    inputGroup.style.display = e.target.checked ? '' : 'none';
+                });
+            });
+
+             // Add event listeners for bulk actions
+            const setupBulkActions = (selectAllId, deselectAllId, containerId) => {
+                document.getElementById(selectAllId).addEventListener('click', () => {
+                    document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(cb => {
+                        if (!cb.checked) {
+                            cb.checked = true;
+                            cb.dispatchEvent(new Event('change'));
+                        }
+                    });
+                });
+                document.getElementById(deselectAllId).addEventListener('click', () => {
+                    document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(cb => {
+                        if (cb.checked) {
+                            cb.checked = false;
+                            cb.dispatchEvent(new Event('change'));
+                        }
+                    });
+                });
+            };
+
+            setupBulkActions('tabsSelectAll', 'tabsDeselectAll', 'tab-controls-container');
+            setupBulkActions('inputsSelectAll', 'inputsDeselectAll', 'input-controls-container');
+        }
+        // *** MODIFIED END ***
 
         function handleAxleOverride() {
             if (dom.axleType.value !== "") {
@@ -2885,6 +3081,8 @@
     <!-- ADDED: Script to automatically load Excel file from GitHub -->
     <script>
         window.addEventListener('load', () => {
+            initializeAdminControls(); // *** MODIFIED: Initialize admin controls on page load ***
+
             const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
             const statusDiv = document.getElementById('import-status');
             
