@@ -2979,6 +2979,19 @@
 
                 svg.appendChild(text);
             };
+            const scaledAxleHeight = axleDiameter * scale;
+            const axleY = padding.top;
+            const axleCenterlineY = axleY + scaledAxleHeight / 2;
+
+            let endplateTopY = axleY; // Default to top of axle if no endplate
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    const scaledEndplateHeight = endplateSize * scale;
+                    endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                }
+            }
+
 
             const bottomY = padding.top + graphHeight;
             let currentY = bottomY;
@@ -3150,15 +3163,11 @@
                 drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
             }
             
-            const scaledAxleHeight = axleDiameter * scale;
-            const axleY = padding.top;
-            const axleCenterlineY = axleY + scaledAxleHeight / 2;
-
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
                     const scaledEndplateHeight = endplateSize * scale;
-                    const endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                    // endplateTopY is already calculated
                     const endplateBox = document.createElementNS(svgNS, 'rect');
                     endplateBox.setAttribute('x', startX);
                     endplateBox.setAttribute('y', endplateTopY);
@@ -3195,7 +3204,7 @@
             }
 
             // --- Draw Dimensions ---
-            const totalWidthDimY = padding.top - 25;
+            const totalWidthDimY = endplateTopY - 25;
             drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`, 'horizontal');
             createLeaderLine(startX, totalWidthDimY, startX, axleY);
             createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
@@ -3217,14 +3226,13 @@
                 createLeaderLine(overallEndX, endlockWidthDimY, overallEndX, bottomY - (scaledBottomLathHeight/2));
             }
             
-            const rightDimX_Inner = startX + scaledTotalAxleWidth + 25;
-            const rightDimX_Outer = rightDimX_Inner + 15;
+            const rightDimX_Inner = startX + scaledTotalAxleWidth + 40;
+            const rightDimX_Outer = rightDimX_Inner - 15;
             
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if(endplateSize > 0) {
-                    const scaledEndplateHeight = endplateSize * scale;
-                    const endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
+                    const endplateBottomY = endplateTopY + (endplateSize * scale);
                     const heightToUnderside = parseFloat(dom.height.value) - (endplateSize / 2);
                     drawDimensionLine(rightDimX_Inner, endplateBottomY, rightDimX_Inner, bottomY, `${heightToUnderside.toFixed(0)} mm to underside of box`, 'vertical', 'left');
                     createLeaderLine(rightDimX_Inner, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY);
@@ -3232,8 +3240,8 @@
                 }
             }
 
-            drawDimensionLine(rightDimX_Outer, axleY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
-            createLeaderLine(rightDimX_Outer, axleY, startX + scaledTotalAxleWidth, axleY);
+            drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
+            createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
             createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
             
             const leftDimX_Inner = padding.left - 15;
@@ -3242,8 +3250,7 @@
                  const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                  if (endplateSize > 0) {
                     const scaledEndplateHeight = endplateSize * scale;
-                    const endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
-                    const endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
+                    const endplateBottomY = endplateTopY + scaledEndplateHeight;
                     drawDimensionLine(leftDimX_Inner, endplateTopY, leftDimX_Inner, endplateBottomY, `${endplateSize.toFixed(0)} mm Endplate`, 'vertical', 'left');
                     createLeaderLine(leftDimX_Inner, endplateTopY, startX, endplateTopY);
                     createLeaderLine(leftDimX_Inner, endplateBottomY, startX, endplateBottomY);
