@@ -2849,7 +2849,9 @@
 
             const svg = document.createElementNS(svgNS, "svg");
             
-            const padding = { top: 60, right: 120, bottom: 60, left: 120 };
+            const basePadding = { top: 25, right: 120, bottom: 60, left: 120 };
+            const topDimClearance = 35; // Extra space for top dimension
+            const totalTopPadding = basePadding.top + topDimClearance;
             const svgWidth = 600; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
@@ -2861,10 +2863,10 @@
             const totalRealAxleWidth = realWidth + (additionalLength || 0);
             if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
 
-            const graphWidth = svgWidth - padding.left - padding.right;
+            const graphWidth = svgWidth - basePadding.left - basePadding.right;
             const scale = graphWidth / totalRealAxleWidth;
             const graphHeight = totalRealCompressedHeight * scale;
-            const svgHeight = graphHeight + padding.top + padding.bottom;
+            const svgHeight = graphHeight + totalTopPadding + basePadding.bottom;
             
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
@@ -2886,7 +2888,7 @@
 
             const scaledTotalAxleWidth = totalRealAxleWidth * scale;
             const scaledShutterWidth = realWidth * scale;
-            const startX = padding.left;
+            const startX = basePadding.left;
             const lathStartX = startX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             const scaledCastOffset = endlockOffsets.cast * scale;
             const scaledWindOffset = endlockOffsets.wind * scale;
@@ -2934,7 +2936,7 @@
             };
             
             const drawAnnotation = (startY, endY, label) => {
-                const lineX = padding.left - 55;
+                const lineX = basePadding.left - 55;
                 const textX = lineX - 8;
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
@@ -2979,9 +2981,13 @@
 
                 svg.appendChild(text);
             };
+
+            // Drawing starts from a new top position to account for padding
             const scaledAxleHeight = axleDiameter * scale;
-            const axleY = padding.top;
+            const axleY = totalTopPadding;
             const axleCenterlineY = axleY + scaledAxleHeight / 2;
+            const bottomY = totalTopPadding + graphHeight;
+            let currentY = bottomY;
 
             let endplateTopY = axleY; // Default to top of axle if no endplate
             if (selectedEndplate) {
@@ -2992,9 +2998,6 @@
                 }
             }
 
-
-            const bottomY = padding.top + graphHeight;
-            let currentY = bottomY;
 
             const wicketRealHeight = wicket ? (parseFloat(wicket.Height) || 0) : 0;
             const wicketRealWidth = wicket ? (parseFloat(wicket.Width) || 0) : 0;
@@ -3204,7 +3207,7 @@
             }
 
             // --- Draw Dimensions ---
-            const totalWidthDimY = endplateTopY - 25;
+            const totalWidthDimY = basePadding.top;
             drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`, 'horizontal');
             createLeaderLine(startX, totalWidthDimY, startX, axleY);
             createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
@@ -3244,8 +3247,8 @@
             createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
             createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
             
-            const leftDimX_Inner = padding.left - 15;
-            const leftDimX_Outer = padding.left - 55;
+            const leftDimX_Inner = basePadding.left - 15;
+            const leftDimX_Outer = basePadding.left - 55;
             if (selectedEndplate) {
                  const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                  if (endplateSize > 0) {
