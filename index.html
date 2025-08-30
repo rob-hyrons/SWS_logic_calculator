@@ -183,6 +183,7 @@
         
         .axle-centerline-graphic { stroke: #d93025; stroke-width: 1; stroke-dasharray: 4, 2; }
         .dimension-line { stroke: #343a40; stroke-width: 1; }
+        .leader-line { stroke: #343a40; stroke-width: 0.5; stroke-dasharray: 2,2; }
         .dimension-text { font-family: sans-serif; font-size: 5px; fill: #343a40; text-anchor: middle; }
         .large-dimension-text { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle; }
         .shutter-overlay-text {
@@ -2848,7 +2849,7 @@
 
             const svg = document.createElementNS(svgNS, "svg");
             
-            const padding = { top: 40, right: 120, bottom: 40, left: 120 };
+            const padding = { top: 60, right: 120, bottom: 60, left: 120 };
             const svgWidth = 600; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
@@ -2889,6 +2890,14 @@
             const lathStartX = startX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             const scaledCastOffset = endlockOffsets.cast * scale;
             const scaledWindOffset = endlockOffsets.wind * scale;
+
+            const createLeaderLine = (x1, y1, x2, y2) => {
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('class', 'leader-line');
+                svg.appendChild(line);
+            };
 
             const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal', textSide = 'right') => {
                 const line = document.createElementNS(svgNS, 'line');
@@ -3187,15 +3196,29 @@
 
             // --- Draw Dimensions ---
             const totalWidthDimY = padding.top - 25;
-            drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
-
+            drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`, 'horizontal');
+            createLeaderLine(startX, totalWidthDimY, startX, axleY);
+            createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
+            
             const widthDimLineY = bottomY + 15;
-            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm`, 'horizontal');
+            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm Cut Curtain Width`, 'horizontal');
+            createLeaderLine(lathStartX, widthDimLineY, lathStartX, bottomY);
+            createLeaderLine(lathStartX + scaledShutterWidth, widthDimLineY, lathStartX + scaledShutterWidth, bottomY);
+
+            const maxOffset = Math.max(endlockOffsets.cast, endlockOffsets.wind);
+            if (maxOffset > 0) {
+                const scaledMaxOffset = maxOffset * scale;
+                const endlockWidthDimY = bottomY + 28;
+                const overallWidth = realWidth + (2 * maxOffset);
+                const overallStartX = lathStartX - scaledMaxOffset;
+                const overallEndX = lathStartX + scaledShutterWidth + scaledMaxOffset;
+                drawDimensionLine(overallStartX, endlockWidthDimY, overallEndX, endlockWidthDimY, `${overallWidth.toFixed(0)} mm Overall Endlock Width`, 'horizontal');
+                createLeaderLine(overallStartX, endlockWidthDimY, overallStartX, bottomY - (scaledBottomLathHeight/2));
+                createLeaderLine(overallEndX, endlockWidthDimY, overallEndX, bottomY - (scaledBottomLathHeight/2));
+            }
             
-            const rightDimX = startX + scaledTotalAxleWidth + 25;
-            const rightDimX2 = rightDimX + 15;
-            
-            drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm`, 'vertical', 'left');
+            const rightDimX_Inner = startX + scaledTotalAxleWidth + 25;
+            const rightDimX_Outer = rightDimX_Inner + 15;
             
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
@@ -3203,24 +3226,34 @@
                     const scaledEndplateHeight = endplateSize * scale;
                     const endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
                     const heightToUnderside = parseFloat(dom.height.value) - (endplateSize / 2);
-                    drawDimensionLine(rightDimX2, endplateBottomY, rightDimX2, bottomY, `${heightToUnderside.toFixed(0)} mm to underside of box`, 'vertical', 'left');
+                    drawDimensionLine(rightDimX_Inner, endplateBottomY, rightDimX_Inner, bottomY, `${heightToUnderside.toFixed(0)} mm to underside of box`, 'vertical', 'left');
+                    createLeaderLine(rightDimX_Inner, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY);
+                    createLeaderLine(rightDimX_Inner, bottomY, startX + scaledTotalAxleWidth, bottomY);
                 }
             }
+
+            drawDimensionLine(rightDimX_Outer, axleY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
+            createLeaderLine(rightDimX_Outer, axleY, startX + scaledTotalAxleWidth, axleY);
+            createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
             
-            const leftDim1X = padding.left - 15;
+            const leftDimX_Inner = padding.left - 15;
+            const leftDimX_Outer = padding.left - 55;
             if (selectedEndplate) {
                  const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                  if (endplateSize > 0) {
                     const scaledEndplateHeight = endplateSize * scale;
                     const endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
                     const endplateBottomY = axleCenterlineY + (scaledEndplateHeight / 2);
-                    drawDimensionLine(leftDim1X, endplateTopY, leftDim1X, endplateBottomY, `${endplateSize} mm`, 'vertical', 'left');
+                    drawDimensionLine(leftDimX_Inner, endplateTopY, leftDimX_Inner, endplateBottomY, `${endplateSize.toFixed(0)} mm Endplate`, 'vertical', 'left');
+                    createLeaderLine(leftDimX_Inner, endplateTopY, startX, endplateTopY);
+                    createLeaderLine(leftDimX_Inner, endplateBottomY, startX, endplateBottomY);
                  }
             }
 
-            const leftDim2X = padding.left - 55;
             if (bottomLathHeight > 0) {
-                drawDimensionLine(leftDim2X, bottomLathTopY, leftDim2X, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
+                drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
+                createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY);
+                createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
             }
 
             return svg;
