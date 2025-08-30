@@ -735,7 +735,7 @@
                         if (lathName.includes('wind')) {
                            const endlockSelect = dom.endlockType;
                            for (let i = 0; i < endlockSelect.options.length; i++) {
-                               if (endlockSelect.options[i].text.toLowerCase().includes('75mm cast')) {
+                               if (endlockSelect.options[i].text.toLowerCase().includes('cast end locks')) {
                                    endlockSelect.value = endlockSelect.options[i].value;
                                    break;
                                }
@@ -2850,7 +2850,7 @@
             const svg = document.createElementNS(svgNS, "svg");
             
             const basePadding = { top: 25, right: 120, bottom: 60, left: 120 };
-            const topDimClearance = 35;
+            const topDimClearance = 35; // Extra space for top dimension
             const totalTopPadding = basePadding.top + topDimClearance;
             const svgWidth = 600; 
 
@@ -2982,13 +2982,14 @@
                 svg.appendChild(text);
             };
 
+            // Drawing starts from a new top position to account for padding
             const scaledAxleHeight = axleDiameter * scale;
             const axleY = totalTopPadding;
             const axleCenterlineY = axleY + scaledAxleHeight / 2;
             const bottomY = totalTopPadding + graphHeight;
             let currentY = bottomY;
 
-            let endplateTopY = axleY; 
+            let endplateTopY = axleY; // Default to top of axle if no endplate
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
@@ -3206,7 +3207,7 @@
             }
 
             // --- Draw Dimensions ---
-            const totalWidthDimY = endplateTopY - 25;
+            const totalWidthDimY = basePadding.top;
             drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`, 'horizontal');
             createLeaderLine(startX, totalWidthDimY, startX, axleY);
             createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
@@ -3228,13 +3229,9 @@
                 createLeaderLine(overallEndX, endlockWidthDimY, overallEndX, bottomY - (scaledBottomLathHeight/2));
             }
             
-            const rightDimX_Outer = startX + scaledTotalAxleWidth + 40;
-            const rightDimX_Inner = rightDimX_Outer + 15;
+            const rightDimX_Inner = startX + scaledTotalAxleWidth + 40;
+            const rightDimX_Outer = rightDimX_Inner - 15;
             
-            drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
-            createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
-            createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
-
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if(endplateSize > 0) {
@@ -3246,6 +3243,10 @@
                 }
             }
 
+            drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
+            createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
+            createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
+            
             const leftDimX_Inner = basePadding.left - 15;
             const leftDimX_Outer = basePadding.left - 55;
             if (selectedEndplate) {
@@ -3310,7 +3311,7 @@
         window.addEventListener('load', () => {
             // Set default hidden tabs
             ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
-                const tabButton = document.querySelector(`.tab-button[data-tab="${targetTabId}"]`);
+                const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
                 if(tabButton) {
                     tabButton.style.display = 'none';
                 }
