@@ -874,7 +874,7 @@
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
-                    'Endlock': ['Description', 'Weight in grams', 'Offset (mm)']
+                    'Endlock': ['Description', 'Weight in grams', 'end lock offset']
                 };
 
                 for (const sheetName in required) {
@@ -893,7 +893,7 @@
                             'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
                             'Endplate': ['Name', 'Size', 'Material'],
                             'Wicket doors': ['Name', 'Height', 'Width'],
-                            'Endlock': ['Description', 'Weight in grams', 'Offset (mm)']
+                            'Endlock': ['Description', 'Weight in grams', 'end lock offset']
                         };
                         const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                         if (sheetData.length > 0) {
@@ -2105,7 +2105,7 @@
                     const selectedEndlock = endlockData[selectedCastEndlockIndex];
                     const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
                     castEndlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
-                    const offsetKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'offset (mm)');
+                    const offsetKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
                     endlockOffsets.cast = offsetKey ? parseFloat(selectedEndlock[offsetKey]) : 0;
                 }
 
@@ -2115,7 +2115,7 @@
                     if (windEndlock) {
                         const weightKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
                         windEndlockWeightG = weightKey ? parseFloat(windEndlock[weightKey]) : 0;
-                        const offsetKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'offset (mm)');
+                        const offsetKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
                         endlockOffsets.wind = offsetKey ? parseFloat(windEndlock[offsetKey]) : 0;
                     }
 
@@ -2243,7 +2243,7 @@
                     const selectedEndlock = endlockData[selectedCastEndlockIndex];
                     const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
                     castEndlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
-                    const offsetKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'offset (mm)');
+                    const offsetKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
                     endlockOffsets.cast = offsetKey ? parseFloat(selectedEndlock[offsetKey]) : 0;
                 }
 
@@ -2253,7 +2253,7 @@
                     if (windEndlock) {
                         const weightKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
                         windEndlockWeightG = weightKey ? parseFloat(windEndlock[weightKey]) : 0;
-                        const offsetKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'offset (mm)');
+                        const offsetKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
                         endlockOffsets.wind = offsetKey ? parseFloat(windEndlock[offsetKey]) : 0;
                     }
 
@@ -3004,7 +3004,7 @@
                 svg.appendChild(leftEndlock);
                 
                 const rightEndlock = document.createElementNS(svgNS, 'rect');
-                const curtainRightEdge = lathStartX + scaledShutterWidth - leftOffset;
+                const curtainRightEdge = lathStartX + scaledShutterWidth;
                 rightEndlock.setAttribute('x', curtainRightEdge + scaledCastOffset - endlockSide);
                 rightEndlock.setAttribute('y', endlockY);
                 rightEndlock.setAttribute('width', endlockSide);
@@ -3035,7 +3035,6 @@
                 rightEndlock.setAttribute('class', 'wind-endlock-graphic');
                 svg.appendChild(rightEndlock);
             };
-
 
             let lathVisualCounter = 1;
             const isWindLath = (lath['Name'] || '').toLowerCase().includes('wind');
