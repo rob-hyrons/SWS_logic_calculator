@@ -173,6 +173,7 @@
         .wicket-door-graphic { fill: #a5d6a7; stroke: #388e3c; stroke-width: 1; }
         .shutter-vision-lath-graphic { fill: #a7d8f0; stroke: #6bafd2; stroke-width: 0.5; }
         .endlock-graphic { fill: #000000; }
+        .wind-endlock-graphic { fill: #555555; } /* Dark Grey */
         .endplate-box-graphic {
             fill: rgba(255, 193, 7, 0.2); /* Semi-transparent yellow */
             stroke: #ffc107;
@@ -725,8 +726,21 @@
                 userSelectedAxleIndex = null; 
                 if (id === 'lathType' && lathData.length > 0) {
                     const selectedLath = lathData[dom.lathType.value];
-                    if (selectedLath && selectedLath['Friction %'] !== undefined) {
-                        dom.friction.value = selectedLath['Friction %'];
+                    if (selectedLath) {
+                        if (selectedLath['Friction %'] !== undefined) {
+                            dom.friction.value = selectedLath['Friction %'];
+                        }
+                        // If lath name contains "wind", default endlocks to "cast"
+                        const lathName = (selectedLath['Name'] || '').toLowerCase();
+                        if (lathName.includes('wind')) {
+                           const endlockSelect = dom.endlockType;
+                           for (let i = 0; i < endlockSelect.options.length; i++) {
+                               if (endlockSelect.options[i].text.toLowerCase().includes('cast end locks')) {
+                                   endlockSelect.value = endlockSelect.options[i].value;
+                                   break;
+                               }
+                           }
+                        }
                     }
                 }
                 updateAllCalculations();
@@ -2079,17 +2093,48 @@
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
 
             let totalEndlockWeight = 0;
-            const selectedEndlockIndex = dom.endlockType.value;
-            if (numLaths > 0 && selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex]) {
-                const selectedEndlock = endlockData[selectedEndlockIndex];
-                const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
-                const endlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
-                
-                if (endlockWeightG > 0) {
-                    const numEndlockPairs = Math.ceil(numLaths / 2);
-                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
+            const lathName = (lath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+            
+            if (numLaths > 0 && endlockData.length > 0) {
+                const selectedCastEndlockIndex = dom.endlockType.value;
+                let castEndlockWeightG = 0;
+                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                    const selectedEndlock = endlockData[selectedCastEndlockIndex];
+                    const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    castEndlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
+                }
+
+                if (isWindLath) {
+                    // Find the "75mm wind endlock"
+                    let windEndlockWeightG = 0;
+                    const windEndlock = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                    if (windEndlock) {
+                        const weightKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        windEndlockWeightG = weightKey ? parseFloat(windEndlock[weightKey]) : 0;
+                    }
+
+                    for (let i = 1; i <= numLaths; i++) {
+                        // Regular cast endlocks on odd laths
+                        if (i % 2 !== 0 && castEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (castEndlockWeightG / 1000);
+                        }
+                        
+                        // Special wind endlocks
+                        const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
+                        if (isWindLathPosition && windEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (windEndlockWeightG / 1000);
+                        }
+                    }
+                } else {
+                    // Original logic for non-wind laths
+                    if (castEndlockWeightG > 0) {
+                         const numEndlockPairs = Math.ceil(numLaths / 2);
+                         totalEndlockWeight = numEndlockPairs * 2 * (castEndlockWeightG / 1000);
+                    }
                 }
             }
+
             dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
             const totalWeight = lathWeightBasedOnArea + bottomLathWeight + totalEndlockWeight;
 
@@ -2187,17 +2232,43 @@
             const bottomLathWeight = widthM * bottomLathWeightPerM;
             
             let totalEndlockWeight = 0;
-            const selectedEndlockIndex = dom.endlockType.value;
-            if (totalNumLaths > 0 && selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex]) {
-                const selectedEndlock = endlockData[selectedEndlockIndex];
-                const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
-                const endlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
-                
-                if (endlockWeightG > 0) {
-                    const numEndlockPairs = Math.ceil(totalNumLaths / 2);
-                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
+            const lathName = (mainLath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+
+            if (totalNumLaths > 0 && endlockData.length > 0) {
+                const selectedCastEndlockIndex = dom.endlockType.value;
+                let castEndlockWeightG = 0;
+                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                    const selectedEndlock = endlockData[selectedCastEndlockIndex];
+                    const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    castEndlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
+                }
+
+                if (isWindLath) {
+                    let windEndlockWeightG = 0;
+                    const windEndlock = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                    if (windEndlock) {
+                        const weightKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        windEndlockWeightG = weightKey ? parseFloat(windEndlock[weightKey]) : 0;
+                    }
+
+                    for (let i = 1; i <= totalNumLaths; i++) {
+                        if (i % 2 !== 0 && castEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (castEndlockWeightG / 1000);
+                        }
+                        const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
+                        if (isWindLathPosition && windEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (windEndlockWeightG / 1000);
+                        }
+                    }
+                } else {
+                    if (castEndlockWeightG > 0) {
+                         const numEndlockPairs = Math.ceil(totalNumLaths / 2);
+                         totalEndlockWeight = numEndlockPairs * 2 * (castEndlockWeightG / 1000);
+                    }
                 }
             }
+
             dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
             const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
 
@@ -2807,6 +2878,11 @@
             defs.appendChild(marker);
             svg.appendChild(defs);
 
+            const scaledTotalAxleWidth = totalRealAxleWidth * scale;
+            const scaledShutterWidth = realWidth * scale;
+            const startX = padding.left;
+            const lathStartX = startX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
+
             const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal', textSide = 'right') => {
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', x1); line.setAttribute('y1', y1);
@@ -2888,10 +2964,6 @@
                 svg.appendChild(text);
             };
 
-            const scaledTotalAxleWidth = totalRealAxleWidth * scale;
-            const scaledShutterWidth = realWidth * scale;
-            const startX = padding.left;
-            const lathStartX = startX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
             const bottomY = padding.top + graphHeight;
             let currentY = bottomY;
 
@@ -2932,7 +3004,33 @@
                 svg.appendChild(rightEndlock);
             };
 
+            const drawWindEndlocks = (lathY, lathH) => {
+                const endlockHeight = lathH * 0.8;
+                const endlockWidth = endlockHeight * 2.5; // Make them wider
+                const endlockY = lathY + (lathH - endlockHeight) / 2;
+
+                const leftEndlock = document.createElementNS(svgNS, 'rect');
+                // Start drawing from half its width to the left of the curtain edge
+                leftEndlock.setAttribute('x', lathStartX - (endlockWidth / 2));
+                leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockWidth);
+                leftEndlock.setAttribute('height', endlockHeight);
+                leftEndlock.setAttribute('class', 'wind-endlock-graphic');
+                svg.appendChild(leftEndlock);
+                
+                const rightEndlock = document.createElementNS(svgNS, 'rect');
+                // Start drawing from half its width to the left of the right curtain edge
+                rightEndlock.setAttribute('x', (lathStartX + scaledShutterWidth) - (endlockWidth / 2));
+                rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockWidth);
+                rightEndlock.setAttribute('height', endlockHeight);
+                rightEndlock.setAttribute('class', 'wind-endlock-graphic');
+                svg.appendChild(rightEndlock);
+            };
+
+
             let lathVisualCounter = 1;
+            const isWindLath = (lath['Name'] || '').toLowerCase().includes('wind');
 
             if (visionOptions && visionOptions.visionLath) {
                  const vo = visionOptions;
@@ -2949,7 +3047,14 @@
                     lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledMainLathHeight);
+                    }
                     lathVisualCounter++;
                 }
                 if (vo.numLathsBelow > 0) drawAnnotation(currentY, sectionBottomY, `${lath['Name']} (x${vo.numLathsBelow})`);
@@ -2963,7 +3068,14 @@
                     lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                    
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledVisionLathHeight);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledVisionLathHeight);
+                    }
                     lathVisualCounter++;
                 }
                 if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottomY, `${vo.visionLath['Name']} (x${vo.numLathsVision})`);
@@ -2977,7 +3089,14 @@
                     lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledMainLathHeight);
+                    }
                     lathVisualCounter++;
                 }
                 if (vo.numLathsAbove > 0) drawAnnotation(currentY, sectionBottomY, `${lath['Name']} (x${vo.numLathsAbove})`);
@@ -2986,6 +3105,8 @@
                  const scaledLathHeight = mainLathHeight * scale;
                  for (let i = 0; i < numLaths; i++) {
                     currentY -= scaledLathHeight;
+                    const lathNumber = i + 1;
+
                     const lathRect = document.createElementNS(svgNS, 'rect');
                     lathRect.setAttribute('x', lathStartX);
                     lathRect.setAttribute('y', currentY);
@@ -2993,7 +3114,21 @@
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
-                    if (endlocksSelected && (i + 1) % 2 !== 0) {
+                    
+                    if (isWindLath) {
+                        // Cast endlocks on odd laths, respecting wicket
+                        if (lathNumber % 2 !== 0) {
+                            const lathBottomEdgeY = currentY + scaledLathHeight;
+                            const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+                            drawEndlocks(currentY, scaledLathHeight, leftOffset);
+                        }
+                        // Wind endlocks on specific even laths
+                        const isWindLathPosition = (lathNumber === 2 || lathNumber === 4 || lathNumber === 6 || lathNumber === 8) || (lathNumber > 8 && lathNumber % 8 === 0);
+                        if (isWindLathPosition) {
+                            drawWindEndlocks(currentY, scaledLathHeight);
+                        }
+                    } else if (endlocksSelected && lathNumber % 2 !== 0) {
+                        // Original logic for non-wind laths
                         const lathBottomEdgeY = currentY + scaledLathHeight;
                         const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
                         drawEndlocks(currentY, scaledLathHeight, leftOffset);
