@@ -2896,9 +2896,9 @@
             const svg = document.createElementNS(svgNS, "svg");
             
             const basePadding = { top: 25, right: 120, bottom: 60, left: 120 };
-            const topDimClearance = 35; // Extra space for top dimension
+            const topDimClearance = 35; 
             const totalTopPadding = basePadding.top + topDimClearance;
-            const svgWidth = 600; 
+            const frontViewWidth = 600; 
 
             const mainLathHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height'] || mainLathHeight);
@@ -2909,12 +2909,14 @@
             const totalRealAxleWidth = realWidth + (additionalLength || 0);
             if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
 
-            const graphWidth = svgWidth - basePadding.left - basePadding.right;
+            const graphWidth = frontViewWidth - basePadding.left - basePadding.right;
             const scale = graphWidth / totalRealAxleWidth;
             const graphHeight = totalRealCompressedHeight * scale;
             const svgHeight = graphHeight + totalTopPadding + basePadding.bottom;
             
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+            const sideViewWidth = 250;
+            const totalSvgWidth = frontViewWidth + sideViewWidth;
+            svg.setAttribute('viewBox', `0 0 ${totalSvgWidth} ${svgHeight}`);
 
             const defs = document.createElementNS(svgNS, 'defs');
             const marker = document.createElementNS(svgNS, 'marker');
@@ -2939,40 +2941,30 @@
             const scaledCastOffset = endlockOffsets.cast * scale;
             const scaledWindOffset = endlockOffsets.wind * scale;
 
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
             const createLeaderLine = (x1, y1, x2, y2) => {
-                const line = document.createElementNS(svgNS, 'line');
-                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-                line.setAttribute('class', 'leader-line');
-                svg.appendChild(line);
+                svg.appendChild(createElem('line', { x1, y1, x2, y2, class: 'leader-line' }));
             };
 
             const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal', textSide = 'right') => {
-                const line = document.createElementNS(svgNS, 'line');
-                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-                line.setAttribute('class', 'dimension-line');
-                line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`);
-                line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`);
+                const line = createElem('line', { x1, y1, x2, y2, class: 'dimension-line', 'marker-start': `url(#dim-arrow-${idSuffix})`, 'marker-end': `url(#dim-arrow-${idSuffix})`});
                 svg.appendChild(line);
 
-                const text = document.createElementNS(svgNS, 'text');
+                const text = createElem('text', { class: 'dimension-text'});
                 text.textContent = label;
-                text.setAttribute('class', 'dimension-text');
 
                 if (orientation === 'horizontal') {
                     text.setAttribute('x', x1 + (x2 - x1) / 2);
                     text.setAttribute('y', y1 - 4);
                 } else { // vertical
                     const textY = y1 + (y2 - y1) / 2;
-                    let textX;
-                    if (textSide === 'left') {
-                        textX = x1 - 4;
-                        text.setAttribute('text-anchor', 'end');
-                    } else {
-                        textX = x1 + 4;
-                        text.setAttribute('text-anchor', 'start');
-                    }
+                    let textX = textSide === 'left' ? x1 - 4 : x1 + 4;
+                    text.setAttribute('text-anchor', textSide === 'left' ? 'end' : 'start');
                     text.setAttribute('x', textX);
                     text.setAttribute('y', textY);
                     text.setAttribute('dominant-baseline', 'middle');
@@ -2984,66 +2976,42 @@
             const drawAnnotation = (startY, endY, label) => {
                 const lineX = basePadding.left - 55;
                 const textX = lineX - 8;
-                const line = document.createElementNS(svgNS, 'line');
-                line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
-                line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
-                line.setAttribute('class', 'dimension-line');
-                line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`);
-                line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`);
-                svg.appendChild(line);
-
-                const text = document.createElementNS(svgNS, 'text');
-                text.setAttribute('x', textX);
-                text.setAttribute('class', 'dimension-text');
-                text.setAttribute('text-anchor', 'end');
+                svg.appendChild(createElem('line', { x1: lineX, y1: startY, x2: lineX, y2: endY, class: 'dimension-line', 'marker-start': `url(#dim-arrow-${idSuffix})`, 'marker-end': `url(#dim-arrow-${idSuffix})`}));
                 
-                const charLimit = 14;
+                const text = createElem('text', { x: textX, class: 'dimension-text', 'text-anchor': 'end'});
                 const words = label.split(' ');
                 let currentLine = '';
                 words.forEach(word => {
-                    if ((currentLine + ' ' + word).length > charLimit && currentLine.length > 0) {
-                        const tspan = document.createElementNS(svgNS, 'tspan');
-                        tspan.setAttribute('x', textX);
-                        tspan.setAttribute('dy', '1.2em');
+                    if ((currentLine + ' ' + word).length > 14 && currentLine.length > 0) {
+                        const tspan = createElem('tspan', { x: textX, dy: '1.2em' });
                         tspan.textContent = word;
                         text.appendChild(tspan);
                         currentLine = word;
                     } else {
-                        if (currentLine.length > 0) currentLine += ' ';
-                        currentLine += word;
-                        if (text.childElementCount === 0) {
-                             text.textContent = currentLine;
-                        } else {
-                            text.lastChild.textContent = currentLine;
-                        }
+                        currentLine += (currentLine.length > 0 ? ' ' : '') + word;
+                        if (text.childElementCount === 0) text.textContent = currentLine;
+                        else text.lastChild.textContent = currentLine;
                     }
                 });
 
                 const numLines = 1 + text.querySelectorAll('tspan').length;
-                const middleY = startY + (endY - startY) / 2;
-                const lineHeight = 6; 
-                const startYForBlock = middleY - ((numLines - 1) * lineHeight / 2);
-                text.setAttribute('y', startYForBlock);
-
+                text.setAttribute('y', startY + (endY - startY) / 2 - ((numLines - 1) * 6 / 2));
                 svg.appendChild(text);
             };
 
-            // Drawing starts from a new top position to account for padding
             const scaledAxleHeight = axleDiameter * scale;
             const axleY = totalTopPadding;
             const axleCenterlineY = axleY + scaledAxleHeight / 2;
             const bottomY = totalTopPadding + graphHeight;
             let currentY = bottomY;
 
-            let endplateTopY = axleY; // Default to top of axle if no endplate
+            let endplateTopY = axleY;
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
-                    const scaledEndplateHeight = endplateSize * scale;
-                    endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                    endplateTopY = axleCenterlineY - ((endplateSize * scale) / 2);
                 }
             }
-
 
             const wicketRealHeight = wicket ? (parseFloat(wicket.Height) || 0) : 0;
             const wicketRealWidth = wicket ? (parseFloat(wicket.Width) || 0) : 0;
@@ -3053,263 +3021,126 @@
             // --- DRAW CURTAIN FROM BOTTOM UP ---
             const scaledBottomLathHeight = bottomLathHeight * scale;
             currentY -= scaledBottomLathHeight;
-            const bottomLathRect = document.createElementNS(svgNS, 'rect');
-            bottomLathRect.setAttribute('x', lathStartX);
-            bottomLathRect.setAttribute('y', currentY);
-            bottomLathRect.setAttribute('width', scaledShutterWidth);
-            bottomLathRect.setAttribute('height', scaledBottomLathHeight);
-            bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic');
-            svg.appendChild(bottomLathRect);
+            svg.appendChild(createElem('rect', { x: lathStartX, y: currentY, width: scaledShutterWidth, height: scaledBottomLathHeight, class: 'shutter-bottomlath-graphic' }));
             const bottomLathTopY = currentY;
 
             const drawEndlocks = (lathY, lathH, leftOffset = 0) => {
                 const endlockSide = lathH * 0.8;
                 const endlockY = lathY + (lathH - endlockSide) / 2;
-                
-                const leftEndlock = document.createElementNS(svgNS, 'rect');
-                leftEndlock.setAttribute('x', lathStartX + leftOffset - scaledCastOffset);
-                leftEndlock.setAttribute('y', endlockY);
-                leftEndlock.setAttribute('width', endlockSide);
-                leftEndlock.setAttribute('height', endlockSide);
-                leftEndlock.setAttribute('class', 'endlock-graphic');
-                svg.appendChild(leftEndlock);
-                
-                const rightEndlock = document.createElementNS(svgNS, 'rect');
-                const curtainRightEdge = lathStartX + scaledShutterWidth;
-                rightEndlock.setAttribute('x', curtainRightEdge + scaledCastOffset - endlockSide);
-                rightEndlock.setAttribute('y', endlockY);
-                rightEndlock.setAttribute('width', endlockSide);
-                rightEndlock.setAttribute('height', endlockSide);
-                rightEndlock.setAttribute('class', 'endlock-graphic');
-                svg.appendChild(rightEndlock);
+                svg.appendChild(createElem('rect', { x: lathStartX + leftOffset - scaledCastOffset, y: endlockY, width: endlockSide, height: endlockSide, class: 'endlock-graphic' }));
+                svg.appendChild(createElem('rect', { x: lathStartX + scaledShutterWidth + scaledCastOffset - endlockSide, y: endlockY, width: endlockSide, height: endlockSide, class: 'endlock-graphic' }));
             };
 
             const drawWindEndlocks = (lathY, lathH) => {
                 const endlockHeight = lathH * 0.8;
                 const endlockWidth = endlockHeight * 2.5;
                 const endlockY = lathY + (lathH - endlockHeight) / 2;
-
-                const leftEndlock = document.createElementNS(svgNS, 'rect');
-                leftEndlock.setAttribute('x', lathStartX - scaledWindOffset);
-                leftEndlock.setAttribute('y', endlockY);
-                leftEndlock.setAttribute('width', endlockWidth);
-                leftEndlock.setAttribute('height', endlockHeight);
-                leftEndlock.setAttribute('class', 'wind-endlock-graphic');
-                svg.appendChild(leftEndlock);
-                
-                const rightEndlock = document.createElementNS(svgNS, 'rect');
-                const curtainRightEdge = lathStartX + scaledShutterWidth;
-                rightEndlock.setAttribute('x', curtainRightEdge + scaledWindOffset - endlockWidth);
-                rightEndlock.setAttribute('y', endlockY);
-                rightEndlock.setAttribute('width', endlockWidth);
-                rightEndlock.setAttribute('height', endlockHeight);
-                rightEndlock.setAttribute('class', 'wind-endlock-graphic');
-                svg.appendChild(rightEndlock);
+                svg.appendChild(createElem('rect', { x: lathStartX - scaledWindOffset, y: endlockY, width: endlockWidth, height: endlockHeight, class: 'wind-endlock-graphic' }));
+                svg.appendChild(createElem('rect', { x: lathStartX + scaledShutterWidth + scaledWindOffset - endlockWidth, y: endlockY, width: endlockWidth, height: endlockHeight, class: 'wind-endlock-graphic' }));
             };
 
             let lathVisualCounter = 1;
             const isWindLath = (lath['Name'] || '').toLowerCase().includes('wind');
 
+            const drawLathStack = (num, lathObj, lathClass) => {
+                let sectionStartY = currentY;
+                const scaledLathH = parseFloat(lathObj['Compressed lath height']) * scale;
+                for (let i = 0; i < num; i++) {
+                    currentY -= scaledLathH;
+                    svg.appendChild(createElem('rect', { x: lathStartX, y: currentY, width: scaledShutterWidth, height: scaledLathH, class: lathClass }));
+                    
+                    const lathBottomEdgeY = currentY + scaledLathH;
+                    const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledLathH, leftOffset);
+                        const isWindPos = [2, 4, 6, 8].includes(lathVisualCounter) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledLathH);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledLathH, leftOffset);
+                    }
+                    lathVisualCounter++;
+                }
+                if (num > 0) drawAnnotation(currentY, sectionStartY, `${lathObj['Name']} (x${num})`);
+            };
+
             if (visionOptions && visionOptions.visionLath) {
-                 const vo = visionOptions;
-                const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
-                const scaledMainLathHeight = mainLathHeight * scale;
-                const scaledVisionLathHeight = visionLathCompHeight * scale;
-
-                let sectionBottomY = currentY;
-                for (let i = 0; i < vo.numLathsBelow; i++) {
-                    currentY -= scaledMainLathHeight;
-                    const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledMainLathHeight);
-                    lathRect.setAttribute('class', 'shutter-lath-graphic');
-                    svg.appendChild(lathRect);
-
-                    if (isWindLath) {
-                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
-                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
-                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
-                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
-                        drawEndlocks(currentY, scaledMainLathHeight);
-                    }
-                    lathVisualCounter++;
-                }
-                if (vo.numLathsBelow > 0) drawAnnotation(currentY, sectionBottomY, `${lath['Name']} (x${vo.numLathsBelow})`);
-
-                sectionBottomY = currentY;
-                for (let i = 0; i < vo.numLathsVision; i++) {
-                    currentY -= scaledVisionLathHeight;
-                    const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledVisionLathHeight);
-                    lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
-                    svg.appendChild(lathRect);
-                    
-                    if (isWindLath) {
-                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
-                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
-                        if (isWindPos) drawWindEndlocks(currentY, scaledVisionLathHeight);
-                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
-                        drawEndlocks(currentY, scaledVisionLathHeight);
-                    }
-                    lathVisualCounter++;
-                }
-                if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottomY, `${vo.visionLath['Name']} (x${vo.numLathsVision})`);
-                
-                sectionBottomY = currentY;
-                for (let i = 0; i < vo.numLathsAbove; i++) {
-                    currentY -= scaledMainLathHeight;
-                    const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledMainLathHeight);
-                    lathRect.setAttribute('class', 'shutter-lath-graphic');
-                    svg.appendChild(lathRect);
-
-                    if (isWindLath) {
-                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
-                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
-                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
-                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
-                        drawEndlocks(currentY, scaledMainLathHeight);
-                    }
-                    lathVisualCounter++;
-                }
-                if (vo.numLathsAbove > 0) drawAnnotation(currentY, sectionBottomY, `${lath['Name']} (x${vo.numLathsAbove})`);
-
+                drawLathStack(visionOptions.numLathsBelow, lath, 'shutter-lath-graphic');
+                drawLathStack(visionOptions.numLathsVision, visionOptions.visionLath, 'shutter-vision-lath-graphic');
+                drawLathStack(visionOptions.numLathsAbove, lath, 'shutter-lath-graphic');
             } else if (numLaths > 0) {
-                 const scaledLathHeight = mainLathHeight * scale;
-                 for (let i = 0; i < numLaths; i++) {
-                    currentY -= scaledLathHeight;
-                    const lathNumber = i + 1;
-
-                    const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX);
-                    lathRect.setAttribute('y', currentY);
-                    lathRect.setAttribute('width', scaledShutterWidth);
-                    lathRect.setAttribute('height', scaledLathHeight);
-                    lathRect.setAttribute('class', 'shutter-lath-graphic');
-                    svg.appendChild(lathRect);
-                    
-                    if (isWindLath) {
-                        if (lathNumber % 2 !== 0) {
-                            const lathBottomEdgeY = currentY + scaledLathHeight;
-                            const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
-                            drawEndlocks(currentY, scaledLathHeight, leftOffset);
-                        }
-                        const isWindLathPosition = (lathNumber === 2 || lathNumber === 4 || lathNumber === 6 || lathNumber === 8) || (lathNumber > 8 && lathNumber % 8 === 0);
-                        if (isWindLathPosition) {
-                            drawWindEndlocks(currentY, scaledLathHeight);
-                        }
-                    } else if (endlocksSelected && lathNumber % 2 !== 0) {
-                        const lathBottomEdgeY = currentY + scaledLathHeight;
-                        const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
-                        drawEndlocks(currentY, scaledLathHeight, leftOffset);
-                    }
+                drawLathStack(numLaths, lath, 'shutter-lath-graphic');
+            }
+            
+            // --- DRAW TOP COMPONENTS (BOX, AXLE, WICKET) ---
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    svg.appendChild(createElem('rect', { x: startX, y: endplateTopY, width: scaledTotalAxleWidth, height: endplateSize * scale, class: 'endplate-box-graphic' }));
                 }
-                drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
+            }
+
+            svg.appendChild(createElem('rect', { x: startX, y: axleY, width: scaledTotalAxleWidth, height: scaledAxleHeight, class: 'shutter-axle-graphic' }));
+            svg.appendChild(createElem('line', { x1: startX, y1: axleCenterlineY, x2: startX + scaledTotalAxleWidth, y2: axleCenterlineY, class: 'axle-centerline-graphic' }));
+
+            if (wicket) {
+                svg.appendChild(createElem('rect', { x: lathStartX, y: bottomY - (wicketRealHeight * scale), width: scaledWicketWidth, height: wicketRealHeight * scale, class: 'wicket-door-graphic' }));
+            }
+
+            // --- DRAW DIMENSIONS ---
+            drawDimensionLine(startX, basePadding.top, startX + scaledTotalAxleWidth, basePadding.top, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`);
+            createLeaderLine(startX, basePadding.top, startX, axleY);
+            createLeaderLine(startX + scaledTotalAxleWidth, basePadding.top, startX + scaledTotalAxleWidth, axleY);
+            
+            const widthDimY = bottomY + 15;
+            drawDimensionLine(lathStartX, widthDimY, lathStartX + scaledShutterWidth, widthDimY, `${realWidth.toFixed(0)} mm Cut Curtain Width`);
+            createLeaderLine(lathStartX, widthDimY, lathStartX, bottomY);
+            createLeaderLine(lathStartX + scaledShutterWidth, widthDimY, lathStartX + scaledShutterWidth, bottomY);
+
+            if (Math.max(endlockOffsets.cast, endlockOffsets.wind) > 0) {
+                const maxOffset = Math.max(endlockOffsets.cast, endlockOffsets.wind);
+                const overallWidth = realWidth + (2 * maxOffset);
+                const overallStartX = lathStartX - (maxOffset * scale);
+                drawDimensionLine(overallStartX, bottomY + 28, overallStartX + (overallWidth * scale), bottomY + 28, `${overallWidth.toFixed(0)} mm Overall Endlock Width`);
             }
             
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
-                    const scaledEndplateHeight = endplateSize * scale;
-                    // endplateTopY is already calculated
-                    const endplateBox = document.createElementNS(svgNS, 'rect');
-                    endplateBox.setAttribute('x', startX);
-                    endplateBox.setAttribute('y', endplateTopY);
-                    endplateBox.setAttribute('width', scaledTotalAxleWidth);
-                    endplateBox.setAttribute('height', scaledEndplateHeight);
-                    endplateBox.setAttribute('class', 'endplate-box-graphic');
-                    svg.appendChild(endplateBox);
-                }
-            }
-
-            const axleRect = document.createElementNS(svgNS, 'rect');
-            axleRect.setAttribute('x', startX);
-            axleRect.setAttribute('y', axleY);
-            axleRect.setAttribute('width', scaledTotalAxleWidth);
-            axleRect.setAttribute('height', scaledAxleHeight);
-            axleRect.setAttribute('class', 'shutter-axle-graphic');
-            svg.appendChild(axleRect);
-            
-            const centerline = document.createElementNS(svgNS, 'line');
-            centerline.setAttribute('x1', startX); centerline.setAttribute('y1', axleCenterlineY);
-            centerline.setAttribute('x2', startX + scaledTotalAxleWidth); centerline.setAttribute('y2', axleCenterlineY);
-            centerline.setAttribute('class', 'axle-centerline-graphic');
-            svg.appendChild(centerline);
-
-            if (wicket) {
-                const scaledWicketHeight = wicketRealHeight * scale;
-                const wicketRect = document.createElementNS(svgNS, 'rect');
-                wicketRect.setAttribute('x', lathStartX);
-                wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
-                wicketRect.setAttribute('width', scaledWicketWidth);
-                wicketRect.setAttribute('height', scaledWicketHeight);
-                wicketRect.setAttribute('class', 'wicket-door-graphic');
-                svg.appendChild(wicketRect);
-            }
-
-            // --- Draw Dimensions ---
-            const totalWidthDimY = basePadding.top;
-            drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`, 'horizontal');
-            createLeaderLine(startX, totalWidthDimY, startX, axleY);
-            createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
-            
-            const widthDimLineY = bottomY + 15;
-            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm Cut Curtain Width`, 'horizontal');
-            createLeaderLine(lathStartX, widthDimLineY, lathStartX, bottomY);
-            createLeaderLine(lathStartX + scaledShutterWidth, widthDimLineY, lathStartX + scaledShutterWidth, bottomY);
-
-            const maxOffset = Math.max(endlockOffsets.cast, endlockOffsets.wind);
-            if (maxOffset > 0) {
-                const scaledMaxOffset = maxOffset * scale;
-                const endlockWidthDimY = bottomY + 28;
-                const overallWidth = realWidth + (2 * maxOffset);
-                const overallStartX = lathStartX - scaledMaxOffset;
-                const overallEndX = lathStartX + scaledShutterWidth + scaledMaxOffset;
-                drawDimensionLine(overallStartX, endlockWidthDimY, overallEndX, endlockWidthDimY, `${overallWidth.toFixed(0)} mm Overall Endlock Width`, 'horizontal');
-                createLeaderLine(overallStartX, endlockWidthDimY, overallStartX, bottomY - (scaledBottomLathHeight/2));
-                createLeaderLine(overallEndX, endlockWidthDimY, overallEndX, bottomY - (scaledBottomLathHeight/2));
-            }
-            
-            const rightDimX_Inner = startX + scaledTotalAxleWidth + 40;
-            const rightDimX_Outer = rightDimX_Inner - 15;
-            
-            if (selectedEndplate) {
-                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
-                if(endplateSize > 0) {
                     const endplateBottomY = endplateTopY + (endplateSize * scale);
                     const heightToUnderside = parseFloat(dom.height.value) - (endplateSize / 2);
-                    drawDimensionLine(rightDimX_Inner, endplateBottomY, rightDimX_Inner, bottomY, `${heightToUnderside.toFixed(0)} mm to underside of box`, 'vertical', 'left');
-                    createLeaderLine(rightDimX_Inner, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY);
-                    createLeaderLine(rightDimX_Inner, bottomY, startX + scaledTotalAxleWidth, bottomY);
+                    drawDimensionLine(startX + scaledTotalAxleWidth + 40, endplateBottomY, startX + scaledTotalAxleWidth + 40, bottomY, `${heightToUnderside.toFixed(0)} mm to underside`, 'vertical', 'left');
                 }
             }
 
-            drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
-            createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
-            createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
+            drawDimensionLine(startX + scaledTotalAxleWidth + 25, axleCenterlineY, startX + scaledTotalAxleWidth + 25, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Axle Centre`, 'vertical', 'left');
             
-            const leftDimX_Inner = basePadding.left - 15;
-            const leftDimX_Outer = basePadding.left - 55;
+            // --- DRAW SIDE SECTION VIEW ---
             if (selectedEndplate) {
-                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
-                 if (endplateSize > 0) {
-                    const scaledEndplateHeight = endplateSize * scale;
-                    const endplateBottomY = endplateTopY + scaledEndplateHeight;
-                    drawDimensionLine(leftDimX_Inner, endplateTopY, leftDimX_Inner, endplateBottomY, `${endplateSize.toFixed(0)} mm Endplate`, 'vertical', 'left');
-                    createLeaderLine(leftDimX_Inner, endplateTopY, startX, endplateTopY);
-                    createLeaderLine(leftDimX_Inner, endplateBottomY, startX, endplateBottomY);
-                 }
-            }
+                const sideViewStartX = frontViewWidth + 40;
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                const scaledEndplateSize = endplateSize * scale;
 
-            if (bottomLathHeight > 0) {
-                drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
-                createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY);
-                createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
+                svg.appendChild(createElem('text', { x: sideViewStartX + scaledEndplateSize / 2, y: endplateTopY - 8, class: 'dimension-text', 'font-size': '8px' })).textContent = "Side Section";
+                svg.appendChild(createElem('rect', { x: sideViewStartX, y: endplateTopY, width: scaledEndplateSize, height: scaledEndplateSize, class: 'endplate-box-graphic', fill: '#f8f9fa', stroke: '#adb5bd'}));
+                
+                const axleCenterX = sideViewStartX + scaledEndplateSize / 2;
+                const scaledAxleRadius = (axleDiameter / 2) * scale;
+                svg.appendChild(createElem('circle', { cx: axleCenterX, cy: axleCenterlineY, r: scaledAxleRadius, class: 'shutter-axle-graphic'}));
+
+                const numLathsInDrop = Math.ceil((parseFloat(dom.height.value) - bottomLathHeight) / mainLathHeight);
+                const numCoiledLaths = numLaths - numLathsInDrop;
+                let currentCoilRadius = scaledAxleRadius;
+                const scaledLathThickness = (parseFloat(lath['Thickness']) || 1) * scale;
+
+                for (let i = 0; i < numCoiledLaths; i++) {
+                    currentCoilRadius += scaledLathThickness;
+                    svg.appendChild(createElem('circle', { cx: axleCenterX, cy: axleCenterlineY, r: currentCoilRadius, fill: 'none', stroke: '#adb5bd', 'stroke-width': 0.5 }));
+                }
+
+                const guideX = sideViewStartX + scaledEndplateSize;
+                svg.appendChild(createElem('rect', { x: axleCenterX, y: axleCenterlineY - scaledLathThickness / 2, width: guideX - axleCenterX, height: scaledLathThickness, class: 'shutter-lath-graphic' }));
+                svg.appendChild(createElem('rect', { x: guideX - scaledLathThickness, y: axleCenterlineY, width: scaledLathThickness, height: (bottomY - scaledBottomLathHeight) - axleCenterlineY, class: 'shutter-lath-graphic' }));
+                svg.appendChild(createElem('rect', { x: guideX - scaledLathThickness * 1.2, y: bottomY - scaledBottomLathHeight, width: scaledLathThickness * 1.2, height: scaledBottomLathHeight, class: 'shutter-bottomlath-graphic' }));
             }
 
             return svg;
