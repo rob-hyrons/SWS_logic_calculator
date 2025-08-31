@@ -3115,68 +3115,124 @@
             drawDimensionLine(startX + scaledTotalAxleWidth + 25, axleCenterlineY, startX + scaledTotalAxleWidth + 25, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Axle Centre`, 'vertical', 'left');
             
             // --- DRAW SIDE SECTION VIEW ---
-            if (selectedEndplate) {
+             if (selectedEndplate) {
                 const sideViewStartX = frontViewWidth + 40;
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 const scaledEndplateSize = endplateSize * scale;
 
                 svg.appendChild(createElem('text', { x: sideViewStartX + scaledEndplateSize / 2, y: endplateTopY - 8, class: 'dimension-text', 'font-size': '8px' })).textContent = "Side Section";
-                svg.appendChild(createElem('rect', { x: sideViewStartX, y: endplateTopY, width: scaledEndplateSize, height: scaledEndplateSize, class: 'endplate-box-graphic', fill: '#f8f9fa', stroke: '#adb5bd'}));
+                svg.appendChild(createElem('rect', { x: sideViewStartX, y: endplateTopY, width: scaledEndplateSize, height: scaledEndplateSize, class: 'endplate-box-graphic', fill: 'none'}));
                 
                 const axleCenterX = sideViewStartX + scaledEndplateSize / 2;
                 const scaledAxleRadius = (axleDiameter / 2) * scale;
                 const endplateBottomY = endplateTopY + scaledEndplateSize;
                 const guideX = sideViewStartX + scaledEndplateSize;
 
-                const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']);
-                const numLathsForTravel = Math.ceil((parseFloat(dom.height.value) - bottomLathHeight) / uncompressedLathHeight);
-                const numCoiledLaths = Math.max(0, numLaths - numLathsForTravel);
-                const scaledLathThickness = (parseFloat(lath['Thickness']) || 1) * scale;
-                const maxCoilRadius = scaledAxleRadius + (numCoiledLaths * scaledLathThickness);
-
-                svg.appendChild(createElem('circle', { cx: axleCenterX, cy: axleCenterlineY, r: maxCoilRadius, fill: '#e9ecef', stroke: 'none' }));
                 svg.appendChild(createElem('circle', { cx: axleCenterX, cy: axleCenterlineY, r: scaledAxleRadius, class: 'shutter-axle-graphic'}));
 
-                if(numCoiledLaths > 1) {
-                    for (let i = 1; i <= numCoiledLaths; i++) {
-                        svg.appendChild(createElem('circle', { cx: axleCenterX, cy: axleCenterlineY, r: scaledAxleRadius + i * scaledLathThickness, fill: 'none', stroke: '#adb5bd', 'stroke-width': 0.5 }));
-                    }
-                }
+                const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']);
+                const scaledLathHeight = uncompressedLathHeight * scale;
+                const scaledLathThickness = (parseFloat(lath['Thickness']) || 1) * scale;
+                const numLathsInDrop = Math.ceil((parseFloat(dom.height.value) - bottomLathHeight) / uncompressedLathHeight);
+                const numCoiledLaths = Math.max(0, numLaths - numLathsInDrop);
+                const numBufferLaths = 2;
+
+                const finalCoilRadius = (maxCoilDiameter / 2) * scale;
                 
-                const Px = guideX, Py = endplateBottomY, Cx = axleCenterX, Cy = axleCenterlineY, r = maxCoilRadius;
-                const d = Math.sqrt((Px - Cx)**2 + (Py - Cy)**2);
+                const Px = guideX, Py = endplateBottomY, Cx = axleCenterX, Cy = axleCenterlineY, r = finalCoilRadius;
+                const d_sq = (Px - Cx)**2 + (Py - Cy)**2;
                 let Tx, Ty;
-                if (d <= r) {
-                    Tx = Px; Ty = Cy + Math.sqrt(Math.max(0, r**2 - (Px-Cx)**2));
+                 if (d_sq <= r**2) { 
+                    Tx = Px; 
+                    Ty = Cy - Math.sqrt(Math.max(0, r**2 - (Px - Cx)**2));
                 } else {
-                    const alpha = Math.atan2(Py - Cy, Px - Cx);
-                    const beta = Math.acos(r / d);
-                    const theta = alpha - beta;
-                    Tx = Cx + r * Math.cos(theta); Ty = Cy + r * Math.sin(theta);
+                    const d = Math.sqrt(d_sq);
+                    const L = Math.sqrt(d_sq - r**2);
+                    Tx = (L**2 * Px + r**2 * Cx + r*L*(Py-Cy)) / d_sq;
+                    Ty = (L**2 * Py + r**2 * Cy - r*L*(Px-Cx)) / d_sq;
                 }
 
-                const vec_dx = Tx - guideX, vec_dy = Ty - endplateBottomY;
-                const vec_len = Math.sqrt(vec_dx**2 + vec_dy**2) || 1;
-                const norm_dx = vec_dx / vec_len, norm_dy = vec_dy / vec_len;
-                
-                const p1 = { x: guideX, y: endplateBottomY };
-                const p2 = { x: guideX - scaledLathThickness, y: endplateBottomY };
-                const p3 = { x: Tx - (scaledLathThickness * norm_dy), y: Ty + (scaledLathThickness * norm_dx) };
-                const p4 = { x: Tx, y: Ty };
-                
-                svg.appendChild(createElem('rect', { x: guideX - scaledLathThickness, y: endplateBottomY, width: scaledLathThickness, height: bottomY - endplateBottomY - scaledBottomLathHeight, class: 'shutter-lath-graphic' }));
-                svg.appendChild(createElem('polygon', { points: `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y} ${p4.x},${p4.y}`, class: 'shutter-lath-graphic' }));
-                svg.appendChild(createElem('rect', { x: guideX - scaledLathThickness * 1.1, y: bottomY - scaledBottomLathHeight, width: scaledLathThickness * 1.1, height: scaledBottomLathHeight, class: 'shutter-bottomlath-graphic' }));
-                
-                const startAngle = Math.atan2(Ty - Cy, Tx - Cx);
-                const endAngle = startAngle + Math.PI * 0.75;
-                const innerRadius = maxCoilRadius - scaledLathThickness;
-                const arcPath = [
-                    `M ${Tx} ${Ty}`, `A ${maxCoilRadius} ${maxCoilRadius} 0 0 1 ${Cx + maxCoilRadius * Math.cos(endAngle)} ${Cy + maxCoilRadius * Math.sin(endAngle)}`,
-                    `L ${Cx + innerRadius * Math.cos(endAngle)} ${Cy + innerRadius * Math.sin(endAngle)}`,
-                    `A ${innerRadius} ${innerRadius} 0 0 0 ${Cx + innerRadius * Math.cos(startAngle)} ${Cy + innerRadius * Math.sin(startAngle)}`, 'Z'
-                ].join(' ');
-                svg.appendChild(createElem('path', { d: arcPath, class: 'shutter-lath-graphic' }));
+                // Draw all laths from bottom up
+                let lathPoints = [];
+                // 1. Vertical section
+                let currentY = bottomY - scaledBottomLathHeight;
+                while (currentY > endplateBottomY) {
+                    lathPoints.push({ type: 'vertical', y: currentY });
+                    currentY -= scaledLathHeight;
+                }
+                // 2. Transition section
+                const transitionDist = Math.sqrt((Tx - guideX)**2 + (Ty - endplateBottomY)**2);
+                const numTransitionLaths = Math.round(transitionDist / scaledLathHeight);
+                for(let i = 0; i < numTransitionLaths; i++) {
+                    const ratio = i / (numTransitionLaths - 1);
+                    lathPoints.push({ type: 'transition', ratio: ratio });
+                }
+                // 3. Coiled section
+                for (let i = 0; i < numCoiledLaths; i++) {
+                    lathPoints.push({ type: 'coiled', index: i });
+                }
+
+                // Render laths
+                let coilRadius = scaledAxleRadius + scaledLathThickness / 2;
+                let coilAngle = Math.atan2(Ty - Cy, Tx - Cx) + (scaledLathHeight/2)/finalCoilRadius;
+
+                lathPoints.reverse(); // Draw from coil outwards
+                const lathCount = lathPoints.length;
+
+                lathPoints.forEach((p, index) => {
+                    const lathNumber = lathCount - index; // 1 is bottom lath
+                    let x, y, rot, fillClass = 'shutter-lath-graphic';
+                    let lathW = scaledLathThickness, lathH = scaledLathHeight;
+
+                    if (p.type === 'coiled') {
+                        const isBuffer = p.index < numBufferLaths;
+                        fillClass = isBuffer ? 'buffer' : 'shutter-lath-graphic';
+
+                        const angleOffset = (p.index * scaledLathHeight) / radius;
+                        const effectiveAngle = coilAngle - angleOffset;
+
+                        x = Cx + radius * Math.cos(effectiveAngle);
+                        y = Cy + radius * Math.sin(effectiveAngle);
+                        rot = effectiveAngle * 180 / Math.PI + 90;
+
+                        if (p.index > 0 && p.index % Math.floor(2 * Math.PI * radius / scaledLathHeight) === 0) {
+                            radius += scaledLathThickness;
+                        }
+                    } else if (p.type === 'transition') {
+                         x = guideX * (1 - p.ratio) + Tx * p.ratio;
+                         y = endplateBottomY * (1 - p.ratio) + Ty * p.ratio;
+                         rot = Math.atan2(Ty - endplateBottomY, Tx - guideX) * 180 / Math.PI;
+                    } else { // Vertical
+                        x = guideX - lathW/2;
+                        y = p.y;
+                        rot = 0;
+                        lathH = scaledLathHeight;
+                    }
+
+                    const rect = createElem('rect', {});
+                    if (p.type === 'vertical') {
+                        rect.setAttribute('x', x);
+                        rect.setAttribute('y', y);
+                        rect.setAttribute('width', lathW);
+                        rect.setAttribute('height', lathH);
+                    } else {
+                        rect.setAttribute('x', -lathH / 2);
+                        rect.setAttribute('y', -lathW / 2);
+                        rect.setAttribute('width', lathH);
+                        rect.setAttribute('height', lathW);
+                        rect.setAttribute('transform', `translate(${x}, ${y}) rotate(${rot})`);
+                    }
+                    
+                    if (fillClass === 'buffer') {
+                        rect.setAttribute('fill', '#d93025');
+                        rect.setAttribute('stroke', '#495057');
+                        rect.setAttribute('stroke-width', '0.5');
+                    } else {
+                        rect.setAttribute('class', fillClass);
+                    }
+                     svg.appendChild(rect);
+                });
+                 svg.appendChild(createElem('rect', { x: guideX - scaledLathThickness*1.1, y: bottomY - scaledBottomLathHeight, width: scaledLathThickness*1.1, height: scaledBottomLathHeight, class: 'shutter-bottomlath-graphic'}));
             }
 
             return svg;
