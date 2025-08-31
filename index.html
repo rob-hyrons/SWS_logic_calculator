@@ -2859,7 +2859,7 @@
 
             const svg = document.createElementNS(svgNS, "svg");
             
-            const basePadding = { top: 25, right: 120, bottom: 85, left: 120 };
+            const basePadding = { top: 25, right: 120, bottom: 60, left: 120 };
             const topDimClearance = 35; // Extra space for top dimension
             const totalTopPadding = basePadding.top + topDimClearance;
             const svgWidth = 600; 
@@ -3026,57 +3026,49 @@
             svg.appendChild(bottomLathRect);
             const bottomLathTopY = currentY;
 
-            const drawEndlocks = (lathY, lathH, sides = 'both') => {
+            const drawEndlocks = (lathY, lathH, leftOffset = 0) => {
                 const endlockSide = lathH * 0.8;
                 const endlockY = lathY + (lathH - endlockSide) / 2;
                 
-                if (sides === 'both' || sides === 'left') {
-                    const leftEndlock = document.createElementNS(svgNS, 'rect');
-                    leftEndlock.setAttribute('x', lathStartX - scaledCastOffset);
-                    leftEndlock.setAttribute('y', endlockY);
-                    leftEndlock.setAttribute('width', endlockSide);
-                    leftEndlock.setAttribute('height', endlockSide);
-                    leftEndlock.setAttribute('class', 'endlock-graphic');
-                    svg.appendChild(leftEndlock);
-                }
+                const leftEndlock = document.createElementNS(svgNS, 'rect');
+                leftEndlock.setAttribute('x', lathStartX + leftOffset - scaledCastOffset);
+                leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockSide);
+                leftEndlock.setAttribute('height', endlockSide);
+                leftEndlock.setAttribute('class', 'endlock-graphic');
+                svg.appendChild(leftEndlock);
                 
-                if (sides === 'both' || sides === 'right') {
-                    const rightEndlock = document.createElementNS(svgNS, 'rect');
-                    const curtainRightEdge = lathStartX + scaledShutterWidth;
-                    rightEndlock.setAttribute('x', curtainRightEdge + scaledCastOffset - endlockSide);
-                    rightEndlock.setAttribute('y', endlockY);
-                    rightEndlock.setAttribute('width', endlockSide);
-                    rightEndlock.setAttribute('height', endlockSide);
-                    rightEndlock.setAttribute('class', 'endlock-graphic');
-                    svg.appendChild(rightEndlock);
-                }
+                const rightEndlock = document.createElementNS(svgNS, 'rect');
+                const curtainRightEdge = lathStartX + scaledShutterWidth;
+                rightEndlock.setAttribute('x', curtainRightEdge + scaledCastOffset - endlockSide);
+                rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockSide);
+                rightEndlock.setAttribute('height', endlockSide);
+                rightEndlock.setAttribute('class', 'endlock-graphic');
+                svg.appendChild(rightEndlock);
             };
 
-            const drawWindEndlocks = (lathY, lathH, sides = 'both') => {
+            const drawWindEndlocks = (lathY, lathH) => {
                 const endlockHeight = lathH * 0.8;
                 const endlockWidth = endlockHeight * 2.5;
                 const endlockY = lathY + (lathH - endlockHeight) / 2;
 
-                if (sides === 'both' || sides === 'left') {
-                    const leftEndlock = document.createElementNS(svgNS, 'rect');
-                    leftEndlock.setAttribute('x', lathStartX - scaledWindOffset);
-                    leftEndlock.setAttribute('y', endlockY);
-                    leftEndlock.setAttribute('width', endlockWidth);
-                    leftEndlock.setAttribute('height', endlockHeight);
-                    leftEndlock.setAttribute('class', 'wind-endlock-graphic');
-                    svg.appendChild(leftEndlock);
-                }
+                const leftEndlock = document.createElementNS(svgNS, 'rect');
+                leftEndlock.setAttribute('x', lathStartX - scaledWindOffset);
+                leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockWidth);
+                leftEndlock.setAttribute('height', endlockHeight);
+                leftEndlock.setAttribute('class', 'wind-endlock-graphic');
+                svg.appendChild(leftEndlock);
                 
-                if (sides === 'both' || sides === 'right') {
-                    const rightEndlock = document.createElementNS(svgNS, 'rect');
-                    const curtainRightEdge = lathStartX + scaledShutterWidth;
-                    rightEndlock.setAttribute('x', curtainRightEdge + scaledWindOffset - endlockWidth);
-                    rightEndlock.setAttribute('y', endlockY);
-                    rightEndlock.setAttribute('width', endlockWidth);
-                    rightEndlock.setAttribute('height', endlockHeight);
-                    rightEndlock.setAttribute('class', 'wind-endlock-graphic');
-                    svg.appendChild(rightEndlock);
-                }
+                const rightEndlock = document.createElementNS(svgNS, 'rect');
+                const curtainRightEdge = lathStartX + scaledShutterWidth;
+                rightEndlock.setAttribute('x', curtainRightEdge + scaledWindOffset - endlockWidth);
+                rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockWidth);
+                rightEndlock.setAttribute('height', endlockHeight);
+                rightEndlock.setAttribute('class', 'wind-endlock-graphic');
+                svg.appendChild(rightEndlock);
             };
 
             let lathVisualCounter = 1;
@@ -3098,13 +3090,12 @@
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
 
-                    const sidesToDraw = 'both'; 
                     if (isWindLath) {
-                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight, sidesToDraw);
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                         const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
-                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight, sidesToDraw);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
                     } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
-                        drawEndlocks(currentY, scaledMainLathHeight, sidesToDraw);
+                        drawEndlocks(currentY, scaledMainLathHeight);
                     }
                     lathVisualCounter++;
                 }
@@ -3120,13 +3111,12 @@
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
                     svg.appendChild(lathRect);
                     
-                    const sidesToDraw = 'both';
                     if (isWindLath) {
-                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight, sidesToDraw);
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
                         const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
-                        if (isWindPos) drawWindEndlocks(currentY, scaledVisionLathHeight, sidesToDraw);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledVisionLathHeight);
                     } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
-                        drawEndlocks(currentY, scaledVisionLathHeight, sidesToDraw);
+                        drawEndlocks(currentY, scaledVisionLathHeight);
                     }
                     lathVisualCounter++;
                 }
@@ -3142,13 +3132,12 @@
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
 
-                    const sidesToDraw = 'both';
                     if (isWindLath) {
-                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight, sidesToDraw);
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
                         const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
-                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight, sidesToDraw);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
                     } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
-                        drawEndlocks(currentY, scaledMainLathHeight, sidesToDraw);
+                        drawEndlocks(currentY, scaledMainLathHeight);
                     }
                     lathVisualCounter++;
                 }
@@ -3168,19 +3157,20 @@
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     
-                    const lathBottomEdgeY = currentY + scaledLathHeight;
-                    const sidesToDraw = (wicket && lathBottomEdgeY > wicketTopY) ? 'right' : 'both';
-
                     if (isWindLath) {
                         if (lathNumber % 2 !== 0) {
-                            drawEndlocks(currentY, scaledLathHeight, sidesToDraw);
+                            const lathBottomEdgeY = currentY + scaledLathHeight;
+                            const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+                            drawEndlocks(currentY, scaledLathHeight, leftOffset);
                         }
                         const isWindLathPosition = (lathNumber === 2 || lathNumber === 4 || lathNumber === 6 || lathNumber === 8) || (lathNumber > 8 && lathNumber % 8 === 0);
                         if (isWindLathPosition) {
-                            drawWindEndlocks(currentY, scaledLathHeight, sidesToDraw);
+                            drawWindEndlocks(currentY, scaledLathHeight);
                         }
                     } else if (endlocksSelected && lathNumber % 2 !== 0) {
-                        drawEndlocks(currentY, scaledLathHeight, sidesToDraw);
+                        const lathBottomEdgeY = currentY + scaledLathHeight;
+                        const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+                        drawEndlocks(currentY, scaledLathHeight, leftOffset);
                     }
                 }
                 drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
@@ -3237,27 +3227,10 @@
             createLeaderLine(lathStartX, widthDimLineY, lathStartX, bottomY);
             createLeaderLine(lathStartX + scaledShutterWidth, widthDimLineY, lathStartX + scaledShutterWidth, bottomY);
 
-            if (wicket) {
-                const wicketDimY = bottomY + 40; 
-                const shorterLathWidth = realWidth - wicketRealWidth;
-                
-                const wicketStartX = lathStartX;
-                const wicketEndX = lathStartX + scaledWicketWidth;
-                drawDimensionLine(wicketStartX, wicketDimY, wicketEndX, wicketDimY, `${wicketRealWidth.toFixed(0)} mm Wicket`, 'horizontal');
-                createLeaderLine(wicketStartX, wicketDimY, wicketStartX, bottomY);
-
-                const shorterLathStartX = lathStartX + scaledWicketWidth;
-                const shorterLathEndX = lathStartX + scaledShutterWidth;
-                if (shorterLathWidth > 0) {
-                    drawDimensionLine(shorterLathStartX, wicketDimY, shorterLathEndX, wicketDimY, `${shorterLathWidth.toFixed(0)} mm`, 'horizontal');
-                    createLeaderLine(shorterLathStartX, wicketDimY, shorterLathStartX, bottomY);
-                    createLeaderLine(shorterLathEndX, wicketDimY, shorterLathEndX, bottomY);
-                }
-            }
-            
             const maxOffset = Math.max(endlockOffsets.cast, endlockOffsets.wind);
             if (maxOffset > 0) {
-                const endlockWidthDimY = wicket ? bottomY + 65 : bottomY + 28;
+                const scaledMaxOffset = maxOffset * scale;
+                const endlockWidthDimY = bottomY + 28;
                 const overallWidth = realWidth + (2 * maxOffset);
                 const overallStartX = lathStartX - scaledMaxOffset;
                 const overallEndX = lathStartX + scaledShutterWidth + scaledMaxOffset;
