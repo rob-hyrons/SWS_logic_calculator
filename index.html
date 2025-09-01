@@ -238,7 +238,12 @@
             border-bottom: 2px solid #007bff;
             padding-bottom: 0.5em;
         }
-        .admin-controls {
+        .admin-section h4 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: #495057;
+        }
+        .admin-controls, .report-filter-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 1em;
@@ -256,7 +261,7 @@
             gap: 1em;
             margin-bottom: 1.5em;
         }
-        .admin-button-group button, #importCsvButton {
+        .admin-button-group button, #importCsvButton, #generateCsvButton {
             padding: 0.5em 1em;
             font-size: 0.8em;
             font-weight: 500;
@@ -266,11 +271,27 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .admin-button-group button:hover, #importCsvButton:hover {
+        .admin-button-group button:hover, #importCsvButton:hover, #generateCsvButton:hover {
             background-color: #5a6268;
         }
         #importCsvButton { background-color: #28a745; }
         #importCsvButton:hover { background-color: #218838; }
+        #generateCsvButton { background-color: #007bff; font-size: 0.9em; padding: 0.8em 1.2em; }
+        #generateCsvButton:hover { background-color: #0056b3; }
+
+        .report-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1em;
+            margin-bottom: 1.5em;
+        }
+        .report-filter-container {
+             max-height: 200px;
+             overflow-y: auto;
+             padding: 1em;
+             border: 1px solid #dee2e6;
+             border-radius: 4px;
+        }
 
         /* Axle Shape Toggle Styles */
         .shape-toggle {
@@ -702,6 +723,64 @@
                             <!-- Input controls will be generated here by JavaScript -->
                         </div>
                     </div>
+
+                    <!-- =================================================================== -->
+                    <!-- START: NEW SECTION FOR CSV REPORT GENERATION                        -->
+                    <!-- =================================================================== -->
+                    <div id="csv-report-section" class="admin-section">
+                        <h3>Generate Sizing Report</h3>
+                        <p>Configure the report parameters below. This process can take several minutes and may slow down your browser depending on the size of the range selected.</p>
+                        
+                        <h4>1. Define Size Range (mm)</h4>
+                        <div class="report-controls-grid">
+                            <div class="form-group">
+                                <label for="reportMinWidth">Min Width</label>
+                                <input type="number" id="reportMinWidth" value="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="reportMaxWidth">Max Width</label>
+                                <input type="number" id="reportMaxWidth" value="8000">
+                            </div>
+                             <div class="form-group">
+                                <label for="reportInterval">Interval</label>
+                                <input type="number" id="reportInterval" value="500">
+                            </div>
+                            <div class="form-group">
+                                <label for="reportMinHeight">Min Height</label>
+                                <input type="number" id="reportMinHeight" value="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="reportMaxHeight">Max Height</label>
+                                <input type="number" id="reportMaxHeight" value="6000">
+                            </div>
+                        </div>
+
+                        <h4>2. Select Lath Types to Include</h4>
+                        <div class="admin-button-group">
+                            <button id="reportLathSelectAll">Select All</button>
+                            <button id="reportLathDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="report-lath-filter-container" class="report-filter-container">
+                            <p>Loading lath data...</p>
+                        </div>
+
+                        <h4>3. Select Motor Manufacturers to Include</h4>
+                        <div class="admin-button-group">
+                            <button id="reportMotorSelectAll">Select All</button>
+                            <button id="reportMotorDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="report-motor-filter-container" class="report-filter-container">
+                            <p>Loading motor data...</p>
+                        </div>
+
+                        <div class="admin-button-group" style="margin-top: 1.5em;">
+                            <button id="generateCsvButton">Generate and Download CSV Report</button>
+                        </div>
+                        <div id="csv-generation-status" style="font-style: italic; color: #555;"></div>
+                    </div>
+                    <!-- =================================================================== -->
+                    <!-- END: NEW SECTION FOR CSV REPORT GENERATION                          -->
+                    <!-- =================================================================== -->
                 </div>
 
             </div>
@@ -985,6 +1064,9 @@
                 dom['import-status'].textContent = 'Successfully loaded data from repository.';
                 dom['import-status'].style.color = 'green';
                 updateAllCalculations();
+                
+                // --- NEW: Populate the report filters now that data is loaded ---
+                setupReportFilters();
 
             } catch (error) {
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
@@ -3485,23 +3567,52 @@
     <!-- START: CODE FOR CSV REPORT GENERATION                               -->
     <!-- =================================================================== -->
     <script>
-        function addCsvExportButton() {
-            const adminContainer = document.getElementById('admin-content');
-            if (adminContainer) {
-                const section = document.createElement('div');
-                section.className = 'admin-section';
-                section.innerHTML = `
-                    <h3>Generate Full Report</h3>
-                    <p>This will iterate through all lath types for a range of widths and heights to generate a complete report of required axles and motors. This process can take several minutes and may slow down your browser.</p>
-                    <div class="admin-button-group">
-                        <button id="generateCsvButton">Generate and Download CSV Report</button>
-                    </div>
-                    <div id="csv-generation-status" style="font-style: italic; color: #555;"></div>
+        function setupReportFilters() {
+            // Lath Filter Setup
+            const lathContainer = document.getElementById('report-lath-filter-container');
+            lathContainer.innerHTML = ''; // Clear "Loading..." message
+            lathData.forEach((lath, index) => {
+                const controlItem = document.createElement('div');
+                controlItem.className = 'admin-control-item';
+                controlItem.innerHTML = `
+                    <label>
+                        <input type="checkbox" class="report-lath-checkbox" value="${index}" checked>
+                        ${lath.Name}
+                    </label>
                 `;
-                adminContainer.appendChild(section);
+                lathContainer.appendChild(controlItem);
+            });
 
-                document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
-            }
+            // Motor Manufacturer Filter Setup
+            const motorContainer = document.getElementById('report-motor-filter-container');
+            // Extract manufacturer (assumed to be the first word of the motor name)
+            const manufacturers = [...new Set(motorData.map(m => (m.Name || '').split(' ')[0]).filter(m => m))];
+            motorContainer.innerHTML = ''; // Clear "Loading..." message
+            manufacturers.forEach(manufacturer => {
+                 const controlItem = document.createElement('div');
+                controlItem.className = 'admin-control-item';
+                controlItem.innerHTML = `
+                    <label>
+                        <input type="checkbox" class="report-motor-checkbox" value="${manufacturer}" checked>
+                        ${manufacturer}
+                    </label>
+                `;
+                motorContainer.appendChild(controlItem);
+            });
+
+            // Add event listeners for Select/Deselect All buttons
+            document.getElementById('reportLathSelectAll').addEventListener('click', () => {
+                document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = true);
+            });
+            document.getElementById('reportLathDeselectAll').addEventListener('click', () => {
+                document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = false);
+            });
+            document.getElementById('reportMotorSelectAll').addEventListener('click', () => {
+                document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true);
+            });
+            document.getElementById('reportMotorDeselectAll').addEventListener('click', () => {
+                document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false);
+            });
         }
 
         async function generateCsvReport() {
@@ -3509,20 +3620,29 @@
             statusDiv.textContent = 'Starting report generation... Please wait.';
             statusDiv.style.color = 'blue';
 
-            // --- Configuration ---
-            const MIN_WIDTH = 1000, MAX_WIDTH = 8000;
-            const MIN_HEIGHT = 1000, MAX_HEIGHT = 6000;
-            const INCREMENT = 500; // Use 100 for more detail, 500 for faster generation
-            // ---------------------
-
-            // Get all unique motor mounting types to create headers
-            const motorMountingTypes = [...new Set(motorData.map(motor => motor['Mounting type']))];
+            // --- Get user-defined parameters from the new input fields ---
+            const minWidth = parseInt(document.getElementById('reportMinWidth').value) || 1000;
+            const maxWidth = parseInt(document.getElementById('reportMaxWidth').value) || 8000;
+            const minHeight = parseInt(document.getElementById('reportMinHeight').value) || 1000;
+            const maxHeight = parseInt(document.getElementById('reportMaxHeight').value) || 6000;
+            const interval = parseInt(document.getElementById('reportInterval').value) || 500;
             
+            // --- Get user-defined filters ---
+            const selectedLathIndices = Array.from(document.querySelectorAll('.report-lath-checkbox:checked')).map(cb => parseInt(cb.value));
+            const selectedManufacturers = Array.from(document.querySelectorAll('.report-motor-checkbox:checked')).map(cb => cb.value);
+
+            if (selectedLathIndices.length === 0) {
+                statusDiv.textContent = 'Error: Please select at least one lath type.';
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            // --- Build CSV Headers based on selections ---
             const csvHeaders = [
                 "Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", 
                 "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", 
                 "Max Required Torque (Nm)",
-                ...motorMountingTypes.map(type => `Recommended ${type} Motor`) // Dynamic motor columns
+                ...selectedManufacturers.map(m => `Recommended ${m} Motor`)
             ];
             
             const csvData = [csvHeaders];
@@ -3530,30 +3650,30 @@
             // Ensure default bottom lath and endlock are selected
             if (dom.bottomLathType.options.length > 1) dom.bottomLathType.value = dom.bottomLathType.options[1].value;
             if (dom.endlockType.options.length > 1) dom.endlockType.value = dom.endlockType.options[1].value;
-            dom.shapeCircular.checked = true; // Default to circular axles
+            dom.shapeCircular.checked = true;
 
-            // Main loop to iterate through all combinations
-            for (let i = 0; i < lathData.length; i++) {
-                const lath = lathData[i];
-                dom.lathType.value = i;
+            // --- Main loop to iterate through all combinations ---
+            for (const lathIndex of selectedLathIndices) {
+                const lath = lathData[lathIndex];
+                dom.lathType.value = lathIndex;
 
-                for (let width = MIN_WIDTH; width <= MAX_WIDTH; width += INCREMENT) {
+                for (let width = minWidth; width <= maxWidth; width += interval) {
                     dom.width.value = width;
 
-                    for (let height = MIN_HEIGHT; height <= MAX_HEIGHT; height += INCREMENT) {
+                    for (let height = minHeight; height <= maxHeight; height += interval) {
                         dom.height.value = height;
                         statusDiv.textContent = `Processing: ${lath.Name} at ${width}x${height}...`;
                         
-                        // Use a small timeout to allow the UI to update the status message
-                        await new Promise(resolve => setTimeout(resolve, 0));
+                        await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
 
-                        // --- Perform Calculations ---
-                        // These functions simulate the core logic without a full UI redraw
+                        // Perform core calculations
                         const props = calculateCurtainProperties(lath, bottomLathData[dom.bottomLathType.value], null);
                         const { bestAxle } = findAndSetBestAxle(props.totalWeight);
-                        calculateMotorRecommendation(props.torqueWeight, lath, bestAxle, props.travelHeight);
+                        const { profileData } = getTorqueProfile(props.torqueWeight, lath, props.travelHeight, bestAxle ? getEffectiveCoilDiameter(bestAxle) : 0);
+                        const requiredTorque = profileData.length > 0 ? Math.max(...profileData.map(p => p.torque)) * (1 + (parseFloat(dom.friction.value) || 0) / 100) : 0;
+                        dom['max-torque'].textContent = requiredTorque.toFixed(1);
 
-                        // --- Collect Results ---
+                        // --- Collect Results for the CSV row ---
                         const rowData = [];
                         rowData.push(lath.Name);
                         rowData.push(width);
@@ -3571,17 +3691,17 @@
                             rowData.push('N/A');
                         }
                         
-                        const maxTorque = parseFloat(dom['max-torque'].textContent) || 'null';
-                        rowData.push(maxTorque);
+                        rowData.push(requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null');
 
-                        // Get Motor Info for each mounting type
-                        for (const mountType of motorMountingTypes) {
-                            dom.motorMountingType.value = mountType;
-                            calculateMotorRecommendation(props.torqueWeight, lath, bestAxle, props.travelHeight);
+                        // Find best motor for each selected manufacturer
+                        for (const manufacturer of selectedManufacturers) {
+                            const motorsFromManufacturer = motorData.filter(m => (m.Name || '').startsWith(manufacturer));
+                            const suitableMotors = motorsFromManufacturer
+                                .filter(m => requiredTorque >= parseFloat(m['Torque (Nm) min']) && requiredTorque <= parseFloat(m['Torque (Nm) max']))
+                                .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max'])); // Sort to find the smallest suitable motor
 
-                            const motorSelect = dom.motorSelector;
-                            if (motorSelect.selectedIndex > -1 && motorSelect.options[motorSelect.selectedIndex].value !== "") {
-                                rowData.push(motorSelect.options[motorSelect.selectedIndex].text);
+                            if (suitableMotors.length > 0) {
+                                rowData.push(suitableMotors[0].Name);
                             } else {
                                 rowData.push('null');
                             }
@@ -3613,7 +3733,8 @@
         }
 
         // Add the button to the admin panel when the window loads
-        window.addEventListener('load', addCsvExportButton);
+        // This function will be called when the Excel file is successfully processed
+        // See the `processExcelFile` function for where this is called.
 
     </script>
     <!-- =================================================================== -->
