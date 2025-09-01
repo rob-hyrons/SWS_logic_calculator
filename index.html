@@ -2088,9 +2088,8 @@
                 numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
             }
             dom['lath-count'].textContent = numLaths;
-            const numLathsToLift = numLaths >= 2 ? numLaths - 2 : 0;
+            const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
             dom['laths-to-lift'].textContent = numLathsToLift;
-
 
             const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
             const fullCurtainLength = (numLaths * uncompressedLathHeight) + bottomLathHeight;
@@ -2157,18 +2156,18 @@
             const totalWeight = lathWeightBasedOnArea + bottomLathWeight + totalEndlockWeight;
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
-            // Calculate Torque Weight (Total weight minus 2 buffer laths and their endlocks)
+            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
             let torqueWeight = totalWeight;
-            if (numLaths >= 2) {
-                const bufferLathWeight = 2 * (lathCoverageForWeight / 1000) * widthM * kgsPerM2;
+            if (numLaths >= 3) {
+                const bufferLathWeight = 3 * (lathCoverageForWeight / 1000) * widthM * kgsPerM2;
                 let bufferEndlockWeight = 0;
-                // Simplified: assume 2 laths have 1 pair of cast endlocks. This is a reasonable approximation.
+                // Simplified: assume 3 laths have 2 pairs of cast endlocks.
                 const selectedCastEndlockIndex = dom.endlockType.value;
                 if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
                     const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
                     const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
                     if (castEndlockWeightG > 0) {
-                        bufferEndlockWeight = 2 * (castEndlockWeightG / 1000); // one pair
+                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
                     }
                 }
                 torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
@@ -2263,7 +2262,7 @@
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
-            const numLathsToLift = totalNumLaths >= 2 ? totalNumLaths - 2 : 0;
+            const numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
             dom['laths-to-lift'].textContent = numLathsToLift;
 
             const weightBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
@@ -2316,17 +2315,17 @@
             const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
 
-            // Calculate Torque Weight (Total weight minus 2 buffer laths and their endlocks)
+            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
             let torqueWeight = totalWeight;
-            if (numLathsAbove >= 2) {
-                const bufferLathWeight = 2 * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
+            if (numLathsAbove >= 3) {
+                const bufferLathWeight = 3 * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
                 let bufferEndlockWeight = 0;
                 const selectedCastEndlockIndex = dom.endlockType.value;
                  if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
                     const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
                     const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
                     if (castEndlockWeightG > 0) {
-                        bufferEndlockWeight = 2 * (castEndlockWeightG / 1000); // one pair for the two laths
+                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
                     }
                 }
                 torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
