@@ -139,6 +139,7 @@
             display: flex;
             gap: 2em;
             align-items: flex-start;
+            margin-top: 1.5em;
         }
         #endplate-graphic-container {
             flex: 2;
@@ -547,7 +548,7 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
-                    <div class="form-row">
+                     <div class="form-row">
                         <div class="form-group form-col" data-admin-label="Motor Mounting Type">
                             <label for="motorMountingType">Motor Mounting Type</label>
                             <select id="motorMountingType" disabled>
@@ -929,60 +930,53 @@
             try {
                 const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                 
-                const required = {
-                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
-                    'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
-                    'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage'],
-                    'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
-                    'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
-                    'Wicket doors': ['Name', 'Height', 'Width'],
-                    'Endlock': ['Description', 'Weight in grams', 'end lock offset']
+                // Simplified required columns check for resilience. The code will handle missing optional columns.
+                const coreRequired = {
+                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height'],
+                    'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
+                    'Axles': ['Name', 'Diameter', 'Wall Thickness'],
+                    'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
+                    'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
+                    'Endplate': ['Name', 'Size', 'Material']
                 };
 
-                for (const sheetName in required) {
-                    if (!workbook.Sheets[sheetName]) {
-                        if (sheetName === 'Wicket doors' || sheetName === 'Endlock') {
-                            console.warn(`Optional sheet "${sheetName}" not found.`);
-                            if(sheetName === 'Wicket doors') wicketData = [];
-                            if(sheetName === 'Endlock') endlockData = [];
-                            continue;
-                        }
-                         const coreRequired = {
-                            'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
-                            'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
-                            'Axles': ['Name', 'Diameter', 'Wall Thickness'],
-                            'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
-                            'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
-                            'Endplate': ['Name', 'Size', 'Material'],
-                            'Wicket doors': ['Name', 'Height', 'Width'],
-                            'Endlock': ['Description', 'Weight in grams', 'end lock offset']
-                        };
-                        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
-                        if (sheetData.length > 0) {
-                            const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
-                            for (const requiredCol of coreRequired[sheetName]) {
-                                if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
-                                    throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
-                                }
+                for (const sheetName in coreRequired) {
+                     if (!workbook.Sheets[sheetName]) {
+                         if (sheetName !== 'Wicket doors' && sheetName !== 'Endlock') { // These are optional
+                            throw new Error(`Required sheet "${sheetName}" not found.`);
+                         }
+                         continue;
+                     }
+                    const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+                    if (sheetData.length > 0) {
+                        const headerRow = sheetData[0].map(h => String(h).toLowerCase().trim());
+                        for (const requiredCol of coreRequired[sheetName]) {
+                            if (!headerRow.includes(requiredCol.toLowerCase().trim())) {
+                                throw new Error(`Required column "${requiredCol}" not found in sheet "${sheetName}".`);
                             }
-                        } else {
-                           throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
                         }
-                    }
-                    
-                    const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                    switch (sheetName) {
-                        case 'Lath': lathData = objectData; break;
-                        case 'Bottom lath': bottomLathData = objectData; break;
-                        case 'Axles': axleData = objectData; break;
-                        case 'Motors': motorData = objectData; break;
-                        case 'SafetyB': safetyBrakeData = objectData; break;
-                        case 'Endplate': endplateData = objectData; break;
-                        case 'Wicket doors': wicketData = objectData; break;
-                        case 'Endlock': endlockData = objectData; break;
+                    } else {
+                       throw new Error(`Required sheet "${sheetName}" is empty.`);
                     }
                 }
+
+                // Load all available sheets, even optional ones
+                const sheetNames = ['Lath', 'Bottom lath', 'Axles', 'Motors', 'SafetyB', 'Endplate', 'Wicket doors', 'Endlock'];
+                sheetNames.forEach(sheetName => {
+                    if (workbook.Sheets[sheetName]) {
+                        const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                        switch (sheetName) {
+                            case 'Lath': lathData = objectData; break;
+                            case 'Bottom lath': bottomLathData = objectData; break;
+                            case 'Axles': axleData = objectData; break;
+                            case 'Motors': motorData = objectData; break;
+                            case 'SafetyB': safetyBrakeData = objectData; break;
+                            case 'Endplate': endplateData = objectData; break;
+                            case 'Wicket doors': wicketData = objectData; break;
+                            case 'Endlock': endlockData = objectData; break;
+                        }
+                    }
+                });
 
                 lathImageMap.clear(); 
                 safetyBrakeImageMap.clear();
@@ -1555,7 +1549,6 @@
             const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
             const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
-            const numLaths = parseInt(dom['lath-count'].textContent) || 0;
 
             if (isNaN(selectedIndex) || !currentFilteredEndplates[selectedIndex]) {
                 ['endplate-name', 'endplate-size', 'endplate-material'].forEach(id => { dom[id].textContent = 'N/A'; });
@@ -1775,7 +1768,8 @@
             const selectedMountType = dom.motorMountingType.value;
 
             currentFilteredMotors = motorData.filter(motor => {
-                const voltageMatch = (selectedVoltage === 'All') || (String(motor.Voltage) === selectedVoltage);
+                const voltage = motor.Voltage ? String(motor.Voltage) : null;
+                const voltageMatch = (selectedVoltage === 'All') || (voltage === selectedVoltage);
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
                 return voltageMatch && mountMatch;
             });
@@ -3275,7 +3269,8 @@
                     const lathNumber = i + 1;
 
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX);
+                    lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
@@ -3429,7 +3424,6 @@
                 const selectedIndex = parseInt(dom.endplateSelector.value, 10);
                 const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
                 const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
-                const numLaths = parseInt(dom['lath-count'].textContent) || 0;
                 if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
                     const plate = currentFilteredEndplates[selectedIndex];
                     drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, calculatedRotations);
