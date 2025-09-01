@@ -516,7 +516,7 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
-                    <div class="form-group" data-admin-label="Motor Voltage">
+                     <div class="form-group" data-admin-label="Motor Voltage">
                         <label for="motorVoltageFilter">Motor Voltage</label>
                         <select id="motorVoltageFilter" disabled>
                             <option value="">-- Waiting for file import --</option>
@@ -3480,5 +3480,144 @@
                 });
         });
     </script>
+    
+    <!-- =================================================================== -->
+    <!-- START: CODE FOR CSV REPORT GENERATION                               -->
+    <!-- =================================================================== -->
+    <script>
+        function addCsvExportButton() {
+            const adminContainer = document.getElementById('admin-content');
+            if (adminContainer) {
+                const section = document.createElement('div');
+                section.className = 'admin-section';
+                section.innerHTML = `
+                    <h3>Generate Full Report</h3>
+                    <p>This will iterate through all lath types for a range of widths and heights to generate a complete report of required axles and motors. This process can take several minutes and may slow down your browser.</p>
+                    <div class="admin-button-group">
+                        <button id="generateCsvButton">Generate and Download CSV Report</button>
+                    </div>
+                    <div id="csv-generation-status" style="font-style: italic; color: #555;"></div>
+                `;
+                adminContainer.appendChild(section);
+
+                document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
+            }
+        }
+
+        async function generateCsvReport() {
+            const statusDiv = document.getElementById('csv-generation-status');
+            statusDiv.textContent = 'Starting report generation... Please wait.';
+            statusDiv.style.color = 'blue';
+
+            // --- Configuration ---
+            const MIN_WIDTH = 1000, MAX_WIDTH = 8000;
+            const MIN_HEIGHT = 1000, MAX_HEIGHT = 6000;
+            const INCREMENT = 500; // Use 100 for more detail, 500 for faster generation
+            // ---------------------
+
+            // Get all unique motor mounting types to create headers
+            const motorMountingTypes = [...new Set(motorData.map(motor => motor['Mounting type']))];
+            
+            const csvHeaders = [
+                "Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", 
+                "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", 
+                "Max Required Torque (Nm)",
+                ...motorMountingTypes.map(type => `Recommended ${type} Motor`) // Dynamic motor columns
+            ];
+            
+            const csvData = [csvHeaders];
+
+            // Ensure default bottom lath and endlock are selected
+            if (dom.bottomLathType.options.length > 1) dom.bottomLathType.value = dom.bottomLathType.options[1].value;
+            if (dom.endlockType.options.length > 1) dom.endlockType.value = dom.endlockType.options[1].value;
+            dom.shapeCircular.checked = true; // Default to circular axles
+
+            // Main loop to iterate through all combinations
+            for (let i = 0; i < lathData.length; i++) {
+                const lath = lathData[i];
+                dom.lathType.value = i;
+
+                for (let width = MIN_WIDTH; width <= MAX_WIDTH; width += INCREMENT) {
+                    dom.width.value = width;
+
+                    for (let height = MIN_HEIGHT; height <= MAX_HEIGHT; height += INCREMENT) {
+                        dom.height.value = height;
+                        statusDiv.textContent = `Processing: ${lath.Name} at ${width}x${height}...`;
+                        
+                        // Use a small timeout to allow the UI to update the status message
+                        await new Promise(resolve => setTimeout(resolve, 0));
+
+                        // --- Perform Calculations ---
+                        // These functions simulate the core logic without a full UI redraw
+                        const props = calculateCurtainProperties(lath, bottomLathData[dom.bottomLathType.value], null);
+                        const { bestAxle } = findAndSetBestAxle(props.totalWeight);
+                        calculateMotorRecommendation(props.torqueWeight, lath, bestAxle, props.travelHeight);
+
+                        // --- Collect Results ---
+                        const rowData = [];
+                        rowData.push(lath.Name);
+                        rowData.push(width);
+                        rowData.push(height);
+                        rowData.push(parseFloat(dom['weight-kg'].textContent) || 'null');
+
+                        // Get Axle Info
+                        const axleSelect = dom.axleType;
+                        if (axleSelect.selectedIndex > -1 && axleSelect.options[axleSelect.selectedIndex].value !== "") {
+                            const selectedOption = axleSelect.options[axleSelect.selectedIndex];
+                            rowData.push(selectedOption.text);
+                            rowData.push(selectedOption.classList.contains('option-fail') ? "Fail" : "Pass");
+                        } else {
+                            rowData.push('null');
+                            rowData.push('N/A');
+                        }
+                        
+                        const maxTorque = parseFloat(dom['max-torque'].textContent) || 'null';
+                        rowData.push(maxTorque);
+
+                        // Get Motor Info for each mounting type
+                        for (const mountType of motorMountingTypes) {
+                            dom.motorMountingType.value = mountType;
+                            calculateMotorRecommendation(props.torqueWeight, lath, bestAxle, props.travelHeight);
+
+                            const motorSelect = dom.motorSelector;
+                            if (motorSelect.selectedIndex > -1 && motorSelect.options[motorSelect.selectedIndex].value !== "") {
+                                rowData.push(motorSelect.options[motorSelect.selectedIndex].text);
+                            } else {
+                                rowData.push('null');
+                            }
+                        }
+                        csvData.push(rowData);
+                    }
+                }
+            }
+
+            downloadCsv(csvData);
+            statusDiv.textContent = 'Report generation complete. Download has started.';
+            statusDiv.style.color = 'green';
+        }
+
+        function downloadCsv(data) {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            data.forEach(function(rowArray) {
+                let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
+                csvContent += row + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "shutter_calculator_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Add the button to the admin panel when the window loads
+        window.addEventListener('load', addCsvExportButton);
+
+    </script>
+    <!-- =================================================================== -->
+    <!-- END:   CODE FOR CSV REPORT GENERATION                               -->
+    <!-- =================================================================== -->
 </body>
 </html>
