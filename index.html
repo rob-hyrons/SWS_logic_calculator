@@ -458,7 +458,8 @@
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Weight (for Torque): <span id="torque-weight-kg">0.00</span> kgs</p>
                         <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
-                        <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
+                        <p>Total Curtain Area: <span id="curtain-area">0.00</span> m²</p>
+						<p>Curtain Area to Lift: <span id="lifted-curtain-area">0.00</span> m²</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
                         <p>Total Number of Laths: <span id="lath-count">0</span></p>
@@ -720,7 +721,7 @@
          'sb-activation-height', 'sb-activation-height-explainer', 'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
          'curtain-height-extended', 'curtain-height-compressed', 'endplateSelector', 'matSteel', 'matAluminium', 'endplate-name', 'endplate-size',
          'endplate-material', 'max-coil-diameter', 'prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height',
-         'width-warning', 'curtain-area', 'printButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
+         'width-warning', 'curtain-area', 'lifted-curtain-area', 'printButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
          'wicket-graphic-container', 'laths-at-wicket', 'wicket-lath-height', 'wicket-max-torque', 'wicket-torque-graph-container',
          'addVision', 'vision-slat-options', 'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'axle-safety-factor', 'power-consumed',
          'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity', 
@@ -2061,6 +2062,7 @@
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
+				dom['lifted-curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
                 dom['endlock-weight'].textContent = '0.00';
@@ -2104,8 +2106,15 @@
                 kgsPerM2 += 1;
             }
             
+            // Calculate Total Area
             const lathCurtainAreaM2 = widthM * (fullCurtainLength / 1000);
             dom['curtain-area'].textContent = lathCurtainAreaM2.toFixed(2);
+			
+			// Calculate Lifted Area
+			const liftedCurtainLength = (numLathsToLift * uncompressedLathHeight) + bottomLathHeight;
+			const liftedCurtainAreaM2 = widthM * (liftedCurtainLength / 1000);
+			dom['lifted-curtain-area'].textContent = liftedCurtainAreaM2.toFixed(2);
+
 
             const lathWeightBasedOnArea = widthM * (numLaths * lathCoverageForWeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
@@ -2210,6 +2219,7 @@
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
+				dom['lifted-curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
                 dom['endlock-weight'].textContent = '0.00';
@@ -2335,11 +2345,18 @@
             const compressedCurtainHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed) + (numLathsAbove * mainLathCompressed);
             const fullCurtainLength = bottomLathHeight + (numLathsBelow * mainLathUncompressed) + (numLathsVision * visionLathUncompressed) + (numLathsAbove * mainLathUncompressed);
             
+            // Calculate Total Area
             const areaBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM;
             const areaVision = numLathsVision * (visionLathUncompressed / 1000) * widthM;
             const areaAbove = numLathsAbove * (mainLathUncompressed / 1000) * widthM;
             const totalArea = areaBelow + areaVision + areaAbove;
             dom['curtain-area'].textContent = totalArea.toFixed(2);
+
+			// Calculate Lifted Area
+			const numLiftedLathsAbove = Math.max(0, numLathsAbove - 3);
+			const liftedAreaAbove = numLiftedLathsAbove * (mainLathUncompressed / 1000) * widthM;
+			const liftedArea = areaBelow + areaVision + liftedAreaAbove;
+			dom['lifted-curtain-area'].textContent = liftedArea.toFixed(2);
 
             dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
             dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
