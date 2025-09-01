@@ -129,13 +129,44 @@
             border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08; font-weight: bold;
         }
         .graph-container { margin-top: 1.5em; width: 100%; }
-        #axle-cross-section-container, 
-        #endplate-graphic-container {
+        #axle-cross-section-container {
             min-width: 450px;
             max-width: 550px;
             margin-left: auto;
             margin-right: auto;
         }
+        #endplate-layout-container {
+            display: flex;
+            gap: 2em;
+            align-items: flex-start;
+        }
+        #endplate-graphic-container {
+            flex: 2;
+            min-width: 350px;
+        }
+        #revolution-table-container {
+            flex: 1;
+            padding-top: 2em;
+        }
+        #revolution-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        #revolution-table th, #revolution-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: right;
+        }
+        #revolution-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        #revolution-table tfoot td {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+
         .calculation-explainer {
             margin-top: 2em;
             padding: 1em;
@@ -161,7 +192,7 @@
         
         .support-symbol { fill: #868e96; stroke: #495057; stroke-width: 1; }
         .coil-wrap-graphic { fill: none; stroke: #adb5bd; stroke-width: 0.5; }
-        
+
         .option-pass {
             color: #1e8e3e; /* Green */
             font-weight: bold;
@@ -272,7 +303,7 @@
         #importCsvButton { background-color: #28a745; }
         #importCsvButton:hover { background-color: #218838; }
 
-        /* Axle Shape Toggle Styles */
+        /* Axle/Voltage Shape Toggle Styles */
         .shape-toggle {
             display: flex;
             border: 1px solid #ccc;
@@ -516,11 +547,24 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
-                    <div class="form-group" data-admin-label="Motor Mounting Type">
-                        <label for="motorMountingType">Motor Mounting Type</label>
-                        <select id="motorMountingType" disabled>
-                            <option value="">-- Waiting for file import --</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Motor Mounting Type">
+                            <label for="motorMountingType">Motor Mounting Type</label>
+                            <select id="motorMountingType" disabled>
+                                <option value="">-- Waiting for file import --</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Motor Voltage">
+                            <label>Voltage</label>
+                            <div class="shape-toggle">
+                                <input type="radio" id="voltAll" name="motorVoltage" value="All" checked>
+                                <label for="voltAll">All</label>
+                                <input type="radio" id="volt230" name="motorVoltage" value="230">
+                                <label for="volt230">230V</label>
+                                <input type="radio" id="volt415" name="motorVoltage" value="415">
+                                <label for="volt415">415V</label>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group" data-admin-label="Lath Friction Allowance">
                         <label for="friction">Lath Friction Allowance (%)</label>
@@ -583,7 +627,10 @@
                         <p>For Next Size Down (<span id="prev-endplate-name">N/A</span>): <span id="prev-endplate-height">N/A</span> mm</p>
                         <p>For Next Size Up (<span id="next-endplate-name">N/A</span>): <span id="next-endplate-height">N/A</span> mm</p>
                     </div>
-                    <div id="endplate-graphic-container" class="graph-container"></div>
+                    <div id="endplate-layout-container">
+                        <div id="endplate-graphic-container"></div>
+                        <div id="revolution-table-container"></div>
+                    </div>
                     <div class="results page-break-before-print" style="border-left-color: #6f42c1; margin-top: 2em;">
                         <h3 style="color: #5a32a3;">Fixing Forces Analysis (Per Endplate, inc. 20% Safety Factor)</h3>
                         <p>Total Downward Shear Force: <span id="endplate-downward-force">0</span> N</p>
@@ -726,16 +773,17 @@
          'wicket-graphic-container', 'laths-at-wicket', 'wicket-lath-height', 'wicket-max-torque', 'wicket-torque-graph-container',
          'addVision', 'vision-slat-options', 'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'axle-safety-factor', 'power-consumed',
          'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity', 
-         'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
-         'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
+         'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg'
+         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
+         'voltAll', 'volt230', 'volt415', 'revolution-table-container'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType'
+         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
+         'voltAll', 'volt230', 'volt415'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -885,7 +933,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1052,6 +1100,7 @@
                 'Wicket_Door_Name': { id: 'wicketDoorSelector', type: 'select' },
                 
                 'Endplate_Material': { name: 'material', type: 'radio' },
+                'Motor_Voltage': { name: 'motorVoltage', type: 'radio' },
             };
 
             for (const key in mappings) {
@@ -1521,7 +1570,7 @@
             dom['endplate-size'].textContent = plate.Size;
             dom['endplate-material'].textContent = plate.Material;
 
-            drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths);
+            drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, calculatedRotations);
             calculateEndplateForces(plate);
             
             const prevPlate = selectedIndex > 0 ? currentFilteredEndplates[selectedIndex - 1] : null;
@@ -1721,16 +1770,22 @@
 
             const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
             dom['max-torque'].textContent = requiredTorque.toFixed(1);
-
+            
+            const selectedVoltage = document.querySelector('input[name="motorVoltage"]:checked').value;
             const selectedMountType = dom.motorMountingType.value;
-            currentFilteredMotors = motorData.filter(motor => !selectedMountType || motor['Mounting type'] === selectedMountType);
+
+            currentFilteredMotors = motorData.filter(motor => {
+                const voltageMatch = (selectedVoltage === 'All') || (String(motor.Voltage) === selectedVoltage);
+                const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
+                return voltageMatch && mountMatch;
+            });
             
             const select = dom.motorSelector;
             select.innerHTML = ''; 
             select.disabled = false;
 
             if (currentFilteredMotors.length === 0) {
-                select.innerHTML = '<option value="">-- No motors for this type --</option>';
+                select.innerHTML = '<option value="">-- No motors for this criteria --</option>';
                 updateSelectedMotorInfo();
                 return;
             }
@@ -2649,10 +2704,13 @@
             container.appendChild(svg);
         }
 
-        function drawEndplateGraphic(endplate, coilDiameter, axle, lath, numLaths) {
-            const container = dom['endplate-graphic-container'];
-            container.innerHTML = '';
-            if (!endplate || !coilDiameter || !axle || !lath || !numLaths || coilDiameter <= 0) {
+        function drawEndplateGraphic(endplate, coilDiameter, axle, lath, revolutions) {
+            const graphicContainer = dom['endplate-graphic-container'];
+            const tableContainer = dom['revolution-table-container'];
+            graphicContainer.innerHTML = '';
+            tableContainer.innerHTML = '';
+
+            if (!endplate || !coilDiameter || !axle || !lath || !revolutions || coilDiameter <= 0) {
                 return;
             }
 
@@ -2662,107 +2720,91 @@
 
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 550;
-            const svgHeight = 250;
+            const svgWidth = 400; 
+            const svgHeight = 400; 
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker');
-            marker.setAttribute('id', 'arrow-endplate');
-            marker.setAttribute('viewBox', '0 0 10 10');
-            marker.setAttribute('refX', '1');
-            marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '5');
-            marker.setAttribute('markerHeight', '5');
-            marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path');
-            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-            arrowPath.setAttribute('fill', '#343a40');
-            marker.appendChild(arrowPath);
-            defs.appendChild(marker);
-            svg.appendChild(defs);
-
-            const padding = { top: 20, right: 120, bottom: 40, left: 20 };
-            const graphHeight = svgHeight - padding.top - padding.bottom;
+            const padding = 20;
+            const graphSize = svgWidth - (padding * 2);
             
-            const scale = graphHeight / endplateSize;
-            const scaledBoxSize = endplateSize * scale;
-            
-            const boxX = padding.left;
-            const boxY = padding.top + (graphHeight - scaledBoxSize) / 2;
-            const centerX = boxX + scaledBoxSize / 2;
-            const centerY = boxY + scaledBoxSize / 2;
+            const scale = graphSize / endplateSize;
+            const centerX = svgWidth / 2;
+            const centerY = svgHeight / 2;
 
             const createElem = (type, attrs) => {
                 const el = document.createElementNS(svgNS, type);
                 for (const key in attrs) el.setAttribute(key, attrs[key]);
                 return el;
             };
-
-            // Draw Endplate Box
+            
             svg.appendChild(createElem('rect', {
-                x: boxX, y: boxY, width: scaledBoxSize, height: scaledBoxSize,
+                x: padding, y: padding, width: graphSize, height: graphSize,
                 fill: '#f8f9fa', stroke: '#ced4da', 'stroke-width': '1'
             }));
 
-            // Draw Axle
             const axleDiameter = getEffectiveCoilDiameter(axle);
-            const scaledAxleRadius = (axleDiameter / 2) * scale;
             svg.appendChild(createElem('circle', {
-                cx: centerX, cy: centerY, r: scaledAxleRadius,
+                cx: centerX, cy: centerY, r: (axleDiameter / 2) * scale,
                 class: 'shutter-axle-graphic'
             }));
 
-            // Draw each lath wrap
-            for (let i = 1; i <= numLaths; i++) {
-                const currentRadius = (axleDiameter / 2) + (i * lathThickness);
+            const revData = [];
+            let totalCircumference = 0;
+
+            for (let i = 1; i <= Math.ceil(revolutions); i++) {
+                const currentDiameter = axleDiameter + (i * lathThickness * 2);
+                 if (currentDiameter > endplateSize) break; 
+                const circumference = Math.PI * (currentDiameter - lathThickness); 
+                totalCircumference += circumference;
+                revData.push({
+                    rev: i,
+                    dia: currentDiameter.toFixed(1),
+                    circ: circumference.toFixed(1)
+                });
                 svg.appendChild(createElem('circle', {
-                    cx: centerX, cy: centerY, r: currentRadius * scale,
+                    cx: centerX, cy: centerY, r: (currentDiameter / 2) * scale,
                     class: 'coil-wrap-graphic'
                 }));
             }
             
-            // Draw Final Coil Outline
-            const scaledCoilRadius = (coilDiameter / 2) * scale;
             svg.appendChild(createElem('circle', {
-                cx: centerX, cy: centerY, r: scaledCoilRadius,
+                cx: centerX, cy: centerY, r: (coilDiameter / 2) * scale,
                 fill: 'none', stroke: '#007bff', 'stroke-width': '2'
             }));
 
-            // Dimensions
-            const dimLineX = boxX + scaledBoxSize + 25;
-            svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: dimLineX, y1: boxY, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-            const boxSizeTextX = dimLineX + 12;
-            const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
-            boxSizeText.textContent = `${endplateSize.toFixed(0)} mm`;
-            svg.appendChild(boxSizeText);
+            graphicContainer.appendChild(svg);
             
-            const coilDimY = boxY + scaledBoxSize + 20;
-            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: coilDimY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-            const coilDimText = createElem('text', { x: centerX, y: coilDimY + 15, class: 'large-dimension-text' });
-            coilDimText.textContent = `Ø ${coilDiameter.toFixed(1)} mm`;
-            svg.appendChild(coilDimText);
+            // Build and append the table
+            let tableHTML = `<table id="revolution-table">
+                <thead>
+                    <tr>
+                        <th>Rev</th>
+                        <th>Ø (mm)</th>
+                        <th>Circ. (mm)</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            revData.forEach(data => {
+                tableHTML += `<tr>
+                    <td>R${data.rev}</td>
+                    <td>${data.dia}</td>
+                    <td>${data.circ}</td>
+                </tr>`;
+            });
 
-            const clearance = (endplateSize - coilDiameter) / 2;
-            if (clearance > 1) {
-                const clearanceDimX = dimLineX + 40;
-                const topY = boxY;
-                const coilTopY = centerY - scaledCoilRadius;
-                svg.appendChild(createElem('line', { x1: centerX, y1: topY, x2: clearanceDimX, y2: topY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-                svg.appendChild(createElem('line', { x1: centerX, y1: coilTopY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-                svg.appendChild(createElem('line', { x1: clearanceDimX, y1: topY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
-                const clearanceTextX = clearanceDimX + 12;
-                const clearanceText = createElem('text', { x: clearanceTextX, y: topY + (coilTopY - topY) / 2, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${clearanceTextX}, ${topY + (coilTopY - topY) / 2})` });
-                clearanceText.textContent = `${clearance.toFixed(1)} mm`;
-                svg.appendChild(clearanceText);
-            }
+            tableHTML += `</tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">Total Length:</td>
+                        <td>${totalCircumference.toFixed(0)}</td>
+                    </tr>
+                </tfoot>
+            </table>`;
             
-            container.appendChild(svg);
+            tableContainer.innerHTML = tableHTML;
         }
+
 
         function drawAxleCrossSection(axle, collarSize = 0) {
             const container = dom['axle-cross-section-container'];
@@ -3233,8 +3275,7 @@
                     const lathNumber = i + 1;
 
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX);
-                    lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
@@ -3391,7 +3432,7 @@
                 const numLaths = parseInt(dom['lath-count'].textContent) || 0;
                 if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
                     const plate = currentFilteredEndplates[selectedIndex];
-                    drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths);
+                    drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, calculatedRotations);
                     calculateEndplateForces(plate);
                 } else {
                     drawEndplateGraphic(null, 0, null, null, 0);
