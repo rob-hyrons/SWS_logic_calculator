@@ -16,6 +16,15 @@
             background-color: #f4f4f9; color: #333; display: flex; justify-content: center;
             align-items: flex-start; min-height: 100vh; margin: 0; padding: 2em;
         }
+        #logo-image {
+            position: absolute;
+            top: 2em;
+            right: 2em;
+            width: 10vw;
+            max-width: 150px;
+            height: auto;
+            z-index: 10;
+        }
         .container {
             background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             width: 100%;
@@ -297,7 +306,7 @@
             @page {
                 size: A4; margin: 15mm;
             }
-            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #admin-content {
+            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #admin-content, #logo-image {
                 display: none !important;
             }
             .tab-pane {
@@ -348,6 +357,7 @@
     </style>
 </head>
 <body>
+    <img src="https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/swslogo.svg" alt="SWS Logo" id="logo-image">
     <div class="container">
         <div class="tabs">
             <button class="tab-button active" data-tab="inputs-content">Inputs</button>
@@ -446,11 +456,14 @@
                     <div class="results">
                         <h3>Shutter Details</h3>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
+                        <p>Curtain Weight (for Torque): <span id="torque-weight-kg">0.00</span> kgs</p>
                         <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
-                        <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
+                        <p>Total Curtain Area: <span id="curtain-area">0.00</span> m²</p>
+						<p>Curtain Area to Lift: <span id="lifted-curtain-area">0.00</span> m²</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
-                        <p>Number of Laths: <span id="lath-count">0</span></p>
+                        <p>Total Number of Laths: <span id="lath-count">0</span></p>
+                        <p>Laths to Lift: <span id="laths-to-lift">0</span></p>
                         <p>Uncompressed Curtain Height: <span id="curtain-height-extended">0</span> mm</p>
                         <p>Compressed Curtain Height: <span id="curtain-height-compressed">0</span> mm</p>
                     </div>
@@ -701,21 +714,21 @@
         const dom = {};
         ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
-         'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 
+         'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
          'max-torque', 'total-revolutions', 'motorMountingType', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
          'sb-activation-height', 'sb-activation-height-explainer', 'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
          'curtain-height-extended', 'curtain-height-compressed', 'endplateSelector', 'matSteel', 'matAluminium', 'endplate-name', 'endplate-size',
          'endplate-material', 'max-coil-diameter', 'prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height',
-         'width-warning', 'curtain-area', 'printButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
+         'width-warning', 'curtain-area', 'lifted-curtain-area', 'printButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
          'wicket-graphic-container', 'laths-at-wicket', 'wicket-lath-height', 'wicket-max-torque', 'wicket-torque-graph-container',
          'addVision', 'vision-slat-options', 'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'axle-safety-factor', 'power-consumed',
          'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity', 
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group'
+         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -735,7 +748,7 @@
                         if (lathName.includes('wind')) {
                            const endlockSelect = dom.endlockType;
                            for (let i = 0; i < endlockSelect.options.length; i++) {
-                               if (endlockSelect.options[i].text.toLowerCase().includes('cast end locks')) {
+                               if (endlockSelect.options[i].text.toLowerCase().includes('75mm cast')) {
                                    endlockSelect.value = endlockSelect.options[i].value;
                                    break;
                                }
@@ -1190,7 +1203,7 @@
             const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight);
 
             const finalCurtainProps = calculateCurtainProperties(selectedLath, selectedBottomLath, bestAxle);
-            const { totalWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
+            const { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
             visionCalcs = visionData;
             
             calculateEndplateRecommendation(); 
@@ -1198,7 +1211,7 @@
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
 
             drawDeflectionGraphic(totalLength, deflection);
-            calculateMotorRecommendation(totalWeight, selectedLath, bestAxle, travelHeight);
+            calculateMotorRecommendation(torqueWeight, selectedLath, bestAxle, travelHeight);
             calculateSafetyBrakeForce(totalWeight, selectedLath, bestAxle, travelHeight, fullCurtainLength);
             
             const selectedEndplateIndex = dom.endplateSelector.value;
@@ -1908,7 +1921,7 @@
             const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
             const selectedWicket = wicketData.length > 0 ? wicketData[dom.wicketDoorSelector.value] : null;
-            const totalWeightKgs = parseFloat(dom['weight-kg'].textContent) || 0;
+            const totalWeightKgs = parseFloat(dom['torque-weight-kg'].textContent) || 0;
             
             if (!selectedLath || !selectedAxle || !selectedWicket || totalWeightKgs <= 0) {
                 dom['wicket-max-torque'].textContent = '0.0';
@@ -2043,14 +2056,17 @@
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             if (!lath || !bottomLath || floorToAxleCenter <= 0) {
                 dom['lath-count'].textContent = '0';
+                dom['laths-to-lift'].textContent = '0';
                 dom['weight-kg'].textContent = '0.00';
+                dom['torque-weight-kg'].textContent = '0.00';
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
+				dom['lifted-curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
                 dom['endlock-weight'].textContent = '0.00';
-                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endlockOffsets: { cast: 0, wind: 0 } };
+                return { totalWeight: 0, torqueWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endlockOffsets: { cast: 0, wind: 0 } };
             }
 
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
@@ -2074,6 +2090,8 @@
                 numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
             }
             dom['lath-count'].textContent = numLaths;
+            const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
+            dom['laths-to-lift'].textContent = numLathsToLift;
 
             const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
             const fullCurtainLength = (numLaths * uncompressedLathHeight) + bottomLathHeight;
@@ -2088,8 +2106,15 @@
                 kgsPerM2 += 1;
             }
             
+            // Calculate Total Area
             const lathCurtainAreaM2 = widthM * (fullCurtainLength / 1000);
             dom['curtain-area'].textContent = lathCurtainAreaM2.toFixed(2);
+			
+			// Calculate Lifted Area
+			const liftedCurtainLength = (numLathsToLift * uncompressedLathHeight) + bottomLathHeight;
+			const liftedCurtainAreaM2 = widthM * (liftedCurtainLength / 1000);
+			dom['lifted-curtain-area'].textContent = liftedCurtainAreaM2.toFixed(2);
+
 
             const lathWeightBasedOnArea = widthM * (numLaths * lathCoverageForWeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
@@ -2138,8 +2163,25 @@
             }
             dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
             const totalWeight = lathWeightBasedOnArea + bottomLathWeight + totalEndlockWeight;
-
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
+            
+            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
+            let torqueWeight = totalWeight;
+            if (numLaths >= 3) {
+                const bufferLathWeight = 3 * (lathCoverageForWeight / 1000) * widthM * kgsPerM2;
+                let bufferEndlockWeight = 0;
+                // Simplified: assume 3 laths have 2 pairs of cast endlocks.
+                const selectedCastEndlockIndex = dom.endlockType.value;
+                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                    const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                    if (castEndlockWeightG > 0) {
+                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
+                    }
+                }
+                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
+            }
+            dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
             
             const travelHeight = floorToAxleCenter - bottomLathHeight;
             
@@ -2158,7 +2200,7 @@
                 dom['vision-area-m2-para'].style.display = 'none';
             }
             
-            return { totalWeight, travelHeight, fullCurtainLength, visionData: null, endlockOffsets };
+            return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData: null, endlockOffsets };
         };
         
         function calculateVisionCurtainProperties(mainLath, bottomLath, axle) {
@@ -2171,14 +2213,17 @@
 
             const resetAndReturn = () => {
                 dom['lath-count'].textContent = '0';
+                dom['laths-to-lift'].textContent = '0';
                 dom['weight-kg'].textContent = '0.00';
+                dom['torque-weight-kg'].textContent = '0.00';
                 dom['curtain-height-extended'].textContent = '0';
                 dom['curtain-height-compressed'].textContent = '0';
                 dom['curtain-area'].textContent = '0.00';
+				dom['lifted-curtain-area'].textContent = '0.00';
                 dom['vision-percentage-para'].style.display = 'none';
                 dom['vision-area-m2-para'].style.display = 'none';
                 dom['endlock-weight'].textContent = '0.00';
-                return { totalWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endlockOffsets };
+                return { totalWeight: 0, torqueWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endlockOffsets };
             };
 
             if (!mainLath || !bottomLath || !visionLath || !axle || floorToAxleCenter <= 0 || widthM <= 0) {
@@ -2227,6 +2272,8 @@
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
+            const numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
+            dom['laths-to-lift'].textContent = numLathsToLift;
 
             const weightBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
             const weightVision = numLathsVision * (visionLathUncompressed / 1000) * widthM * visionLathKgsM2;
@@ -2276,17 +2323,40 @@
             }
             dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
             const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
-
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
-            
+
+            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
+            let torqueWeight = totalWeight;
+            if (numLathsAbove >= 3) {
+                const bufferLathWeight = 3 * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
+                let bufferEndlockWeight = 0;
+                const selectedCastEndlockIndex = dom.endlockType.value;
+                 if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                    const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                    if (castEndlockWeightG > 0) {
+                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
+                    }
+                }
+                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
+            }
+            dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
+
             const compressedCurtainHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed) + (numLathsAbove * mainLathCompressed);
             const fullCurtainLength = bottomLathHeight + (numLathsBelow * mainLathUncompressed) + (numLathsVision * visionLathUncompressed) + (numLathsAbove * mainLathUncompressed);
             
+            // Calculate Total Area
             const areaBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM;
             const areaVision = numLathsVision * (visionLathUncompressed / 1000) * widthM;
             const areaAbove = numLathsAbove * (mainLathUncompressed / 1000) * widthM;
             const totalArea = areaBelow + areaVision + areaAbove;
             dom['curtain-area'].textContent = totalArea.toFixed(2);
+
+			// Calculate Lifted Area
+			const numLiftedLathsAbove = Math.max(0, numLathsAbove - 3);
+			const liftedAreaAbove = numLiftedLathsAbove * (mainLathUncompressed / 1000) * widthM;
+			const liftedArea = areaBelow + areaVision + liftedAreaAbove;
+			dom['lifted-curtain-area'].textContent = liftedArea.toFixed(2);
 
             dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
             dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
@@ -2323,7 +2393,7 @@
                 actualVisionPanelHeight
             };
 
-            return { totalWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets };
+            return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets };
         }
 
         function drawTorqueGraph(profileData, container) {
