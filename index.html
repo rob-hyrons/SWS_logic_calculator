@@ -461,7 +461,8 @@
                         <p>Curtain Area: <span id="curtain-area">0.00</span> m²</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
-                        <p>Number of Laths: <span id="lath-count">0</span></p>
+                        <p>Total Number of Laths: <span id="lath-count">0</span></p>
+                        <p>Laths to Lift: <span id="laths-to-lift">0</span></p>
                         <p>Uncompressed Curtain Height: <span id="curtain-height-extended">0</span> mm</p>
                         <p>Compressed Curtain Height: <span id="curtain-height-compressed">0</span> mm</p>
                     </div>
@@ -712,7 +713,7 @@
         const dom = {};
         ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
-         'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 
+         'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
          'max-torque', 'total-revolutions', 'motorMountingType', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
@@ -2054,6 +2055,7 @@
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             if (!lath || !bottomLath || floorToAxleCenter <= 0) {
                 dom['lath-count'].textContent = '0';
+                dom['laths-to-lift'].textContent = '0';
                 dom['weight-kg'].textContent = '0.00';
                 dom['torque-weight-kg'].textContent = '0.00';
                 dom['curtain-height-extended'].textContent = '0';
@@ -2086,6 +2088,9 @@
                 numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
             }
             dom['lath-count'].textContent = numLaths;
+            const numLathsToLift = numLaths >= 2 ? numLaths - 2 : 0;
+            dom['laths-to-lift'].textContent = numLathsToLift;
+
 
             const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
             const fullCurtainLength = (numLaths * uncompressedLathHeight) + bottomLathHeight;
@@ -2200,6 +2205,7 @@
 
             const resetAndReturn = () => {
                 dom['lath-count'].textContent = '0';
+                dom['laths-to-lift'].textContent = '0';
                 dom['weight-kg'].textContent = '0.00';
                 dom['torque-weight-kg'].textContent = '0.00';
                 dom['curtain-height-extended'].textContent = '0';
@@ -2257,6 +2263,8 @@
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
+            const numLathsToLift = totalNumLaths >= 2 ? totalNumLaths - 2 : 0;
+            dom['laths-to-lift'].textContent = numLathsToLift;
 
             const weightBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
             const weightVision = numLathsVision * (visionLathUncompressed / 1000) * widthM * visionLathKgsM2;
