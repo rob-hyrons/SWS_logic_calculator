@@ -2110,9 +2110,9 @@
             const lathCurtainAreaM2 = widthM * (fullCurtainLength / 1000);
             dom['curtain-area'].textContent = lathCurtainAreaM2.toFixed(2);
 			
-			// Calculate Lifted Area
-			const liftedCurtainLength = (numLathsToLift * uncompressedLathHeight) + bottomLathHeight;
-			const liftedCurtainAreaM2 = widthM * (liftedCurtainLength / 1000);
+			// Calculate Lifted Area (laths only, no bottom lath)
+			const liftedLathLength = (numLathsToLift * uncompressedLathHeight);
+			const liftedCurtainAreaM2 = widthM * (liftedLathLength / 1000);
 			dom['lifted-curtain-area'].textContent = liftedCurtainAreaM2.toFixed(2);
 
 
@@ -2352,7 +2352,7 @@
             const totalArea = areaBelow + areaVision + areaAbove;
             dom['curtain-area'].textContent = totalArea.toFixed(2);
 
-			// Calculate Lifted Area
+			// Calculate Lifted Area (laths only, no bottom lath)
 			const numLiftedLathsAbove = Math.max(0, numLathsAbove - 3);
 			const liftedAreaAbove = numLiftedLathsAbove * (mainLathUncompressed / 1000) * widthM;
 			const liftedArea = areaBelow + areaVision + liftedAreaAbove;
