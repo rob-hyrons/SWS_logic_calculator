@@ -458,8 +458,8 @@
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Weight (for Torque): <span id="torque-weight-kg">0.00</span> kgs</p>
                         <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
-                        <p>Total Curtain Area: <span id="curtain-area">0.00</span> m²</p>
-						<p>Curtain Area to Lift: <span id="lifted-curtain-area">0.00</span> m²</p>
+                        <p>Total Curtain Area (Material): <span id="curtain-area">0.00</span> m²</p>
+						<p>Curtain Area to Lift (Coverage): <span id="lifted-curtain-area">0.00</span> m²</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
                         <p>Total Number of Laths: <span id="lath-count">0</span></p>
@@ -2073,8 +2073,6 @@
             const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
             
-            const lathCoverageForWeight = uncompressedLathHeight || lathCompressedHeight;
-
             let axleRadius = 0;
             if (axle) {
                  const axleCoilDiameter = getEffectiveCoilDiameter(axle);
@@ -2106,17 +2104,17 @@
                 kgsPerM2 += 1;
             }
             
-            // Calculate Total Area
-            const lathCurtainAreaM2 = widthM * (fullCurtainLength / 1000);
-            dom['curtain-area'].textContent = lathCurtainAreaM2.toFixed(2);
+            // Calculate Total MATERIAL Area (uses uncompressed height)
+            const totalMaterialAreaM2 = widthM * (fullCurtainLength / 1000);
+            dom['curtain-area'].textContent = totalMaterialAreaM2.toFixed(2);
 			
-			// Calculate Lifted Area (laths only, no bottom lath)
-			const liftedLathLength = (numLathsToLift * uncompressedLathHeight);
-			const liftedCurtainAreaM2 = widthM * (liftedLathLength / 1000);
-			dom['lifted-curtain-area'].textContent = liftedCurtainAreaM2.toFixed(2);
+			// Calculate Lifted COVERAGE Area (uses compressed height)
+			const liftedLathCoverageLength = (numLathsToLift * lathCompressedHeight);
+			const liftedCoverageAreaM2 = widthM * (liftedLathCoverageLength / 1000);
+			dom['lifted-curtain-area'].textContent = liftedCoverageAreaM2.toFixed(2);
 
-
-            const lathWeightBasedOnArea = widthM * (numLaths * lathCoverageForWeight / 1000) * kgsPerM2;
+            // Calculate weight based on COVERAGE area, not material area
+            const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
 
             let totalEndlockWeight = 0;
@@ -2162,13 +2160,13 @@
                 }
             }
             dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
-            const totalWeight = lathWeightBasedOnArea + bottomLathWeight + totalEndlockWeight;
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
             let torqueWeight = totalWeight;
             if (numLaths >= 3) {
-                const bufferLathWeight = 3 * (lathCoverageForWeight / 1000) * widthM * kgsPerM2;
+                const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
                 let bufferEndlockWeight = 0;
                 // Simplified: assume 3 laths have 2 pairs of cast endlocks.
                 const selectedCastEndlockIndex = dom.endlockType.value;
@@ -2189,7 +2187,7 @@
             const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(lath[mainLathVisionKey]) || 0) : 0;
 
             if (mainLathVisionPercent > 0) {
-                const visionArea = lathCurtainAreaM2 * (mainLathVisionPercent / 100);
+                const visionArea = totalMaterialAreaM2 * (mainLathVisionPercent / 100);
                 dom['vision-area-m2'].textContent = visionArea.toFixed(2);
                 dom['vision-percentage'].textContent = mainLathVisionPercent.toFixed(2);
                 
@@ -2274,10 +2272,11 @@
             dom['lath-count'].textContent = totalNumLaths;
             const numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
             dom['laths-to-lift'].textContent = numLathsToLift;
-
-            const weightBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
-            const weightVision = numLathsVision * (visionLathUncompressed / 1000) * widthM * visionLathKgsM2;
-            const weightAbove = numLathsAbove * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
+            
+            // Calculate Weights based on COVERAGE area
+            const weightBelow = numLathsBelow * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
+            const weightVision = numLathsVision * (visionLathCompressed / 1000) * widthM * visionLathKgsM2;
+            const weightAbove = numLathsAbove * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
             const bottomLathWeight = widthM * bottomLathWeightPerM;
             
             let totalEndlockWeight = 0;
@@ -2328,7 +2327,7 @@
             // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
             let torqueWeight = totalWeight;
             if (numLathsAbove >= 3) {
-                const bufferLathWeight = 3 * (mainLathUncompressed / 1000) * widthM * mainLathKgsM2;
+                const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
                 let bufferEndlockWeight = 0;
                 const selectedCastEndlockIndex = dom.endlockType.value;
                  if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
@@ -2345,18 +2344,20 @@
             const compressedCurtainHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed) + (numLathsAbove * mainLathCompressed);
             const fullCurtainLength = bottomLathHeight + (numLathsBelow * mainLathUncompressed) + (numLathsVision * visionLathUncompressed) + (numLathsAbove * mainLathUncompressed);
             
-            // Calculate Total Area
-            const areaBelow = numLathsBelow * (mainLathUncompressed / 1000) * widthM;
-            const areaVision = numLathsVision * (visionLathUncompressed / 1000) * widthM;
-            const areaAbove = numLathsAbove * (mainLathUncompressed / 1000) * widthM;
-            const totalArea = areaBelow + areaVision + areaAbove;
-            dom['curtain-area'].textContent = totalArea.toFixed(2);
+            // Calculate Total MATERIAL Area
+            const areaBelowMaterial = numLathsBelow * (mainLathUncompressed / 1000) * widthM;
+            const areaVisionMaterial = numLathsVision * (visionLathUncompressed / 1000) * widthM;
+            const areaAboveMaterial = numLathsAbove * (mainLathUncompressed / 1000) * widthM;
+            const totalMaterialArea = areaBelowMaterial + areaVisionMaterial + areaAboveMaterial;
+            dom['curtain-area'].textContent = totalMaterialArea.toFixed(2);
 
-			// Calculate Lifted Area (laths only, no bottom lath)
+			// Calculate Lifted COVERAGE Area
+			const areaBelowCoverage = numLathsBelow * (mainLathCompressed / 1000) * widthM;
+			const areaVisionCoverage = numLathsVision * (visionLathCompressed / 1000) * widthM;
 			const numLiftedLathsAbove = Math.max(0, numLathsAbove - 3);
-			const liftedAreaAbove = numLiftedLathsAbove * (mainLathUncompressed / 1000) * widthM;
-			const liftedArea = areaBelow + areaVision + liftedAreaAbove;
-			dom['lifted-curtain-area'].textContent = liftedArea.toFixed(2);
+			const liftedAreaAboveCoverage = numLiftedLathsAbove * (mainLathCompressed / 1000) * widthM;
+			const liftedCoverageArea = areaBelowCoverage + areaVisionCoverage + liftedAreaAboveCoverage;
+			dom['lifted-curtain-area'].textContent = liftedCoverageArea.toFixed(2);
 
             dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
             dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
@@ -2372,11 +2373,11 @@
             const visionLathVisionKey = Object.keys(visionLath).find(k => k.toLowerCase().trim() === 'vision percentage');
             const visionLathVisionPercent = visionLathVisionKey ? (parseFloat(visionLath[visionLathVisionKey]) || 0) : 0;
 
-            const visionAreaFromMain = (areaBelow + areaAbove) * (mainLathVisionPercent / 100);
-            const visionAreaFromVisionPanel = areaVision * (visionLathVisionPercent / 100);
+            const visionAreaFromMain = (areaBelowMaterial + areaAboveMaterial) * (mainLathVisionPercent / 100);
+            const visionAreaFromVisionPanel = areaVisionMaterial * (visionLathVisionPercent / 100);
             const totalActualVisionArea = visionAreaFromMain + visionAreaFromVisionPanel;
             
-            const overallVisionPercentage = (totalArea > 0) ? (totalActualVisionArea / totalArea) * 100 : 0;
+            const overallVisionPercentage = (totalMaterialArea > 0) ? (totalActualVisionArea / totalMaterialArea) * 100 : 0;
             
             dom['vision-area-m2'].textContent = totalActualVisionArea.toFixed(2);
             dom['vision-percentage'].textContent = overallVisionPercentage.toFixed(2);
