@@ -516,6 +516,12 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
+                    <div class="form-group" data-admin-label="Motor Voltage">
+                        <label for="motorVoltageFilter">Motor Voltage</label>
+                        <select id="motorVoltageFilter" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
                     <div class="form-group" data-admin-label="Motor Mounting Type">
                         <label for="motorMountingType">Motor Mounting Type</label>
                         <select id="motorMountingType" disabled>
@@ -716,7 +722,7 @@
         ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
-         'max-torque', 'total-revolutions', 'motorMountingType', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
+         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
          'sb-activation-height', 'sb-activation-height-explainer', 'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
@@ -734,7 +740,7 @@
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
+        ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
@@ -885,7 +891,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -968,9 +974,10 @@
                 populateDropdown(dom.bottomLathType, bottomLathData, 'Bottom lath name');
                 populateDropdown(dom.endlockType, endlockData, 'Description');
                 populateMotorMountingTypes();
+                populateMotorVoltageFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1133,6 +1140,30 @@
             });
         }
         
+        function populateMotorVoltageFilter() {
+            let voltageKey = '';
+            if (motorData.length > 0) {
+                voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
+            }
+
+            if (!voltageKey) {
+                console.warn('Voltage column not found in motor data.');
+                dom.motorVoltageFilter.parentElement.style.display = 'none'; // Hide the filter if no data
+                return;
+            }
+
+            const voltageTypes = [...new Set(motorData.map(motor => motor[voltageKey]).filter(v => v))];
+            const select = dom.motorVoltageFilter;
+            select.innerHTML = '<option value="">-- All Voltages --</option>';
+            voltageTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                select.appendChild(option);
+            });
+            dom.motorVoltageFilter.parentElement.style.display = 'block';
+        }
+
         function updateAllCalculations() {
             if (lathData.length === 0) {
                 return;
@@ -1723,7 +1754,18 @@
             dom['max-torque'].textContent = requiredTorque.toFixed(1);
 
             const selectedMountType = dom.motorMountingType.value;
-            currentFilteredMotors = motorData.filter(motor => !selectedMountType || motor['Mounting type'] === selectedMountType);
+            const selectedVoltage = dom.motorVoltageFilter.value;
+
+            let voltageKey = '';
+            if (motorData.length > 0) {
+                voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
+            }
+
+            currentFilteredMotors = motorData.filter(motor => {
+                const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
+                const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
+                return mountMatch && voltageMatch;
+            });
             
             const select = dom.motorSelector;
             select.innerHTML = ''; 
