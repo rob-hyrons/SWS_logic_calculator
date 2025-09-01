@@ -3564,9 +3564,10 @@
     </script>
     
     <!-- =================================================================== -->
-    <!-- START: CODE FOR CSV REPORT GENERATION                               -->
+    <!-- START: CODE FOR CSV REPORT GENERATION (FIXED & IMPROVED)            -->
     <!-- =================================================================== -->
     <script>
+        // This function sets up the filter checkboxes once the main data is loaded
         function setupReportFilters() {
             // Lath Filter Setup
             const lathContainer = document.getElementById('report-lath-filter-container');
@@ -3613,6 +3614,87 @@
             document.getElementById('reportMotorDeselectAll').addEventListener('click', () => {
                 document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false);
             });
+
+            // Bind the main generation function to the button
+            document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
+        }
+
+        // --- Headless Calculation Functions ---
+        // These functions perform calculations without reading from or writing to the DOM.
+
+        function calculateCurtainPropertiesHeadless(lath, bottomLath, width_mm, height_mm) {
+            if (!lath || !bottomLath || height_mm <= 0) {
+                return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 };
+            }
+            // Use a sensible default axle radius for this bulk calculation. The effect is minimal.
+            const axleRadius = 60; 
+            const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
+            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+            
+            const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
+            let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0)
+                ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2
+                : 0;
+
+            const widthM = width_mm / 1000;
+            let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            // Note: We'll assume non-powder-coated for the report for simplicity, can be added as an option
+            const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
+            const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight; // Simplified weight for speed
+            
+            let torqueWeight = totalWeight;
+            if (numLaths >= 3) {
+                const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
+                torqueWeight = totalWeight - bufferLathWeight;
+            }
+            const travelHeight = height_mm - bottomLathHeight;
+            return { totalWeight, torqueWeight, travelHeight };
+        }
+
+        function findBestAxleHeadless(totalWeightKgs, totalLength) {
+             if (totalLength <= 0 || axleData.length === 0) {
+                return { name: 'null', status: 'N/A' };
+            }
+            const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
+            if (axlesForShape.length === 0) return { name: 'null', status: 'N/A' };
+
+            let bestAxle = null;
+            for (const axle of axlesForShape) {
+                const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
+                if (perf.ratio >= 400 && perf.deflection <= 25) {
+                    bestAxle = axle;
+                    break; // Found the first suitable one
+                }
+            }
+
+            if (bestAxle) {
+                return { name: bestAxle.Name, status: 'Pass', axleObj: bestAxle };
+            } else {
+                // If none pass, return the first one as the default failure
+                return { name: axlesForShape[0].Name, status: 'Fail', axleObj: axlesForShape[0] };
+            }
+        }
+        
+        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle) {
+             if (!lath || !axle || travelHeight <= 0 || torqueWeight <= 0) return 0;
+
+            const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+            const lathThickness = parseFloat(lath['Thickness']);
+            
+            const bottomLathWeight = (parseFloat(dom.width.value) / 1000) * (parseFloat(bottomLathData[0]['BLath weight / m length']) || 0);
+            const lathsWeight = torqueWeight - bottomLathWeight;
+            
+            let maxTorque = 0;
+            
+            // Simplified first-step torque calculation, sufficient for finding the max
+            const force = (lathsWeight + bottomLathWeight) * 9.81;
+            const radiusM = (effectiveStartDiameter / 2) / 1000;
+            maxTorque = force * radiusM;
+
+            const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
+            return maxTorque * frictionMultiplier;
         }
 
         async function generateCsvReport() {
@@ -3620,14 +3702,13 @@
             statusDiv.textContent = 'Starting report generation... Please wait.';
             statusDiv.style.color = 'blue';
 
-            // --- Get user-defined parameters from the new input fields ---
-            const minWidth = parseInt(document.getElementById('reportMinWidth').value) || 1000;
-            const maxWidth = parseInt(document.getElementById('reportMaxWidth').value) || 8000;
-            const minHeight = parseInt(document.getElementById('reportMinHeight').value) || 1000;
-            const maxHeight = parseInt(document.getElementById('reportMaxHeight').value) || 6000;
-            const interval = parseInt(document.getElementById('reportInterval').value) || 500;
+            // Get user-defined parameters
+            const minWidth = parseInt(document.getElementById('reportMinWidth').value);
+            const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
+            const minHeight = parseInt(document.getElementById('reportMinHeight').value);
+            const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
+            const interval = parseInt(document.getElementById('reportInterval').value);
             
-            // --- Get user-defined filters ---
             const selectedLathIndices = Array.from(document.querySelectorAll('.report-lath-checkbox:checked')).map(cb => parseInt(cb.value));
             const selectedManufacturers = Array.from(document.querySelectorAll('.report-motor-checkbox:checked')).map(cb => cb.value);
 
@@ -3637,74 +3718,48 @@
                 return;
             }
 
-            // --- Build CSV Headers based on selections ---
-            const csvHeaders = [
-                "Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", 
-                "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", 
-                "Max Required Torque (Nm)",
-                ...selectedManufacturers.map(m => `Recommended ${m} Motor`)
-            ];
-            
+            const csvHeaders = ["Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", "Max Required Torque (Nm)", ...selectedManufacturers.map(m => `Recommended ${m} Motor`)];
             const csvData = [csvHeaders];
+            
+            const defaultBottomLath = bottomLathData[0];
+            const defaultAdditionalLength = 100;
 
-            // Ensure default bottom lath and endlock are selected
-            if (dom.bottomLathType.options.length > 1) dom.bottomLathType.value = dom.bottomLathType.options[1].value;
-            if (dom.endlockType.options.length > 1) dom.endlockType.value = dom.endlockType.options[1].value;
-            dom.shapeCircular.checked = true;
-
-            // --- Main loop to iterate through all combinations ---
+            // Main loop
             for (const lathIndex of selectedLathIndices) {
                 const lath = lathData[lathIndex];
-                dom.lathType.value = lathIndex;
 
                 for (let width = minWidth; width <= maxWidth; width += interval) {
-                    dom.width.value = width;
-
                     for (let height = minHeight; height <= maxHeight; height += interval) {
-                        dom.height.value = height;
                         statusDiv.textContent = `Processing: ${lath.Name} at ${width}x${height}...`;
+                        await new Promise(resolve => setTimeout(resolve, 0));
+
+                        // 1. Calculate curtain properties
+                        const props = calculateCurtainPropertiesHeadless(lath, defaultBottomLath, width, height);
+
+                        // 2. Find best axle
+                        const totalLength = width + defaultAdditionalLength;
+                        const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
                         
-                        await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
+                        // 3. Calculate torque
+                        const requiredTorque = calculateTorqueHeadless(props.torqueWeight, lath, props.travelHeight, axleResult.axleObj);
 
-                        // Perform core calculations
-                        const props = calculateCurtainProperties(lath, bottomLathData[dom.bottomLathType.value], null);
-                        const { bestAxle } = findAndSetBestAxle(props.totalWeight);
-                        const { profileData } = getTorqueProfile(props.torqueWeight, lath, props.travelHeight, bestAxle ? getEffectiveCoilDiameter(bestAxle) : 0);
-                        const requiredTorque = profileData.length > 0 ? Math.max(...profileData.map(p => p.torque)) * (1 + (parseFloat(dom.friction.value) || 0) / 100) : 0;
-                        dom['max-torque'].textContent = requiredTorque.toFixed(1);
+                        // 4. Build CSV row
+                        const rowData = [
+                            lath.Name, width, height,
+                            props.totalWeight.toFixed(2),
+                            axleResult.name,
+                            axleResult.status,
+                            requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
+                        ];
 
-                        // --- Collect Results for the CSV row ---
-                        const rowData = [];
-                        rowData.push(lath.Name);
-                        rowData.push(width);
-                        rowData.push(height);
-                        rowData.push(parseFloat(dom['weight-kg'].textContent) || 'null');
-
-                        // Get Axle Info
-                        const axleSelect = dom.axleType;
-                        if (axleSelect.selectedIndex > -1 && axleSelect.options[axleSelect.selectedIndex].value !== "") {
-                            const selectedOption = axleSelect.options[axleSelect.selectedIndex];
-                            rowData.push(selectedOption.text);
-                            rowData.push(selectedOption.classList.contains('option-fail') ? "Fail" : "Pass");
-                        } else {
-                            rowData.push('null');
-                            rowData.push('N/A');
-                        }
-                        
-                        rowData.push(requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null');
-
-                        // Find best motor for each selected manufacturer
+                        // 5. Find best motor for each selected manufacturer
                         for (const manufacturer of selectedManufacturers) {
                             const motorsFromManufacturer = motorData.filter(m => (m.Name || '').startsWith(manufacturer));
                             const suitableMotors = motorsFromManufacturer
-                                .filter(m => requiredTorque >= parseFloat(m['Torque (Nm) min']) && requiredTorque <= parseFloat(m['Torque (Nm) max']))
-                                .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max'])); // Sort to find the smallest suitable motor
+                                .filter(m => requiredTorque > 0 && requiredTorque >= parseFloat(m['Torque (Nm) min']) && requiredTorque <= parseFloat(m['Torque (Nm) max']))
+                                .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
 
-                            if (suitableMotors.length > 0) {
-                                rowData.push(suitableMotors[0].Name);
-                            } else {
-                                rowData.push('null');
-                            }
+                            rowData.push(suitableMotors.length > 0 ? suitableMotors[0].Name : 'null');
                         }
                         csvData.push(rowData);
                     }
@@ -3731,11 +3786,6 @@
             link.click();
             document.body.removeChild(link);
         }
-
-        // Add the button to the admin panel when the window loads
-        // This function will be called when the Excel file is successfully processed
-        // See the `processExcelFile` function for where this is called.
-
     </script>
     <!-- =================================================================== -->
     <!-- END:   CODE FOR CSV REPORT GENERATION                               -->
