@@ -160,6 +160,7 @@
         .graph-data-label { font-size: 10px; text-anchor: middle; fill: #495057; }
         
         .support-symbol { fill: #868e96; stroke: #495057; stroke-width: 1; }
+        .coil-wrap-graphic { fill: none; stroke: #adb5bd; stroke-width: 0.5; }
         
         .option-pass {
             color: #1e8e3e; /* Green */
@@ -1467,7 +1468,7 @@
                 noPlateOption.selected = true;
                 noPlateOption.disabled = true;
                 select.prepend(noPlateOption);
-                drawEndplateGraphic(null, 0); 
+                drawEndplateGraphic(null, 0, null, null, 0); 
             }
             updateSelectedEndplateInfo();
         }
@@ -1505,12 +1506,12 @@
             const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
             const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
-
+            const numLaths = parseInt(dom['lath-count'].textContent) || 0;
 
             if (isNaN(selectedIndex) || !currentFilteredEndplates[selectedIndex]) {
                 ['endplate-name', 'endplate-size', 'endplate-material'].forEach(id => { dom[id].textContent = 'N/A'; });
                 ['prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height'].forEach(id => { dom[id].textContent = 'N/A'; });
-                drawEndplateGraphic(null, 0);
+                drawEndplateGraphic(null, 0, null, null, 0);
                 calculateEndplateForces(null);
                 return;
             }
@@ -1520,7 +1521,7 @@
             dom['endplate-size'].textContent = plate.Size;
             dom['endplate-material'].textContent = plate.Material;
 
-            drawEndplateGraphic(plate, maxCoilDiameter);
+            drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths);
             calculateEndplateForces(plate);
             
             const prevPlate = selectedIndex > 0 ? currentFilteredEndplates[selectedIndex - 1] : null;
@@ -2648,13 +2649,16 @@
             container.appendChild(svg);
         }
 
-        function drawEndplateGraphic(endplate, coilDiameter) {
+        function drawEndplateGraphic(endplate, coilDiameter, axle, lath, numLaths) {
             const container = dom['endplate-graphic-container'];
             container.innerHTML = '';
-            if (!endplate || !coilDiameter || coilDiameter <= 0) return;
+            if (!endplate || !coilDiameter || !axle || !lath || !numLaths || coilDiameter <= 0) {
+                return;
+            }
 
             const endplateSize = parseFloat(endplate.Size);
-            if (isNaN(endplateSize) || endplateSize <= 0) return;
+            const lathThickness = parseFloat(lath['Thickness']);
+            if (isNaN(endplateSize) || isNaN(lathThickness) || endplateSize <= 0) return;
 
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
@@ -2683,8 +2687,7 @@
             
             const scale = graphHeight / endplateSize;
             const scaledBoxSize = endplateSize * scale;
-            const scaledCoilRadius = (coilDiameter / 2) * scale;
-
+            
             const boxX = padding.left;
             const boxY = padding.top + (graphHeight - scaledBoxSize) / 2;
             const centerX = boxX + scaledBoxSize / 2;
@@ -2696,18 +2699,37 @@
                 return el;
             };
 
-            const boxRect = createElem('rect', {
+            // Draw Endplate Box
+            svg.appendChild(createElem('rect', {
                 x: boxX, y: boxY, width: scaledBoxSize, height: scaledBoxSize,
                 fill: '#f8f9fa', stroke: '#ced4da', 'stroke-width': '1'
-            });
-            svg.appendChild(boxRect);
+            }));
 
-            const coilCircle = createElem('circle', {
+            // Draw Axle
+            const axleDiameter = getEffectiveCoilDiameter(axle);
+            const scaledAxleRadius = (axleDiameter / 2) * scale;
+            svg.appendChild(createElem('circle', {
+                cx: centerX, cy: centerY, r: scaledAxleRadius,
+                class: 'shutter-axle-graphic'
+            }));
+
+            // Draw each lath wrap
+            for (let i = 1; i <= numLaths; i++) {
+                const currentRadius = (axleDiameter / 2) + (i * lathThickness);
+                svg.appendChild(createElem('circle', {
+                    cx: centerX, cy: centerY, r: currentRadius * scale,
+                    class: 'coil-wrap-graphic'
+                }));
+            }
+            
+            // Draw Final Coil Outline
+            const scaledCoilRadius = (coilDiameter / 2) * scale;
+            svg.appendChild(createElem('circle', {
                 cx: centerX, cy: centerY, r: scaledCoilRadius,
                 fill: 'none', stroke: '#007bff', 'stroke-width': '2'
-            });
-            svg.appendChild(coilCircle);
+            }));
 
+            // Dimensions
             const dimLineX = boxX + scaledBoxSize + 25;
             svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
             svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
@@ -3364,12 +3386,15 @@
                  updateWicketCalculationsAndGraphic();
             } else if (targetTabId === 'endplate-content') {
                 const selectedIndex = parseInt(dom.endplateSelector.value, 10);
+                const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+                const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
+                const numLaths = parseInt(dom['lath-count'].textContent) || 0;
                 if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
                     const plate = currentFilteredEndplates[selectedIndex];
-                    drawEndplateGraphic(plate, maxCoilDiameter);
+                    drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths);
                     calculateEndplateForces(plate);
                 } else {
-                    drawEndplateGraphic(null, 0);
+                    drawEndplateGraphic(null, 0, null, null, 0);
                     calculateEndplateForces(null);
                 }
             }
