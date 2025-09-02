@@ -6,10 +6,12 @@
     <title>Complete Shutter Motor Calculator</title>
     <!-- xlsx.js for data reading (existing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ExcelJS for image extraction (new) -->
+    <!-- ExcelJS for image extraction (existing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    <!-- Papa Parse for CSV importing -->
+    <!-- Papa Parse for CSV importing (existing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- Dxf-writer for DXF exporting (new) -->
+    <script src="https://unpkg.com/dxf-writer@1.16.0/dist/dxf-writer.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -261,7 +263,7 @@
             gap: 1em;
             margin-bottom: 1.5em;
         }
-        .admin-button-group button, #importCsvButton, #generateCsvButton {
+        .admin-button-group button, #importCsvButton, #generateCsvButton, #exportDxfButton {
             padding: 0.5em 1em;
             font-size: 0.8em;
             font-weight: 500;
@@ -271,13 +273,15 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .admin-button-group button:hover, #importCsvButton:hover, #generateCsvButton:hover {
+        .admin-button-group button:hover, #importCsvButton:hover, #generateCsvButton:hover, #exportDxfButton:hover {
             background-color: #5a6268;
         }
         #importCsvButton { background-color: #28a745; }
         #importCsvButton:hover { background-color: #218838; }
         #generateCsvButton { background-color: #007bff; font-size: 0.9em; padding: 0.8em 1.2em; }
         #generateCsvButton:hover { background-color: #0056b3; }
+        #exportDxfButton { background-color: #17a2b8; }
+        #exportDxfButton:hover { background-color: #138496; }
 
         .report-controls-grid {
             display: grid;
@@ -723,6 +727,21 @@
                             <!-- Input controls will be generated here by JavaScript -->
                         </div>
                     </div>
+
+                    <!-- =================================================================== -->
+                    <!-- START: NEW SECTION FOR DXF EXPORT                                     -->
+                    <!-- =================================================================== -->
+                    <div id="dxf-export-section" class="admin-section">
+                        <h3>Export Shutter Drawing to DXF</h3>
+                        <p>Exports the current shutter's main geometry (axle, endplate, curtain) as a 2D DXF file for use in CAD software. Annotations and dimensions are not included.</p>
+                        <div class="admin-button-group" style="margin-top: 1.5em;">
+                            <button id="exportDxfButton">Export Current Drawing to DXF</button>
+                        </div>
+                        <div id="dxf-export-status" style="font-style: italic; color: #555;"></div>
+                    </div>
+                    <!-- =================================================================== -->
+                    <!-- END: NEW SECTION FOR DXF EXPORT                                     -->
+                    <!-- =================================================================== -->
 
                     <!-- =================================================================== -->
                     <!-- START: NEW SECTION FOR CSV REPORT GENERATION                        -->
@@ -3564,7 +3583,121 @@
     </script>
     
     <!-- =================================================================== -->
-    <!-- START: CODE FOR CSV REPORT GENERATION (FIXED & IMPROVED)            -->
+    <!-- START: CODE FOR DXF EXPORT (NEW)                                    -->
+    <!-- =================================================================== -->
+    <script>
+        function exportShutterToDxf() {
+            const statusDiv = document.getElementById('dxf-export-status');
+            
+            // --- 1. Get all necessary data from the DOM ---
+            const realWidth = parseFloat(dom.width.value);
+            const realHeight = parseFloat(dom.height.value);
+            const additionalLength = parseFloat(dom.additionalLength.value) || 0;
+            const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+            
+            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+            const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
+            const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
+            const selectedEndplateIndex = dom.endplateSelector.value;
+            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
+                ? currentFilteredEndplates[selectedEndplateIndex] : null;
+
+            if (!realWidth || !realHeight || !selectedLath || !selectedBottomLath || !selectedAxle) {
+                statusDiv.textContent = 'Error: Please specify all shutter dimensions first.';
+                statusDiv.style.color = 'red';
+                return;
+            }
+            statusDiv.textContent = 'Generating DXF file...';
+            statusDiv.style.color = 'blue';
+
+            // --- 2. Re-calculate geometry parameters (similar to SVG drawing) ---
+            const mainLathHeight = parseFloat(selectedLath['Compressed lath height']);
+            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height'] || mainLathHeight);
+            const axleDiameter = parseFloat(selectedAxle['Diameter']);
+            const totalRealCompressedHeight = parseFloat(dom['curtain-height-compressed'].textContent) + axleDiameter;
+            const totalRealAxleWidth = realWidth + additionalLength;
+            
+            const drawingOriginX = 0;
+            const drawingOriginY = totalRealCompressedHeight; // To flip Y-axis for standard CAD view
+
+            const startX = drawingOriginX;
+            const lathStartX = startX + additionalLength / 2;
+            let currentY = drawingOriginY;
+            
+            // --- 3. Initialize DXF writer and define layers ---
+            const d = new DxfWriter();
+            d.addLayer('OUTLINE', DxfWriter.colors.White, 'CONTINUOUS');
+            d.addLayer('LATHS', DxfWriter.colors.Cyan, 'CONTINUOUS');
+            d.addLayer('ENDPLATE', DxfWriter.colors.Yellow, 'DASHED');
+            d.addLayer('AXLE', DxfWriter.colors.Red, 'CONTINUOUS');
+
+            // --- 4. Draw geometry using DXF commands ---
+            // Helper to draw a rectangle as a polyline
+            const addRect = (x, y, width, height) => {
+                d.addPolyline([ [x, y], [x + width, y], [x + width, y - height], [x, y - height] ], true);
+            };
+
+            // Draw Axle
+            d.setCurrentLayer('AXLE');
+            addRect(startX, drawingOriginY, totalRealAxleWidth, axleDiameter);
+
+            // Draw Endplate Box
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    const axleCenterlineY = drawingOriginY - (axleDiameter / 2);
+                    const endplateTopY = axleCenterlineY + (endplateSize / 2);
+                    d.setCurrentLayer('ENDPLATE');
+                    addRect(startX, endplateTopY, totalRealAxleWidth, endplateSize);
+                }
+            }
+
+            // Draw Laths
+            d.setCurrentLayer('LATHS');
+            let curtainDrawnHeight = 0;
+            currentY -= axleDiameter;
+
+            if (numLaths > 0) {
+                 for (let i = 0; i < numLaths; i++) {
+                    addRect(lathStartX, currentY, realWidth, mainLathHeight);
+                    currentY -= mainLathHeight;
+                }
+            }
+            // Draw Bottom Lath
+            d.setCurrentLayer('OUTLINE');
+            addRect(lathStartX, currentY, realWidth, bottomLathHeight);
+            
+            // --- 5. Generate DXF string and trigger download ---
+            const dxfString = d.stringify();
+            const blob = new Blob([dxfString], { type: 'application/dxf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Shutter_${realWidth}x${realHeight}.dxf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            statusDiv.textContent = 'DXF file generated successfully.';
+            statusDiv.style.color = 'green';
+        }
+
+        // --- 6. Attach event listener ---
+        document.addEventListener('DOMContentLoaded', () => {
+             const exportButton = document.getElementById('exportDxfButton');
+             if (exportButton) {
+                exportButton.addEventListener('click', exportShutterToDxf);
+             }
+        });
+    </script>
+    <!-- =================================================================== -->
+    <!-- END:   CODE FOR DXF EXPORT                                          -->
+    <!-- =================================================================== -->
+
+
+    <!-- =================================================================== -->
+    <!-- START: CODE FOR CSV REPORT GENERATION (EXISTING)                    -->
     <!-- =================================================================== -->
     <script>
         // This function sets up the filter checkboxes once the main data is loaded
