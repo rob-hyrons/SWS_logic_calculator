@@ -3582,18 +3582,20 @@
     </script>
     
     <!-- =================================================================== -->
-    <!-- START: CODE FOR DXF EXPORT (NEW & CORRECTED)                        -->
+    <!-- START: AMENDED CODE FOR DXF EXPORT                                  -->
     <!-- =================================================================== -->
     <script>
         function exportShutterToDxf() {
             const statusDiv = document.getElementById('dxf-export-status');
-            
+            statusDiv.textContent = 'Gathering data...';
+            statusDiv.style.color = 'blue';
+
             // --- 1. Get all necessary data from the DOM ---
             const realWidth = parseFloat(dom.width.value);
-            const realHeight = parseFloat(dom.height.value);
+            const realHeight = parseFloat(dom.height.value); // This is Floor to Axle Centre
             const additionalLength = parseFloat(dom.additionalLength.value) || 0;
             const numLaths = parseInt(dom['lath-count'].textContent) || 0;
-            
+
             const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
             const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
@@ -3601,87 +3603,149 @@
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
                 ? currentFilteredEndplates[selectedEndplateIndex] : null;
 
-            if (!realWidth || !realHeight || !selectedLath || !selectedBottomLath || !selectedAxle) {
+            if (isNaN(realWidth) || isNaN(realHeight) || !selectedLath || !selectedBottomLath || !selectedAxle) {
                 statusDiv.textContent = 'Error: Please specify all shutter dimensions first.';
                 statusDiv.style.color = 'red';
                 return;
             }
-            statusDiv.textContent = 'Generating DXF file...';
-            statusDiv.style.color = 'blue';
 
-            // --- 2. Re-calculate geometry parameters ---
+            statusDiv.textContent = 'Generating DXF file...';
+
+            // --- 2. Define Coordinate System and Geometry ---
+            // Origin (0,0) is at the bottom-left of the curtain guide. Y is up.
             const mainLathHeight = parseFloat(selectedLath['Compressed lath height']);
             const bottomLathHeight = parseFloat(selectedBottomLath['BLath height'] || mainLathHeight);
             const axleDiameter = parseFloat(selectedAxle['Diameter']);
             const totalRealAxleWidth = realWidth + additionalLength;
-            
-            const drawingOriginX = 0;
-            const drawingOriginY = parseFloat(dom['curtain-height-compressed'].textContent) + axleDiameter;
+            const floorToAxleCenter = realHeight;
 
-            const startX = drawingOriginX;
-            const lathStartX = startX + additionalLength / 2;
-            let currentY = drawingOriginY;
-            
+            const curtainStartX = 0;
+            const curtainEndX = realWidth;
+
+            const axleStartX = curtainStartX - (additionalLength / 2);
+            const axleEndX = curtainEndX + (additionalLength / 2);
+
+            const axleCenterY = floorToAxleCenter;
+            const axleTopY = axleCenterY + (axleDiameter / 2);
+            const axleBottomY = axleCenterY - (axleDiameter / 2);
+
+            let endplateSize = 0, endplateTopY = 0, endplateBottomY = 0, heightToUnderside = 0;
+            if (selectedEndplate) {
+                endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    endplateTopY = axleCenterY + (endplateSize / 2);
+                    endplateBottomY = axleCenterY - (endplateSize / 2);
+                    heightToUnderside = endplateBottomY;
+                }
+            }
+
             // --- 3. Initialize DXF writer and define layers ---
             const d = new DxfWriter();
             d.addLayer('OUTLINE', DxfWriter.colors.White, 'CONTINUOUS');
             d.addLayer('LATHS', DxfWriter.colors.Cyan, 'CONTINUOUS');
             d.addLayer('ENDPLATE', DxfWriter.colors.Yellow, 'DASHED');
             d.addLayer('AXLE', DxfWriter.colors.Red, 'CONTINUOUS');
+            d.addLayer('DIMENSIONS', DxfWriter.colors.Green, 'CONTINUOUS');
+            d.addLayer('ANNOTATIONS', DxfWriter.colors.Green, 'CONTINUOUS');
+            d.addLayer('CENTERLINE', DxfWriter.colors.Red, 'CENTER');
 
             // --- 4. Draw geometry using DXF commands ---
-            const addRect = (x, y, width, height) => {
-                d.addPolyline([ [x, y], [x + width, y], [x + width, y - height], [x, y - height] ], true);
+            const addRect = (x, y_bottom, width, height) => {
+                d.addPolyline([
+                    [x, y_bottom], [x + width, y_bottom],
+                    [x + width, y_bottom + height], [x, y_bottom + height]
+                ], true);
             };
 
-            // Draw Axle
             d.setCurrentLayer('AXLE');
-            addRect(startX, drawingOriginY, totalRealAxleWidth, axleDiameter);
-
-            // Draw Endplate Box
-            if (selectedEndplate) {
-                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
-                if (endplateSize > 0) {
-                    const axleCenterlineY = drawingOriginY - (axleDiameter / 2);
-                    const endplateTopY = axleCenterlineY + (endplateSize / 2);
-                    d.setCurrentLayer('ENDPLATE');
-                    addRect(startX, endplateTopY, totalRealAxleWidth, endplateSize);
-                }
-            }
+            addRect(axleStartX, axleBottomY, totalRealAxleWidth, axleDiameter);
             
-            currentY -= axleDiameter;
+            d.setCurrentLayer('CENTERLINE');
+            d.addLine(axleStartX - 250, axleCenterY, axleEndX + 250, axleCenterY);
 
-            // Draw Laths
+            if (endplateSize > 0) {
+                d.setCurrentLayer('ENDPLATE');
+                addRect(axleStartX, endplateBottomY, totalRealAxleWidth, endplateSize);
+            }
+
             d.setCurrentLayer('LATHS');
+            let currentY = bottomLathHeight;
             if (numLaths > 0) {
-                 for (let i = 0; i < numLaths; i++) {
-                    addRect(lathStartX, currentY, realWidth, mainLathHeight);
-                    currentY -= mainLathHeight;
+                for (let i = 0; i < numLaths; i++) {
+                    addRect(curtainStartX, currentY, realWidth, mainLathHeight);
+                    currentY += mainLathHeight;
                 }
             }
             
-            // Draw Bottom Lath
             d.setCurrentLayer('OUTLINE');
-            addRect(lathStartX, currentY, realWidth, bottomLathHeight);
+            addRect(curtainStartX, 0, realWidth, bottomLathHeight);
+
+            // --- 5. Add Dimensions and Annotations ---
+            const dimOffset = 250;
+            const textHeight = Math.min(realWidth, realHeight) * 0.02; // Dynamic text height
             
-            // --- 5. Generate DXF string and trigger download ---
-            const dxfString = d.stringify();
-            const blob = new Blob([dxfString], { type: 'application/dxf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Shutter_${realWidth}x${realHeight}.dxf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            d.setCurrentLayer('DIMENSIONS');
+            const styleName = 'Annotative';
+            d.addStyle(styleName);
+            d.setVariable('$DIMTXSTY', { 7: styleName });
+            d.setVariable('$DIMTXT', { 40: textHeight });
+            d.setVariable('$DIMASZ', { 40: textHeight * 0.5 });
+            d.setVariable('$DIMEXO', { 40: textHeight * 0.4 });
+            d.setVariable('$DIMEXE', { 40: textHeight * 0.6 });
+
+            // Vertical Dimensions
+            const vDimLineX = axleEndX + dimOffset;
+            d.addLinearDim(axleEndX, 0, axleEndX, axleCenterY, { angle: 90, x: vDimLineX, y: axleCenterY / 2 });
+
+            if (endplateSize > 0) {
+                const vDimLineX2 = axleEndX + dimOffset * 2;
+                d.addLinearDim(axleEndX, 0, axleEndX, endplateBottomY, { angle: 90, x: vDimLineX2, y: endplateBottomY / 2 });
+                const vDimLineX3 = axleStartX - dimOffset;
+                d.addLinearDim(axleStartX, endplateBottomY, axleStartX, endplateTopY, { angle: 90, x: vDimLineX3, y: axleCenterY });
+            }
+
+            // Horizontal Dimensions
+            const hDimLineY = -dimOffset;
+            d.addLinearDim(curtainStartX, 0, curtainEndX, 0, { angle: 0, x: curtainStartX + realWidth / 2, y: hDimLineY });
+
+            const hDimLineY2 = (endplateSize > 0 ? endplateTopY : axleTopY) + dimOffset;
+            d.addLinearDim(axleStartX, hDimLineY2, axleEndX, hDimLineY2, { angle: 0, x: axleStartX + totalRealAxleWidth / 2, y: hDimLineY2 });
             
-            statusDiv.textContent = 'DXF file generated successfully.';
-            statusDiv.style.color = 'green';
+            // Add separate text annotations for clarity
+            d.setCurrentLayer('ANNOTATIONS');
+            d.addText(vDimLineX + (textHeight * 2), axleCenterY / 2, textHeight, 90, `Floor to Axle Centre`);
+            if (endplateSize > 0) {
+                d.addText(vDimLineX2 + (textHeight * 2), endplateBottomY / 2, textHeight, 90, `Underside of Box`);
+                d.addText(vDimLineX3 - (textHeight * 2), axleCenterY, textHeight, 90, `Endplate Size`);
+            }
+            d.addText(realWidth / 2, hDimLineY - textHeight, textHeight, 0, `Curtain Width`);
+            d.addText(axleStartX + totalRealAxleWidth / 2, hDimLineY2 + textHeight, textHeight, 0, `Overall Axle Width`);
+
+
+            // --- 6. Generate DXF string and trigger download ---
+            try {
+                const dxfString = d.stringify();
+                const blob = new Blob([dxfString], { type: 'application/dxf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Shutter_${realWidth}x${realHeight}.dxf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                statusDiv.textContent = 'DXF file generated successfully.';
+                statusDiv.style.color = 'green';
+            } catch (err) {
+                statusDiv.textContent = `Error generating DXF: ${err.message}`;
+                statusDiv.style.color = 'red';
+                console.error(err);
+            }
         }
     </script>
     <!-- =================================================================== -->
-    <!-- END:   CODE FOR DXF EXPORT                                          -->
+    <!-- END:   AMENDED CODE FOR DXF EXPORT                                  -->
     <!-- =================================================================== -->
 
 
