@@ -335,10 +335,15 @@
             .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #admin-content, #logo-image {
                 display: none !important;
             }
+            /* --- PDF PRINTING FIX --- */
             .tab-pane {
-                display: block !important;
+                display: none !important; /* Hide all panes in print mode */
                 padding-top: 1em;
             }
+            .tab-pane.active {
+                display: block !important; /* ONLY show the active one */
+            }
+            /* --- END FIX --- */
             .page-break-before-print {
                 page-break-before: always;
             }
@@ -727,10 +732,7 @@
                             <!-- Input controls will be generated here by JavaScript -->
                         </div>
                     </div>
-
-                    <!-- =================================================================== -->
-                    <!-- START: NEW SECTION FOR DXF EXPORT                                     -->
-                    <!-- =================================================================== -->
+                    
                     <div id="dxf-export-section" class="admin-section">
                         <h3>Export Shutter Drawing to DXF</h3>
                         <p>Exports the current shutter's main geometry (axle, endplate, curtain) as a 2D DXF file for use in CAD software. Annotations and dimensions are not included.</p>
@@ -739,13 +741,7 @@
                         </div>
                         <div id="dxf-export-status" style="font-style: italic; color: #555;"></div>
                     </div>
-                    <!-- =================================================================== -->
-                    <!-- END: NEW SECTION FOR DXF EXPORT                                     -->
-                    <!-- =================================================================== -->
 
-                    <!-- =================================================================== -->
-                    <!-- START: NEW SECTION FOR CSV REPORT GENERATION                        -->
-                    <!-- =================================================================== -->
                     <div id="csv-report-section" class="admin-section">
                         <h3>Generate Sizing Report</h3>
                         <p>Configure the report parameters below. This process can take several minutes and may slow down your browser depending on the size of the range selected.</p>
@@ -797,9 +793,6 @@
                         </div>
                         <div id="csv-generation-status" style="font-style: italic; color: #555;"></div>
                     </div>
-                    <!-- =================================================================== -->
-                    <!-- END: NEW SECTION FOR CSV REPORT GENERATION                          -->
-                    <!-- =================================================================== -->
                 </div>
 
             </div>
@@ -3556,7 +3549,13 @@
                 }
             });
 
-            initializeAdminControls(); 
+            initializeAdminControls();
+            
+            // --- DXF BUTTON FIX: Attach listener here for reliability ---
+            const exportButton = document.getElementById('exportDxfButton');
+            if (exportButton) {
+                exportButton.addEventListener('click', exportShutterToDxf);
+            }
 
             const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
             const statusDiv = document.getElementById('import-status');
@@ -3583,7 +3582,7 @@
     </script>
     
     <!-- =================================================================== -->
-    <!-- START: CODE FOR DXF EXPORT (NEW)                                    -->
+    <!-- START: CODE FOR DXF EXPORT (NEW & CORRECTED)                        -->
     <!-- =================================================================== -->
     <script>
         function exportShutterToDxf() {
@@ -3610,15 +3609,14 @@
             statusDiv.textContent = 'Generating DXF file...';
             statusDiv.style.color = 'blue';
 
-            // --- 2. Re-calculate geometry parameters (similar to SVG drawing) ---
+            // --- 2. Re-calculate geometry parameters ---
             const mainLathHeight = parseFloat(selectedLath['Compressed lath height']);
             const bottomLathHeight = parseFloat(selectedBottomLath['BLath height'] || mainLathHeight);
             const axleDiameter = parseFloat(selectedAxle['Diameter']);
-            const totalRealCompressedHeight = parseFloat(dom['curtain-height-compressed'].textContent) + axleDiameter;
             const totalRealAxleWidth = realWidth + additionalLength;
             
             const drawingOriginX = 0;
-            const drawingOriginY = totalRealCompressedHeight; // To flip Y-axis for standard CAD view
+            const drawingOriginY = parseFloat(dom['curtain-height-compressed'].textContent) + axleDiameter;
 
             const startX = drawingOriginX;
             const lathStartX = startX + additionalLength / 2;
@@ -3632,7 +3630,6 @@
             d.addLayer('AXLE', DxfWriter.colors.Red, 'CONTINUOUS');
 
             // --- 4. Draw geometry using DXF commands ---
-            // Helper to draw a rectangle as a polyline
             const addRect = (x, y, width, height) => {
                 d.addPolyline([ [x, y], [x + width, y], [x + width, y - height], [x, y - height] ], true);
             };
@@ -3651,18 +3648,18 @@
                     addRect(startX, endplateTopY, totalRealAxleWidth, endplateSize);
                 }
             }
+            
+            currentY -= axleDiameter;
 
             // Draw Laths
             d.setCurrentLayer('LATHS');
-            let curtainDrawnHeight = 0;
-            currentY -= axleDiameter;
-
             if (numLaths > 0) {
                  for (let i = 0; i < numLaths; i++) {
                     addRect(lathStartX, currentY, realWidth, mainLathHeight);
                     currentY -= mainLathHeight;
                 }
             }
+            
             // Draw Bottom Lath
             d.setCurrentLayer('OUTLINE');
             addRect(lathStartX, currentY, realWidth, bottomLathHeight);
@@ -3682,14 +3679,6 @@
             statusDiv.textContent = 'DXF file generated successfully.';
             statusDiv.style.color = 'green';
         }
-
-        // --- 6. Attach event listener ---
-        document.addEventListener('DOMContentLoaded', () => {
-             const exportButton = document.getElementById('exportDxfButton');
-             if (exportButton) {
-                exportButton.addEventListener('click', exportShutterToDxf);
-             }
-        });
     </script>
     <!-- =================================================================== -->
     <!-- END:   CODE FOR DXF EXPORT                                          -->
