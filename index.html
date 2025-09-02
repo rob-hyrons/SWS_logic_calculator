@@ -3582,166 +3582,152 @@
     </script>
     
     <!-- =================================================================== -->
-    <!-- START: AMENDED CODE FOR DXF EXPORT                                  -->
+    <!-- START: AMENDED CODE FOR DXF EXPORT WITH TIMEOUT                     -->
     <!-- =================================================================== -->
     <script>
         function exportShutterToDxf() {
             const statusDiv = document.getElementById('dxf-export-status');
-            statusDiv.textContent = 'Gathering data...';
-            statusDiv.style.color = 'blue';
+            let exportTimer;
 
-            // --- 1. Get all necessary data from the DOM ---
-            const realWidth = parseFloat(dom.width.value);
-            const realHeight = parseFloat(dom.height.value); // This is Floor to Axle Centre
-            const additionalLength = parseFloat(dom.additionalLength.value) || 0;
-            const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+            const timeoutPromise = new Promise((_, reject) => {
+                exportTimer = setTimeout(() => {
+                    reject(new Error('Export process timed out after 90 seconds.'));
+                }, 90000); // 90 seconds timeout
+            });
 
-            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
-            const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
-            const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
-            const selectedEndplateIndex = dom.endplateSelector.value;
-            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
-                ? currentFilteredEndplates[selectedEndplateIndex] : null;
+            const exportPromise = new Promise((resolve, reject) => {
+                try {
+                    // --- 1. Gather and Validate Data ---
+                    const data = {
+                        width: parseFloat(dom.width.value),
+                        height: parseFloat(dom.height.value), // Floor to Axle Centre
+                        additionalLength: parseFloat(dom.additionalLength.value) || 0,
+                        numLaths: parseInt(dom['lath-count'].textContent) || 0,
+                        lath: lathData.length > 0 ? lathData[dom.lathType.value] : null,
+                        bottomLath: bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null,
+                        axle: axleData.length > 0 ? axleData[dom.axleType.value] : null,
+                        endplate: (dom.endplateSelector.value !== "" && currentFilteredEndplates[dom.endplateSelector.value]) ? currentFilteredEndplates[dom.endplateSelector.value] : null
+                    };
 
-            if (isNaN(realWidth) || isNaN(realHeight) || !selectedLath || !selectedBottomLath || !selectedAxle) {
-                statusDiv.textContent = 'Error: Please specify all shutter dimensions first.';
-                statusDiv.style.color = 'red';
-                return;
-            }
+                    for (const key of ['width', 'height', 'lath', 'bottomLath', 'axle']) {
+                        if (!data[key] || (typeof data[key] === 'number' && (isNaN(data[key]) || data[key] <= 0))) {
+                            return reject(new Error(`Invalid or missing input for: ${key}. Please check the Inputs tab.`));
+                        }
+                    }
+
+                    // --- 2. Define Geometry ---
+                    const geo = {
+                        mainLathHeight: parseFloat(data.lath['Compressed lath height']),
+                        bottomLathHeight: parseFloat(data.bottomLath['BLath height'] || data.lath['Compressed lath height']),
+                        axleDiameter: parseFloat(data.axle['Diameter']),
+                        totalAxleWidth: data.width + data.additionalLength,
+                        axleCenterY: data.height,
+                    };
+                    geo.axleTopY = geo.axleCenterY + (geo.axleDiameter / 2);
+                    geo.axleBottomY = geo.axleCenterY - (geo.axleDiameter / 2);
+                    geo.curtainStartX = -data.width / 2;
+                    geo.curtainEndX = data.width / 2;
+                    geo.axleStartX = -geo.totalAxleWidth / 2;
+                    geo.axleEndX = geo.totalAxleWidth / 2;
+
+                    if (data.endplate) {
+                        geo.endplateSize = parseFloat(data.endplate.Size) || 0;
+                        if (geo.endplateSize > 0) {
+                            geo.endplateTopY = geo.axleCenterY + (geo.endplateSize / 2);
+                            geo.endplateBottomY = geo.axleCenterY - (geo.endplateSize / 2);
+                        }
+                    }
+
+                    // --- 3. Initialize DXF writer ---
+                    const d = new DxfWriter();
+                    ['OUTLINE', 'LATHS', 'ENDPLATE', 'AXLE', 'DIMENSIONS', 'CENTERLINE'].forEach((layer, i) => {
+                        d.addLayer(layer, i + 1, 'CONTINUOUS');
+                    });
+                    d.setActiveLayer('CENTERLINE').setLineType('CENTER', 'CENTER', [20, -5, 5, -5]);
+
+                    // --- 4. Draw Geometry ---
+                    const addRect = (x, y_bottom, width, height) => {
+                        d.addPolyline([[x, y_bottom], [x + width, y_bottom], [x + width, y_bottom + height], [x, y_bottom + height]], true);
+                    };
+
+                    d.setCurrentLayer('AXLE');
+                    addRect(geo.axleStartX, geo.axleBottomY, geo.totalAxleWidth, geo.axleDiameter);
+
+                    d.setCurrentLayer('CENTERLINE');
+                    d.addLine(geo.axleStartX - 250, geo.axleCenterY, geo.axleEndX + 250, geo.axleCenterY);
+
+                    if (geo.endplateSize > 0) {
+                        d.setCurrentLayer('ENDPLATE');
+                        addRect(geo.axleStartX, geo.endplateBottomY, geo.totalAxleWidth, geo.endplateSize);
+                    }
+
+                    d.setCurrentLayer('LATHS');
+                    let currentY = geo.bottomLathHeight;
+                    for (let i = 0; i < data.numLaths; i++) {
+                        addRect(geo.curtainStartX, currentY, data.width, geo.mainLathHeight);
+                        currentY += geo.mainLathHeight;
+                    }
+                    
+                    d.setCurrentLayer('OUTLINE');
+                    addRect(geo.curtainStartX, 0, data.width, geo.bottomLathHeight);
+
+                    // --- 5. Add Dimensions ---
+                    d.setCurrentLayer('DIMENSIONS');
+                    const textHeight = Math.min(data.width, data.height) * 0.025;
+                    const dimOffset = textHeight * 15;
+                    d.addStyle('dim_style', 'arial.ttf');
+                    d.setVariable('$DIMTXSTY', { 7: 'dim_style' });
+                    d.setVariable('$DIMTXT', { 40: textHeight });
+                    d.setVariable('$DIMASZ', { 40: textHeight * 0.7 });
+                    d.setVariable('$DIMEXO', { 40: textHeight * 0.5 });
+                    d.setVariable('$DIMEXE', { 40: textHeight * 0.8 });
+
+                    const addDim = (p1, p2, angle, offset, text) => {
+                         d.addAlignedDim(p1, p2, { offset: offset, text: text });
+                    };
+                    
+                    addDim([geo.curtainStartX, 0], [geo.curtainEndX, 0], 0, -dimOffset, `Curtain Width: ${data.width.toFixed(0)}`);
+                    addDim([geo.axleStartX, geo.axleTopY], [geo.axleEndX, geo.axleTopY], 0, dimOffset, `Axle Width: ${geo.totalAxleWidth.toFixed(0)}`);
+
+                    addDim([geo.axleEndX, 0], [geo.axleEndX, geo.axleCenterY], 90, dimOffset, `Floor to Axle Centre: ${data.height.toFixed(0)}`);
+                    if (geo.endplateSize > 0) {
+                        addDim([geo.axleEndX, geo.endplateBottomY], [geo.axleEndX, 0], 90, dimOffset * 2, `Underside of Box: ${geo.endplateBottomY.toFixed(0)}`);
+                        addDim([geo.axleStartX, geo.endplateBottomY], [geo.axleStartX, geo.endplateTopY], 90, -dimOffset, `Endplate Size: ${geo.endplateSize.toFixed(0)}`);
+                    }
+
+                    // --- 6. Generate and Download DXF ---
+                    const dxfString = d.stringify();
+                    const blob = new Blob([dxfString], { type: 'application/dxf' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Shutter_${data.width.toFixed(0)}x${data.height.toFixed(0)}.dxf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            });
 
             statusDiv.textContent = 'Generating DXF file...';
+            statusDiv.style.color = 'blue';
 
-            // --- 2. Define Coordinate System and Geometry ---
-            // Origin (0,0) is at the bottom-left of the curtain guide. Y is up.
-            const mainLathHeight = parseFloat(selectedLath['Compressed lath height']);
-            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height'] || mainLathHeight);
-            const axleDiameter = parseFloat(selectedAxle['Diameter']);
-            const totalRealAxleWidth = realWidth + additionalLength;
-            const floorToAxleCenter = realHeight;
-
-            const curtainStartX = 0;
-            const curtainEndX = realWidth;
-
-            const axleStartX = curtainStartX - (additionalLength / 2);
-            const axleEndX = curtainEndX + (additionalLength / 2);
-
-            const axleCenterY = floorToAxleCenter;
-            const axleTopY = axleCenterY + (axleDiameter / 2);
-            const axleBottomY = axleCenterY - (axleDiameter / 2);
-
-            let endplateSize = 0, endplateTopY = 0, endplateBottomY = 0, heightToUnderside = 0;
-            if (selectedEndplate) {
-                endplateSize = parseFloat(selectedEndplate.Size) || 0;
-                if (endplateSize > 0) {
-                    endplateTopY = axleCenterY + (endplateSize / 2);
-                    endplateBottomY = axleCenterY - (endplateSize / 2);
-                    heightToUnderside = endplateBottomY;
-                }
-            }
-
-            // --- 3. Initialize DXF writer and define layers ---
-            const d = new DxfWriter();
-            d.addLayer('OUTLINE', DxfWriter.colors.White, 'CONTINUOUS');
-            d.addLayer('LATHS', DxfWriter.colors.Cyan, 'CONTINUOUS');
-            d.addLayer('ENDPLATE', DxfWriter.colors.Yellow, 'DASHED');
-            d.addLayer('AXLE', DxfWriter.colors.Red, 'CONTINUOUS');
-            d.addLayer('DIMENSIONS', DxfWriter.colors.Green, 'CONTINUOUS');
-            d.addLayer('ANNOTATIONS', DxfWriter.colors.Green, 'CONTINUOUS');
-            d.addLayer('CENTERLINE', DxfWriter.colors.Red, 'CENTER');
-
-            // --- 4. Draw geometry using DXF commands ---
-            const addRect = (x, y_bottom, width, height) => {
-                d.addPolyline([
-                    [x, y_bottom], [x + width, y_bottom],
-                    [x + width, y_bottom + height], [x, y_bottom + height]
-                ], true);
-            };
-
-            d.setCurrentLayer('AXLE');
-            addRect(axleStartX, axleBottomY, totalRealAxleWidth, axleDiameter);
-            
-            d.setCurrentLayer('CENTERLINE');
-            d.addLine(axleStartX - 250, axleCenterY, axleEndX + 250, axleCenterY);
-
-            if (endplateSize > 0) {
-                d.setCurrentLayer('ENDPLATE');
-                addRect(axleStartX, endplateBottomY, totalRealAxleWidth, endplateSize);
-            }
-
-            d.setCurrentLayer('LATHS');
-            let currentY = bottomLathHeight;
-            if (numLaths > 0) {
-                for (let i = 0; i < numLaths; i++) {
-                    addRect(curtainStartX, currentY, realWidth, mainLathHeight);
-                    currentY += mainLathHeight;
-                }
-            }
-            
-            d.setCurrentLayer('OUTLINE');
-            addRect(curtainStartX, 0, realWidth, bottomLathHeight);
-
-            // --- 5. Add Dimensions and Annotations ---
-            const dimOffset = 250;
-            const textHeight = Math.min(realWidth, realHeight) * 0.02; // Dynamic text height
-            
-            d.setCurrentLayer('DIMENSIONS');
-            const styleName = 'Annotative';
-            d.addStyle(styleName);
-            d.setVariable('$DIMTXSTY', { 7: styleName });
-            d.setVariable('$DIMTXT', { 40: textHeight });
-            d.setVariable('$DIMASZ', { 40: textHeight * 0.5 });
-            d.setVariable('$DIMEXO', { 40: textHeight * 0.4 });
-            d.setVariable('$DIMEXE', { 40: textHeight * 0.6 });
-
-            // Vertical Dimensions
-            const vDimLineX = axleEndX + dimOffset;
-            d.addLinearDim(axleEndX, 0, axleEndX, axleCenterY, { angle: 90, x: vDimLineX, y: axleCenterY / 2 });
-
-            if (endplateSize > 0) {
-                const vDimLineX2 = axleEndX + dimOffset * 2;
-                d.addLinearDim(axleEndX, 0, axleEndX, endplateBottomY, { angle: 90, x: vDimLineX2, y: endplateBottomY / 2 });
-                const vDimLineX3 = axleStartX - dimOffset;
-                d.addLinearDim(axleStartX, endplateBottomY, axleStartX, endplateTopY, { angle: 90, x: vDimLineX3, y: axleCenterY });
-            }
-
-            // Horizontal Dimensions
-            const hDimLineY = -dimOffset;
-            d.addLinearDim(curtainStartX, 0, curtainEndX, 0, { angle: 0, x: curtainStartX + realWidth / 2, y: hDimLineY });
-
-            const hDimLineY2 = (endplateSize > 0 ? endplateTopY : axleTopY) + dimOffset;
-            d.addLinearDim(axleStartX, hDimLineY2, axleEndX, hDimLineY2, { angle: 0, x: axleStartX + totalRealAxleWidth / 2, y: hDimLineY2 });
-            
-            // Add separate text annotations for clarity
-            d.setCurrentLayer('ANNOTATIONS');
-            d.addText(vDimLineX + (textHeight * 2), axleCenterY / 2, textHeight, 90, `Floor to Axle Centre`);
-            if (endplateSize > 0) {
-                d.addText(vDimLineX2 + (textHeight * 2), endplateBottomY / 2, textHeight, 90, `Underside of Box`);
-                d.addText(vDimLineX3 - (textHeight * 2), axleCenterY, textHeight, 90, `Endplate Size`);
-            }
-            d.addText(realWidth / 2, hDimLineY - textHeight, textHeight, 0, `Curtain Width`);
-            d.addText(axleStartX + totalRealAxleWidth / 2, hDimLineY2 + textHeight, textHeight, 0, `Overall Axle Width`);
-
-
-            // --- 6. Generate DXF string and trigger download ---
-            try {
-                const dxfString = d.stringify();
-                const blob = new Blob([dxfString], { type: 'application/dxf' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Shutter_${realWidth}x${realHeight}.dxf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                statusDiv.textContent = 'DXF file generated successfully.';
-                statusDiv.style.color = 'green';
-            } catch (err) {
-                statusDiv.textContent = `Error generating DXF: ${err.message}`;
-                statusDiv.style.color = 'red';
-                console.error(err);
-            }
+            Promise.race([exportPromise, timeoutPromise])
+                .then(() => {
+                    clearTimeout(exportTimer);
+                    statusDiv.textContent = 'DXF file generated successfully.';
+                    statusDiv.style.color = 'green';
+                })
+                .catch(error => {
+                    clearTimeout(exportTimer);
+                    statusDiv.textContent = `Error: ${error.message}`;
+                    statusDiv.style.color = 'red';
+                    console.error('DXF Export Failed:', error);
+                });
         }
     </script>
     <!-- =================================================================== -->
