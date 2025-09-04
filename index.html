@@ -2117,14 +2117,11 @@
                 const lathCompressedHeight = parseFloat(selectedLath['Compressed lath height']) || 0;
 
                 if (lathCompressedHeight > 0 && wicketHeight > 0) {
-                    if (wicketHeight <= bottomLathHeight) {
-                        lathsAtWicket = 0;
-                        wicketLathHeight = bottomLathHeight;
-                    } else {
-                        const heightAboveBottomLath = wicketHeight - bottomLathHeight;
-                        lathsAtWicket = Math.ceil(heightAboveBottomLath / lathCompressedHeight);
-                        wicketLathHeight = bottomLathHeight + (lathsAtWicket * lathCompressedHeight);
-                    }
+                    const wicketGap = 10; // 10mm gap
+                    const heightCoveredByWicketZone = wicketHeight + wicketGap;
+                    const lathsInZone = Math.ceil(heightCoveredByWicketZone / lathCompressedHeight);
+                    lathsAtWicket = lathsInZone;
+                    wicketLathHeight = bottomLathHeight + (lathsInZone * lathCompressedHeight);
                 }
             }
         
@@ -2193,6 +2190,7 @@
 
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             const widthM = (parseFloat(dom.width.value) || 0) / 1000;
+            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
             const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
             const lathsWeight = totalWeightKgs - bottomLathWeight;
 
@@ -2206,19 +2204,24 @@
             
             const wicketWeightReduction = wicketWidthM * wicketHeightM * lathKgsPerM2;
 
+            const wicketStartHeightFromBottomM = (bottomLathHeight / 1000) + (10 / 1000); // Add 10mm gap
+            const wicketEndHeightFromBottomM = wicketStartHeightFromBottomM + wicketHeightM;
+
             while (heightLifted < travelHeight) {
                 const percentLifted = heightLifted / travelHeight;
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
                 let remainingTotalWeight = remainingLathWeight + bottomLathWeight;
                 
-                const curtainHangingHeight = travelHeight - heightLifted;
-                if (curtainHangingHeight >= wicketHeightM) {
-                    remainingTotalWeight -= wicketWeightReduction;
-                } else if (curtainHangingHeight > 0) {
-                    const proportionalReduction = wicketWeightReduction * (curtainHangingHeight / wicketHeightM);
-                    remainingTotalWeight -= proportionalReduction;
+                const curtainHangingHeightM = (travelHeight - heightLifted) / 1000;
+                
+                let reduction = 0;
+                if (curtainHangingHeightM >= wicketEndHeightFromBottomM) {
+                    reduction = wicketWeightReduction;
+                } else if (curtainHangingHeightM > wicketStartHeightFromBottomM) {
+                    const hangingPortionHeight = curtainHangingHeightM - wicketStartHeightFromBottomM;
+                    reduction = wicketWeightReduction * (hangingPortionHeight / wicketHeightM);
                 }
-
+                remainingTotalWeight -= reduction;
                 remainingTotalWeight = Math.max(0, remainingTotalWeight);
 
                 const force = remainingTotalWeight * 9.81; 
@@ -2947,9 +2950,10 @@
                 class: 'shutter-axle-graphic'
             }));
 
-            // Draw each lath wrap
+            // Draw each lath wrap based on total laths
             for (let i = 1; i <= numLaths; i++) {
                 const currentRadius = (axleDiameter / 2) + (i * lathThickness);
+                if (currentRadius * 2 > coilDiameter) break; // Don't draw outside the final calculated diameter
                 svg.appendChild(createElem('circle', {
                     cx: centerX, cy: centerY, r: currentRadius * scale,
                     class: 'coil-wrap-graphic'
@@ -3325,12 +3329,6 @@
                 }
             }
 
-
-            const wicketRealHeight = wicket ? (parseFloat(wicket.Height) || 0) : 0;
-            const wicketRealWidth = wicket ? (parseFloat(wicket.Width) || 0) : 0;
-            const scaledWicketWidth = wicketRealWidth * scale;
-            const wicketTopY = bottomY - (wicketRealHeight * scale);
-
             // --- DRAW CURTAIN FROM BOTTOM UP ---
             const scaledBottomLathHeight = bottomLathHeight * scale;
             currentY -= scaledBottomLathHeight;
@@ -3476,18 +3474,14 @@
                     
                     if (isWindLath) {
                         if (lathNumber % 2 !== 0) {
-                            const lathBottomEdgeY = currentY + scaledLathHeight;
-                            const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
-                            drawEndlocks(currentY, scaledLathHeight, leftOffset);
+                           drawEndlocks(currentY, scaledLathHeight);
                         }
                         const isWindLathPosition = (lathNumber === 2 || lathNumber === 4 || lathNumber === 6 || lathNumber === 8) || (lathNumber > 8 && lathNumber % 8 === 0);
                         if (isWindLathPosition) {
                             drawWindEndlocks(currentY, scaledLathHeight);
                         }
                     } else if (endlocksSelected && lathNumber % 2 !== 0) {
-                        const lathBottomEdgeY = currentY + scaledLathHeight;
-                        const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
-                        drawEndlocks(currentY, scaledLathHeight, leftOffset);
+                        drawEndlocks(currentY, scaledLathHeight);
                     }
                 }
                 drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
@@ -3523,10 +3517,18 @@
             svg.appendChild(centerline);
 
             if (wicket) {
+                const wicketRealHeight = parseFloat(wicket.Height) || 0;
+                const wicketRealWidth = parseFloat(wicket.Width) || 0;
                 const scaledWicketHeight = wicketRealHeight * scale;
+                const scaledWicketWidth = wicketRealWidth * scale;
+                const wicketGap = 10;
+                const scaledWicketGap = wicketGap * scale;
+
+                const wicketY = bottomLathTopY - scaledWicketGap - scaledWicketHeight;
+
                 const wicketRect = document.createElementNS(svgNS, 'rect');
                 wicketRect.setAttribute('x', lathStartX);
-                wicketRect.setAttribute('y', bottomY - scaledWicketHeight);
+                wicketRect.setAttribute('y', wicketY);
                 wicketRect.setAttribute('width', scaledWicketWidth);
                 wicketRect.setAttribute('height', scaledWicketHeight);
                 wicketRect.setAttribute('class', 'wicket-door-graphic');
