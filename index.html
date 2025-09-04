@@ -162,6 +162,13 @@
         .support-symbol { fill: #868e96; stroke: #495057; stroke-width: 1; }
         .coil-wrap-graphic { fill: none; stroke: #adb5bd; stroke-width: 0.5; }
         
+        /* Force Diagram Specific Styles */
+        .force-text { font-family: sans-serif; font-size: 11px; text-anchor: middle; }
+        .force-text.red { fill: #d93025; font-weight: bold;}
+        .force-text.blue { fill: #007bff; font-weight: bold;}
+        .dim-text-force-diagram { font-family: sans-serif; font-size: 10px; fill: #343a40; text-anchor: middle;}
+
+
         .option-pass {
             color: #1e8e3e; /* Green */
             font-weight: bold;
@@ -334,6 +341,9 @@
             .tab-pane {
                 display: block !important;
                 padding-top: 1em;
+            }
+            .hide-in-print {
+                display: none !important;
             }
             .page-break-before-print {
                 page-break-before: always;
@@ -919,6 +929,17 @@
         });
         dom.importCsvButton.addEventListener('click', handleCsvImport);
 
+        function updatePrintStyles() {
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                const tabButton = document.querySelector(`.tab-button[data-tab="${pane.id}"]`);
+                if (tabButton && tabButton.style.display === 'none') {
+                    pane.classList.add('hide-in-print');
+                } else {
+                    pane.classList.remove('hide-in-print');
+                }
+            });
+        }
+
         // Admin Page Logic
         function initializeAdminControls() {
             const tabContainer = document.getElementById('tab-controls-container');
@@ -937,7 +958,7 @@
 
                 controlItem.innerHTML = `
                     <label>
-                        <input type="checkbox" data-target="${tabId}" ${isChecked ? 'checked' : ''}>
+                        <input type="checkbox" data-target-tab="${tabId}" ${isChecked ? 'checked' : ''}>
                         ${labelText}
                     </label>
                 `;
@@ -945,6 +966,7 @@
 
                 controlItem.querySelector('input').addEventListener('change', (e) => {
                     tab.style.display = e.target.checked ? '' : 'none';
+                    updatePrintStyles(); // Update print styles on change
                 });
             });
 
@@ -958,7 +980,7 @@
                 controlItem.className = 'admin-control-item';
                 controlItem.innerHTML = `
                     <label>
-                        <input type="checkbox" data-target="${groupId}" checked>
+                        <input type="checkbox" data-target-input="${groupId}" checked>
                         ${labelText}
                     </label>
                 `;
@@ -990,6 +1012,7 @@
 
             setupBulkActions('tabsSelectAll', 'tabsDeselectAll', 'tab-controls-container');
             setupBulkActions('inputsSelectAll', 'inputsDeselectAll', 'input-controls-container');
+            updatePrintStyles(); // Set initial print styles on load
         }
 
         function handleShapeChange() {
@@ -2779,23 +2802,19 @@
 
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 550;
+            const svgWidth = 450;
             const svgHeight = 250;
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
             const defs = document.createElementNS(svgNS, 'defs');
             const createMarker = (id, color) => {
                 const marker = document.createElementNS(svgNS, 'marker');
-                marker.setAttribute('id', id);
-                marker.setAttribute('viewBox', '0 0 10 10');
-                marker.setAttribute('refX', '10');
-                marker.setAttribute('refY', '5');
-                marker.setAttribute('markerWidth', '6');
-                marker.setAttribute('markerHeight', '6');
-                marker.setAttribute('orient', 'auto');
+                marker.setAttribute('id', id); marker.setAttribute('viewBox', '0 0 10 10');
+                marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5');
+                marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
+                marker.setAttribute('orient', 'auto-start-reverse');
                 const arrowPath = document.createElementNS(svgNS, 'path');
-                arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-                arrowPath.setAttribute('fill', color);
+                arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', color);
                 marker.appendChild(arrowPath);
                 return marker;
             };
@@ -2811,77 +2830,72 @@
                 return el;
             };
 
-            const wallX = 150;
-            const wallTop = 20;
-            const wallBottom = svgHeight - 40;
-            
-            svg.appendChild(createElem('line', { x1: wallX, y1: wallTop, x2: wallX, y2: wallBottom, stroke: '#343a40', 'stroke-width': '4' }));
-            const wallLabel = createElem('text', { x: wallX - 10, y: wallBottom, class: 'dimension-text', 'text-anchor': 'end' });
-            wallLabel.textContent = "Wall";
-            svg.appendChild(wallLabel);
-
+            const wallX = 120;
             const plateWidth = 20;
             const plateHeight = 160;
             const plateY = (svgHeight - plateHeight) / 2;
-            svg.appendChild(createElem('rect', { x: wallX, y: plateY, width: plateWidth, height: plateHeight, fill: '#adb5bd', stroke: '#495057', 'stroke-width': '1' }));
-
+            const plateCenterX = wallX + plateWidth / 2;
             const plateCenterY = plateY + plateHeight / 2;
-            const scaledFixingSep = Math.min(plateHeight * 0.7, fixingSeparation * 0.4); 
+            
+            svg.appendChild(createElem('line', { x1: wallX, y1: 20, x2: wallX, y2: svgHeight - 40, stroke: '#343a40', 'stroke-width': '4' }));
+            svg.appendChild(createElem('rect', { x: wallX, y: plateY, width: plateWidth, height: plateHeight, fill: '#adb5bd', stroke: '#495057'}));
+
+            const scaledFixingSep = Math.min(plateHeight * 0.7, fixingSeparation * 0.5); 
             const topFixingY = plateCenterY - scaledFixingSep / 2;
             const bottomFixingY = plateCenterY + scaledFixingSep / 2;
-            const fixingX = wallX + plateWidth / 2;
-            svg.appendChild(createElem('circle', { cx: fixingX, cy: topFixingY, r: 4, fill: '#495057' }));
-            svg.appendChild(createElem('circle', { cx: fixingX, cy: bottomFixingY, r: 4, fill: '#495057' }));
+            svg.appendChild(createElem('circle', { cx: plateCenterX, cy: topFixingY, r: 4, fill: '#495057' }));
+            svg.appendChild(createElem('circle', { cx: plateCenterX, cy: bottomFixingY, r: 4, fill: '#495057' }));
 
-            const coilCenterX = wallX + plateWidth + (offsetM * 1000 * 0.4);
-            const coilCenterY = plateCenterY;
-            const coilRadius = 40;
-            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: coilCenterY, r: coilRadius, fill: '#e9ecef', stroke: '#adb5bd', 'stroke-width': '2', 'stroke-dasharray': '4,2' }));
-            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: coilCenterY, r: 5, fill: '#6c757d' }));
+            const coilCenterX = wallX + plateWidth + (offsetM * 1000 * 0.5);
+            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: plateCenterY, r: 40, fill: '#e9ecef', stroke: '#adb5bd', 'stroke-dasharray': '4,2' }));
+            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: plateCenterY, r: 5, fill: '#6c757d' }));
 
-            const redForceArrow = { stroke: '#d93025', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-red)' };
-            const redForceText = { fill: '#d93025', 'font-size': '11px', 'font-weight': 'bold' };
-            const blueForceArrow = { stroke: '#007bff', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-blue)' };
-            const blueForceText = { fill: '#007bff', 'font-size': '11px', 'font-weight': 'bold' };
-            const dimLineStyle = { class: 'dimension-line', 'marker-start': 'url(#arrow-dim)', 'marker-end': 'url(#arrow-dim)' };
+            // Forces Arrows
+            const arrowStyleRed = { stroke: '#d93025', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-red)' };
+            const arrowStyleBlue = { stroke: '#007bff', 'stroke-width': '2', 'marker-start': 'url(#arrow-force-blue)' };
 
-            const mainForceYEnd = coilCenterY + coilRadius + 40;
-            svg.appendChild(createElem('line', { x1: coilCenterX, y1: coilCenterY, x2: coilCenterX, y2: mainForceYEnd, ...redForceArrow }));
-            const mainForceTextEl = createElem('text', { x: coilCenterX + 5, y: mainForceYEnd, 'text-anchor': 'start', ...redForceText });
-            mainForceTextEl.textContent = `Shear Force on Plate: ${downwardForce.toFixed(0)} N`;
-            svg.appendChild(mainForceTextEl);
+            // Main Shear
+            svg.appendChild(createElem('line', { x1: coilCenterX, y1: plateCenterY + 40, x2: coilCenterX, y2: plateCenterY + 80, ...arrowStyleRed }));
+            const mainForceText = createElem('text', { x: coilCenterX, y: plateCenterY + 95, class: 'force-text red' });
+            mainForceText.textContent = `Total Shear: ${downwardForce.toFixed(0)} N`;
+            svg.appendChild(mainForceText);
+
+            // Pull-out & Compression
+            svg.appendChild(createElem('line', { x1: wallX, y1: topFixingY, x2: wallX - 40, y2: topFixingY, ...arrowStyleRed }));
+            svg.appendChild(createElem('line', { x1: wallX - 40, y1: bottomFixingY, x2: wallX, y2: bottomFixingY, ...arrowStyleBlue }));
+            const pulloutText = createElem('text', { x: wallX - 45, y: topFixingY, class: 'force-text red', 'text-anchor': 'end', 'dominant-baseline': 'middle' });
+            pulloutText.textContent = `${pulloutForce.toFixed(0)} N`;
+            svg.appendChild(pulloutText);
+            const compText = createElem('text', { x: wallX - 45, y: bottomFixingY, class: 'force-text blue', 'text-anchor': 'end', 'dominant-baseline': 'middle' });
+            compText.textContent = `${pulloutForce.toFixed(0)} N`;
+            svg.appendChild(compText);
+
+            // Shear on Bolts
+            const shearForcePerBolt = downwardForce / 2;
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: topFixingY, x2: plateCenterX, y2: topFixingY + 30, ...arrowStyleRed }));
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: bottomFixingY, x2: plateCenterX, y2: bottomFixingY + 30, ...arrowStyleRed }));
+            const shearText = createElem('text', { x: plateCenterX + 5, y: bottomFixingY + 45, class: 'force-text red', 'text-anchor': 'start' });
+            shearText.textContent = `Shear: ${shearForcePerBolt.toFixed(0)} N (each)`;
+            svg.appendChild(shearText);
+
+            // Dimensions
+            const dimStyle = { class: 'dimension-line', 'marker-start': 'url(#arrow-dim)', 'marker-end': 'url(#arrow-dim)' };
             
-            const pulloutXEnd = wallX - 50;
-            svg.appendChild(createElem('line', { x1: wallX, y1: topFixingY, x2: pulloutXEnd, y2: topFixingY, ...redForceArrow }));
-            const pulloutTextEl = createElem('text', { x: pulloutXEnd - 5, y: topFixingY - 5, 'text-anchor': 'end', ...redForceText });
-            pulloutTextEl.textContent = `Pull-out: ${pulloutForce.toFixed(0)} N`;
-            svg.appendChild(pulloutTextEl);
+            // Fixing Separation Dim
+            const fixDimX = wallX + plateWidth + 20;
+            svg.appendChild(createElem('line', { x1: fixDimX, y1: topFixingY, x2: fixDimX, y2: bottomFixingY, ...dimStyle }));
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: topFixingY, x2: fixDimX, y2: topFixingY, class: 'leader-line'}));
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: bottomFixingY, x2: fixDimX, y2: bottomFixingY, class: 'leader-line'}));
+            const fixText = createElem('text', { x: fixDimX + 4, y: plateCenterY, class: 'dim-text-force-diagram', 'text-anchor':'start', 'dominant-baseline':'middle', transform:`rotate(-90, ${fixDimX+4}, ${plateCenterY})`});
+            fixText.textContent = `${fixingSeparation.toFixed(0)} mm`;
+            svg.appendChild(fixText);
 
-            const compressionXStart = wallX - 50;
-            svg.appendChild(createElem('line', { x1: compressionXStart, y1: bottomFixingY, x2: wallX, y2: bottomFixingY, ...blueForceArrow }));
-            const compressionTextEl = createElem('text', { x: compressionXStart - 5, y: bottomFixingY - 5, 'text-anchor': 'end', ...blueForceText });
-            compressionTextEl.textContent = `Compression: ${pulloutForce.toFixed(0)} N`;
-            svg.appendChild(compressionTextEl);
-
-            const shearForce = downwardForce / 2;
-            const shearYEnd = 40;
-            svg.appendChild(createElem('line', { x1: fixingX, y1: topFixingY, x2: fixingX, y2: topFixingY + shearYEnd, ...redForceArrow }));
-            svg.appendChild(createElem('line', { x1: fixingX, y1: bottomFixingY, x2: fixingX, y2: bottomFixingY + shearYEnd, ...redForceArrow }));
-            const shearTextEl = createElem('text', { x: fixingX + 5, y: bottomFixingY + shearYEnd, 'text-anchor': 'start', ...redForceText });
-            shearTextEl.textContent = `Shear (each): ${shearForce.toFixed(0)} N`;
-            svg.appendChild(shearTextEl);
-            
-            const fixDimX = wallX + plateWidth + 25;
-            svg.appendChild(createElem('line', { x1: fixDimX, y1: topFixingY, x2: fixDimX, y2: bottomFixingY, ...dimLineStyle }));
-            const fixTextEl = createElem('text', { x: fixDimX + 8, y: plateCenterY, class: 'dimension-text', 'dominant-baseline': 'middle', 'text-anchor': 'middle', transform: `rotate(-90, ${fixDimX + 8}, ${plateCenterY})` });
-            fixTextEl.textContent = `${fixingSeparation.toFixed(0)} mm`;
-            svg.appendChild(fixTextEl);
-
-            const offsetDimY = wallBottom + 15;
-            svg.appendChild(createElem('line', { x1: wallX, y1: offsetDimY, x2: coilCenterX, y2: offsetDimY, ...dimLineStyle }));
-            const offsetTextEl = createElem('text', { x: wallX + (coilCenterX - wallX)/2, y: offsetDimY + 12, class: 'dimension-text' });
-            offsetTextEl.textContent = `Offset: ${(offsetM * 1000).toFixed(0)} mm`;
-            svg.appendChild(offsetTextEl);
+            // Offset Dim
+            const offsetDimY = 20;
+            svg.appendChild(createElem('line', { x1: wallX, y1: offsetDimY, x2: coilCenterX, y2: offsetDimY, ...dimStyle }));
+            const offsetText = createElem('text', { x: wallX + (coilCenterX - wallX)/2, y: offsetDimY - 4, class: 'dim-text-force-diagram' });
+            offsetText.textContent = `Offset: ${(offsetM * 1000).toFixed(0)} mm`;
+            svg.appendChild(offsetText);
 
             container.appendChild(svg);
         }
@@ -3363,13 +3377,13 @@
                 svg.appendChild(rightEndlock);
             };
 
-            const drawWindEndlocks = (lathY, lathH) => {
+            const drawWindEndlocks = (lathY, lathH, leftOffset = 0) => {
                 const endlockHeight = lathH * 0.8;
                 const endlockWidth = endlockHeight * 2.5;
                 const endlockY = lathY + (lathH - endlockHeight) / 2;
 
                 const leftEndlock = document.createElementNS(svgNS, 'rect');
-                leftEndlock.setAttribute('x', lathStartX - scaledWindOffset);
+                leftEndlock.setAttribute('x', lathStartX + leftOffset - scaledWindOffset);
                 leftEndlock.setAttribute('y', endlockY);
                 leftEndlock.setAttribute('width', endlockWidth);
                 leftEndlock.setAttribute('height', endlockHeight);
@@ -3388,6 +3402,14 @@
 
             let lathVisualCounter = 1;
             const isWindLath = (lath['Name'] || '').toLowerCase().includes('wind');
+            
+            const wicketRealHeight = wicket ? (parseFloat(wicket.Height) || 0) : 0;
+            const scaledWicketHeight = wicketRealHeight * scale;
+            const wicketGap = 10; // 10mm gap
+            const scaledWicketGap = wicketGap * scale;
+            const wicketTopY = bottomLathTopY - scaledWicketGap - scaledWicketHeight;
+            const scaledWicketWidth = wicket ? (parseFloat(wicket.Width) || 0) * scale : 0;
+
 
             if (visionOptions && visionOptions.visionLath) {
                  const vo = visionOptions;
@@ -3463,25 +3485,27 @@
                  for (let i = 0; i < numLaths; i++) {
                     currentY -= scaledLathHeight;
                     const lathNumber = i + 1;
+                    const lathBottomEdgeY = currentY + scaledLathHeight;
 
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX);
-                    lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
                     svg.appendChild(lathRect);
                     
+                    const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+
                     if (isWindLath) {
                         if (lathNumber % 2 !== 0) {
-                           drawEndlocks(currentY, scaledLathHeight);
+                            drawEndlocks(currentY, scaledLathHeight, leftOffset);
                         }
                         const isWindLathPosition = (lathNumber === 2 || lathNumber === 4 || lathNumber === 6 || lathNumber === 8) || (lathNumber > 8 && lathNumber % 8 === 0);
                         if (isWindLathPosition) {
-                            drawWindEndlocks(currentY, scaledLathHeight);
+                            drawWindEndlocks(currentY, scaledLathHeight, leftOffset);
                         }
                     } else if (endlocksSelected && lathNumber % 2 !== 0) {
-                        drawEndlocks(currentY, scaledLathHeight);
+                        drawEndlocks(currentY, scaledLathHeight, leftOffset);
                     }
                 }
                 drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
@@ -3517,18 +3541,9 @@
             svg.appendChild(centerline);
 
             if (wicket) {
-                const wicketRealHeight = parseFloat(wicket.Height) || 0;
-                const wicketRealWidth = parseFloat(wicket.Width) || 0;
-                const scaledWicketHeight = wicketRealHeight * scale;
-                const scaledWicketWidth = wicketRealWidth * scale;
-                const wicketGap = 10;
-                const scaledWicketGap = wicketGap * scale;
-
-                const wicketY = bottomLathTopY - scaledWicketGap - scaledWicketHeight;
-
                 const wicketRect = document.createElementNS(svgNS, 'rect');
                 wicketRect.setAttribute('x', lathStartX);
-                wicketRect.setAttribute('y', wicketY);
+                wicketRect.setAttribute('y', wicketTopY);
                 wicketRect.setAttribute('width', scaledWicketWidth);
                 wicketRect.setAttribute('height', scaledWicketHeight);
                 wicketRect.setAttribute('class', 'wicket-door-graphic');
