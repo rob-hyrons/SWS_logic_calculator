@@ -3676,20 +3676,28 @@
 
             // Motor Manufacturer Filter Setup
             const motorContainer = document.getElementById('report-motor-filter-container');
-            // Extract manufacturer (assumed to be the first word of the motor name)
-            const manufacturers = [...new Set(motorData.map(m => (m.Name || '').split(' ')[0]).filter(m => m))];
             motorContainer.innerHTML = ''; // Clear "Loading..." message
-            manufacturers.forEach(manufacturer => {
-                 const controlItem = document.createElement('div');
-                controlItem.className = 'admin-control-item';
-                controlItem.innerHTML = `
-                    <label>
-                        <input type="checkbox" class="report-motor-checkbox" value="${manufacturer}" checked>
-                        ${manufacturer}
-                    </label>
-                `;
-                motorContainer.appendChild(controlItem);
-            });
+            let manufacturerKey = '';
+             if (motorData.length > 0) {
+                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+            }
+            if (manufacturerKey) {
+                const manufacturers = [...new Set(motorData.map(m => m[manufacturerKey]).filter(m => m))];
+                manufacturers.sort().forEach(manufacturer => {
+                    const controlItem = document.createElement('div');
+                    controlItem.className = 'admin-control-item';
+                    controlItem.innerHTML = `
+                        <label>
+                            <input type="checkbox" class="report-motor-checkbox" value="${manufacturer}" checked>
+                            ${manufacturer}
+                        </label>
+                    `;
+                    motorContainer.appendChild(controlItem);
+                });
+            } else {
+                 motorContainer.innerHTML = '<p><em>"Manufacturer" column not found in motor data.</em></p>';
+            }
+
 
             // Add event listeners for Select/Deselect All buttons
             document.getElementById('reportLathSelectAll').addEventListener('click', () => {
@@ -3767,23 +3775,21 @@
             }
         }
         
-        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle) {
-             if (!lath || !axle || travelHeight <= 0 || torqueWeight <= 0) return 0;
-
+        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent) {
+            if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
+            
             const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
             const lathThickness = parseFloat(lath['Thickness']);
             
-            const bottomLathWeight = (parseFloat(dom.width.value) / 1000) * (parseFloat(bottomLathData[0]['BLath weight / m length']) || 0);
+            const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             const lathsWeight = torqueWeight - bottomLathWeight;
-            
-            let maxTorque = 0;
-            
+
             // Simplified first-step torque calculation, sufficient for finding the max
             const force = (lathsWeight + bottomLathWeight) * 9.81;
             const radiusM = (effectiveStartDiameter / 2) / 1000;
-            maxTorque = force * radiusM;
+            const maxTorque = force * radiusM;
 
-            const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
+            const frictionMultiplier = 1 + (friction_percent || 0) / 100;
             return maxTorque * frictionMultiplier;
         }
 
@@ -3808,6 +3814,11 @@
                 return;
             }
 
+            let manufacturerKey = '';
+            if (motorData.length > 0) {
+                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+            }
+
             const csvHeaders = ["Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", "Max Required Torque (Nm)", ...selectedManufacturers.map(m => `Recommended ${m} Motor`)];
             const csvData = [csvHeaders];
             
@@ -3830,8 +3841,9 @@
                         const totalLength = width + defaultAdditionalLength;
                         const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
                         
-                        // 3. Calculate torque
-                        const requiredTorque = calculateTorqueHeadless(props.torqueWeight, lath, props.travelHeight, axleResult.axleObj);
+                        // 3. Calculate torque (passing all required parameters)
+                        const defaultFriction = parseFloat(lath['Friction %']) || 10;
+                        const requiredTorque = calculateTorqueHeadless(props.torqueWeight, lath, props.travelHeight, axleResult.axleObj, width, defaultBottomLath, defaultFriction);
 
                         // 4. Build CSV row
                         const rowData = [
@@ -3844,8 +3856,8 @@
 
                         // 5. Find best motor for each selected manufacturer
                         for (const manufacturer of selectedManufacturers) {
-                            const motorsFromManufacturer = motorData.filter(m => (m.Name || '').startsWith(manufacturer));
-                            const suitableMotors = motorsFromManufacturer
+                             const motorsFromManufacturer = motorData.filter(m => manufacturerKey && m[manufacturerKey] === manufacturer);
+                             const suitableMotors = motorsFromManufacturer
                                 .filter(m => requiredTorque > 0 && requiredTorque >= parseFloat(m['Torque (Nm) min']) && requiredTorque <= parseFloat(m['Torque (Nm) max']))
                                 .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
 
