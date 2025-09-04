@@ -798,6 +798,26 @@
                         <div id="report-motor-filter-container" class="report-filter-container">
                             <p>Loading motor data...</p>
                         </div>
+                        
+                        <!-- NEW FILTERS FOR VOLTAGE AND MOUNTING TYPE -->
+                        <h4>4. Select Motor Voltages to Include</h4>
+                        <div class="admin-button-group">
+                            <button id="reportVoltageSelectAll">Select All</button>
+                            <button id="reportVoltageDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="report-motor-voltage-filter-container" class="report-filter-container">
+                            <p>Loading motor data...</p>
+                        </div>
+
+                        <h4>5. Select Motor Mounting Types to Include</h4>
+                        <div class="admin-button-group">
+                            <button id="reportMountingSelectAll">Select All</button>
+                            <button id="reportMountingDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="report-motor-mounting-filter-container" class="report-filter-container">
+                            <p>Loading motor data...</p>
+                        </div>
+                        <!-- END NEW FILTERS -->
 
                         <div class="admin-button-group" style="margin-top: 1.5em;">
                             <button id="generateCsvButton">Generate and Download CSV Report</button>
@@ -3665,66 +3685,60 @@
             lathData.forEach((lath, index) => {
                 const controlItem = document.createElement('div');
                 controlItem.className = 'admin-control-item';
-                controlItem.innerHTML = `
-                    <label>
-                        <input type="checkbox" class="report-lath-checkbox" value="${index}" checked>
-                        ${lath.Name}
-                    </label>
-                `;
+                controlItem.innerHTML = `<label><input type="checkbox" class="report-lath-checkbox" value="${index}" checked> ${lath.Name}</label>`;
                 lathContainer.appendChild(controlItem);
             });
 
-            // Motor Manufacturer Filter Setup
-            const motorContainer = document.getElementById('report-motor-filter-container');
-            motorContainer.innerHTML = ''; // Clear "Loading..." message
-            let manufacturerKey = '';
-             if (motorData.length > 0) {
-                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+            // Motor Filters Setup
+            let manufacturerKey = '', voltageKey = '', mountingKey = '';
+            if (motorData.length > 0) {
+                const firstMotor = motorData[0];
+                manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
+                voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
+                mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
             }
-            if (manufacturerKey) {
-                const manufacturers = [...new Set(motorData.map(m => m[manufacturerKey]).filter(m => m))];
-                manufacturers.sort().forEach(manufacturer => {
-                    const controlItem = document.createElement('div');
-                    controlItem.className = 'admin-control-item';
-                    controlItem.innerHTML = `
-                        <label>
-                            <input type="checkbox" class="report-motor-checkbox" value="${manufacturer}" checked>
-                            ${manufacturer}
-                        </label>
-                    `;
-                    motorContainer.appendChild(controlItem);
-                });
-            } else {
-                 motorContainer.innerHTML = '<p><em>"Manufacturer" column not found in motor data.</em></p>';
-            }
+
+            const setupFilterGroup = (containerId, key, data, className) => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                if (key) {
+                    const uniqueValues = [...new Set(data.map(item => item[key]).filter(val => val))];
+                    uniqueValues.sort().forEach(value => {
+                        const controlItem = document.createElement('div');
+                        controlItem.className = 'admin-control-item';
+                        controlItem.innerHTML = `<label><input type="checkbox" class="${className}" value="${value}" checked> ${value}</label>`;
+                        container.appendChild(controlItem);
+                    });
+                } else {
+                    container.innerHTML = `<p><em>Column not found in data.</em></p>`;
+                }
+            };
+            
+            setupFilterGroup('report-motor-filter-container', manufacturerKey, motorData, 'report-motor-checkbox');
+            setupFilterGroup('report-motor-voltage-filter-container', voltageKey, motorData, 'report-voltage-checkbox');
+            setupFilterGroup('report-motor-mounting-filter-container', mountingKey, motorData, 'report-mounting-checkbox');
 
 
             // Add event listeners for Select/Deselect All buttons
-            document.getElementById('reportLathSelectAll').addEventListener('click', () => {
-                document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = true);
-            });
-            document.getElementById('reportLathDeselectAll').addEventListener('click', () => {
-                document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = false);
-            });
-            document.getElementById('reportMotorSelectAll').addEventListener('click', () => {
-                document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true);
-            });
-            document.getElementById('reportMotorDeselectAll').addEventListener('click', () => {
-                document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false);
-            });
+            document.getElementById('reportLathSelectAll').addEventListener('click', () => document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportLathDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportMotorSelectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportMotorDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportVoltageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportVoltageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportMountingSelectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportMountingDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = false));
+
 
             // Bind the main generation function to the button
             document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
         }
 
         // --- Headless Calculation Functions ---
-        // These functions perform calculations without reading from or writing to the DOM.
-
         function calculateCurtainPropertiesHeadless(lath, bottomLath, width_mm, height_mm) {
             if (!lath || !bottomLath || height_mm <= 0) {
                 return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 };
             }
-            // Use a sensible default axle radius for this bulk calculation. The effect is minimal.
             const axleRadius = 60; 
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
@@ -3736,11 +3750,10 @@
 
             const widthM = width_mm / 1000;
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
-            // Note: We'll assume non-powder-coated for the report for simplicity, can be added as an option
             const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             
-            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight; // Simplified weight for speed
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight;
             
             let torqueWeight = totalWeight;
             if (numLaths >= 3) {
@@ -3753,24 +3766,23 @@
 
         function findBestAxleHeadless(totalWeightKgs, totalLength) {
              if (totalLength <= 0 || axleData.length === 0) {
-                return { name: 'null', status: 'N/A' };
+                return { name: 'null', status: 'N/A', axleObj: null };
             }
             const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
-            if (axlesForShape.length === 0) return { name: 'null', status: 'N/A' };
+            if (axlesForShape.length === 0) return { name: 'null', status: 'N/A', axleObj: null };
 
             let bestAxle = null;
             for (const axle of axlesForShape) {
                 const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
                 if (perf.ratio >= 400 && perf.deflection <= 25) {
                     bestAxle = axle;
-                    break; // Found the first suitable one
+                    break;
                 }
             }
 
             if (bestAxle) {
                 return { name: bestAxle.Name, status: 'Pass', axleObj: bestAxle };
             } else {
-                // If none pass, return the first one as the default failure
                 return { name: axlesForShape[0].Name, status: 'Fail', axleObj: axlesForShape[0] };
             }
         }
@@ -3779,12 +3791,9 @@
             if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
             
             const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
-            const lathThickness = parseFloat(lath['Thickness']);
-            
             const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             const lathsWeight = torqueWeight - bottomLathWeight;
 
-            // Simplified first-step torque calculation, sufficient for finding the max
             const force = (lathsWeight + bottomLathWeight) * 9.81;
             const radiusM = (effectiveStartDiameter / 2) / 1000;
             const maxTorque = force * radiusM;
@@ -3805,21 +3814,39 @@
             const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
             const interval = parseInt(document.getElementById('reportInterval').value);
             
-            const selectedLathIndices = Array.from(document.querySelectorAll('.report-lath-checkbox:checked')).map(cb => parseInt(cb.value));
-            const selectedManufacturers = Array.from(document.querySelectorAll('.report-motor-checkbox:checked')).map(cb => cb.value);
+            const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
+            const selectedLathIndices = getSelectedValues('report-lath-checkbox').map(v => parseInt(v));
+            const selectedManufacturers = getSelectedValues('report-motor-checkbox');
+            const selectedVoltages = getSelectedValues('report-voltage-checkbox');
+            const selectedMountings = getSelectedValues('report-mounting-checkbox');
 
-            if (selectedLathIndices.length === 0) {
-                statusDiv.textContent = 'Error: Please select at least one lath type.';
+            if (selectedLathIndices.length === 0 || selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0) {
+                statusDiv.textContent = 'Error: Please select at least one option from each filter category.';
                 statusDiv.style.color = 'red';
                 return;
             }
-
-            let manufacturerKey = '';
+            
+            // Find the correct column keys
+            let manufacturerKey = '', voltageKey = '', mountingKey = '';
             if (motorData.length > 0) {
-                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+                const firstMotor = motorData[0];
+                manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
+                voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
+                mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
             }
 
-            const csvHeaders = ["Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", "Max Required Torque (Nm)", ...selectedManufacturers.map(m => `Recommended ${m} Motor`)];
+            // Build scenarios and headers
+            const scenarios = [];
+            for (const man of selectedManufacturers) {
+                for (const vol of selectedVoltages) {
+                    for (const mou of selectedMountings) {
+                        const header = `Motor: ${man} (${vol}, ${mou})`;
+                        scenarios.push({ manufacturer: man, voltage: vol, mounting: mou, header: header });
+                    }
+                }
+            }
+
+            const csvHeaders = ["Lath Name", "Curtain Width (mm)", "Curtain Height (mm)", "Total Weight (kg)", "Required Axle Name", "Axle Deflection Status", "Max Required Torque (Nm)", ...scenarios.map(s => s.header)];
             const csvData = [csvHeaders];
             
             const defaultBottomLath = bottomLathData[0];
@@ -3834,33 +3861,31 @@
                         statusDiv.textContent = `Processing: ${lath.Name} at ${width}x${height}...`;
                         await new Promise(resolve => setTimeout(resolve, 0));
 
-                        // 1. Calculate curtain properties
                         const props = calculateCurtainPropertiesHeadless(lath, defaultBottomLath, width, height);
-
-                        // 2. Find best axle
                         const totalLength = width + defaultAdditionalLength;
                         const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
-                        
-                        // 3. Calculate torque (passing all required parameters)
                         const defaultFriction = parseFloat(lath['Friction %']) || 10;
                         const requiredTorque = calculateTorqueHeadless(props.torqueWeight, lath, props.travelHeight, axleResult.axleObj, width, defaultBottomLath, defaultFriction);
 
-                        // 4. Build CSV row
                         const rowData = [
                             lath.Name, width, height,
                             props.totalWeight.toFixed(2),
-                            axleResult.name,
-                            axleResult.status,
+                            axleResult.name, axleResult.status,
                             requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
                         ];
 
-                        // 5. Find best motor for each selected manufacturer
-                        for (const manufacturer of selectedManufacturers) {
-                             const motorsFromManufacturer = motorData.filter(m => manufacturerKey && m[manufacturerKey] === manufacturer);
-                             const suitableMotors = motorsFromManufacturer
-                                .filter(m => requiredTorque > 0 && requiredTorque >= parseFloat(m['Torque (Nm) min']) && requiredTorque <= parseFloat(m['Torque (Nm) max']))
+                        for (const scenario of scenarios) {
+                            const suitableMotors = motorData
+                                .filter(m => 
+                                    m[manufacturerKey] == scenario.manufacturer &&
+                                    String(m[voltageKey]) == String(scenario.voltage) &&
+                                    m[mountingKey] == scenario.mounting &&
+                                    requiredTorque > 0 && 
+                                    requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
+                                    requiredTorque <= parseFloat(m['Torque (Nm) max'])
+                                )
                                 .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
-
+                            
                             rowData.push(suitableMotors.length > 0 ? suitableMotors[0].Name : 'null');
                         }
                         csvData.push(rowData);
