@@ -557,6 +557,12 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
+                     <div class="form-group" data-admin-label="Motor Manufacturer">
+                        <label for="motorManufacturerFilter">Motor Manufacturer</label>
+                        <select id="motorManufacturerFilter" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
                      <div class="form-group" data-admin-label="Motor Voltage">
                         <label for="motorVoltageFilter">Motor Voltage</label>
                         <select id="motorVoltageFilter" disabled>
@@ -821,7 +827,7 @@
         ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
-         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
+         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
          'sb-activation-height', 'sb-activation-height-explainer', 'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
@@ -840,7 +846,7 @@
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
+        ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
          'useCustomLath', 'customLathWeight'
         ].forEach(id => {
@@ -997,7 +1003,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1016,7 +1022,7 @@
                             'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)'],
                             'Bottom lath': ['Bottom lath name', 'BLath weight / m length'],
                             'Axles': ['Name', 'Diameter', 'Wall Thickness'],
-                            'Motors': ['Name', 'Torque (Nm) max', 'Mounting type'],
+                            'Motors': ['Name', 'Torque (Nm) max', 'Mounting type', 'Manufacturer'],
                             'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
                             'Endplate': ['Name', 'Size', 'Material'],
                             'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1081,9 +1087,10 @@
                 populateDropdown(dom.endlockType, endlockData, 'Description');
                 populateMotorMountingTypes();
                 populateMotorVoltageFilter();
+                populateMotorManufacturerFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1272,7 +1279,31 @@
             });
             dom.motorVoltageFilter.parentElement.style.display = 'block';
         }
-        
+
+        function populateMotorManufacturerFilter() {
+            let manufacturerKey = '';
+            if (motorData.length > 0) {
+                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+            }
+
+            if (!manufacturerKey) {
+                console.warn('Manufacturer column not found in motor data. The filter will not be displayed.');
+                dom.motorManufacturerFilter.parentElement.style.display = 'none';
+                return;
+            }
+
+            const manufacturers = [...new Set(motorData.map(motor => motor[manufacturerKey]).filter(m => m))];
+            const select = dom.motorManufacturerFilter;
+            select.innerHTML = '<option value="">-- All Manufacturers --</option>';
+            manufacturers.sort().forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                select.appendChild(option);
+            });
+            dom.motorManufacturerFilter.parentElement.style.display = 'block';
+        }
+
         function getLathWithCustomWeight() {
             let selectedLath = lathData[dom.lathType.value];
             if (!selectedLath) return null; // Need a base lath
@@ -1885,16 +1916,19 @@
 
             const selectedMountType = dom.motorMountingType.value;
             const selectedVoltage = dom.motorVoltageFilter.value;
+            const selectedManufacturer = dom.motorManufacturerFilter.value;
 
-            let voltageKey = '';
+            let voltageKey = '', manufacturerKey = '';
             if (motorData.length > 0) {
                 voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
+                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
             }
 
             currentFilteredMotors = motorData.filter(motor => {
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
                 const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
-                return mountMatch && voltageMatch;
+                const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
+                return mountMatch && voltageMatch && manufacturerMatch;
             });
             
             const select = dom.motorSelector;
