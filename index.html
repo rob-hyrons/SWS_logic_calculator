@@ -433,6 +433,20 @@
                             </select>
                         </div>
                     </div>
+                     <!-- NEW CUSTOM LATH SECTION -->
+                    <div class="form-group" data-admin-label="Custom Lath Option">
+                        <label for="useCustomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                            <input type="checkbox" id="useCustomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Use Custom Lath
+                        </label>
+                    </div>
+                    <div id="custom-lath-options" data-admin-label="Custom Lath Weight" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
+                        <div class="form-group">
+                            <label for="customLathWeight">Custom Lath Weight (kg/m²)</label>
+                            <input type="number" id="customLathWeight" placeholder="e.g., 9.5">
+                            <small style="font-size: 0.8em; color: #555;">Note: Other properties (thickness, height) will be based on the lath selected above.</small>
+                        </div>
+                    </div>
+                    <!-- END NEW SECTION -->
                     <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
                         <img id="lathImageDisplay" src="" alt="Lath Image" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
                     </div>
@@ -488,6 +502,12 @@
                         <p>Laths to Lift: <span id="laths-to-lift">0</span></p>
                         <p>Uncompressed Curtain Height: <span id="curtain-height-extended">0</span> mm</p>
                         <p>Compressed Curtain Height: <span id="curtain-height-compressed">0</span> mm</p>
+                        <!-- NEW MOTOR INFO SECTION -->
+                        <h4 style="margin-top: 1em; margin-bottom: 0.5em; color: #495057;">Motor Recommendation</h4>
+                        <p>Max Required Torque: <span id="max-torque-inputs">0.0</span> Nm</p>
+                        <p>Selected Motor: <span id="motor-name-inputs">N/A</span></p>
+                        <p id="motor-torque-line-inputs">Motor Torque Range: <span id="motor-torque-inputs">0</span> Nm</p>
+                        <!-- END NEW SECTION -->
                     </div>
                     <div id="shutter-graphic-container"></div>
                 </div>
@@ -814,16 +834,23 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg'
+         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
+         'useCustomLath', 'custom-lath-options', 'customLathWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType'
+         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
+         'useCustomLath', 'customLathWeight'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
+                if (id === 'useCustomLath') {
+                    const isChecked = dom.useCustomLath.checked;
+                    dom['custom-lath-options'].style.display = isChecked ? 'block' : 'none';
+                    dom.lathType.disabled = isChecked;
+                }
                 if (id === 'lathType' && lathData.length > 0) {
                     const selectedLath = lathData[dom.lathType.value];
                     if (selectedLath) {
@@ -1245,21 +1272,43 @@
             });
             dom.motorVoltageFilter.parentElement.style.display = 'block';
         }
+        
+        function getLathWithCustomWeight() {
+            let selectedLath = lathData[dom.lathType.value];
+            if (!selectedLath) return null; // Need a base lath
+
+            if (dom.useCustomLath.checked) {
+                const customWeight = parseFloat(dom.customLathWeight.value);
+                if (!isNaN(customWeight) && customWeight > 0) {
+                    // Create a copy of the selected lath and override its weight
+                    let customLath = { ...selectedLath };
+                    const weightKey = Object.keys(customLath).find(k => k.toLowerCase().trim() === 'kgs/ m2');
+                    if (weightKey) {
+                        customLath[weightKey] = customWeight;
+                    } else {
+                        customLath['Kgs/ m2'] = customWeight;
+                    }
+                    return customLath;
+                }
+            }
+            return selectedLath;
+        }
 
         function updateAllCalculations() {
             if (lathData.length === 0) {
                 return;
             };
 
-            const selectedLathIndex = dom.lathType.value;
+            const effectiveLath = getLathWithCustomWeight();
+
             const lathImageContainer = document.getElementById('lath-image-container');
             const lathImageDisplay = document.getElementById('lathImageDisplay');
             
-            if (selectedLathIndex && lathData[selectedLathIndex]) {
-                const selectedLathName = lathData[selectedLathIndex]['Name'];
+            if (effectiveLath) {
+                const selectedLathName = effectiveLath['Name'];
                 if (lathImageMap.has(selectedLathName)) {
                     lathImageDisplay.src = lathImageMap.get(selectedLathName);
-                    lathImageContainer.style.display = 'block';
+                    lathImageContainer.style.display = dom.useCustomLath.checked ? 'none' : 'block';
                 } else {
                     lathImageContainer.style.display = 'none';
                 }
@@ -1286,14 +1335,13 @@
                  visionLathImageContainer.style.display = 'none';
             }
 
-            const selectedLath = lathData[dom.lathType.value];
             const widthWarningDiv = dom['width-warning'];
-            if (selectedLath) {
-                const maxWidthKey = Object.keys(selectedLath).find(k => k.toLowerCase().trim() === 'max width');
-                const maxWidth = maxWidthKey ? parseFloat(selectedLath[maxWidthKey]) : 0;
+            if (effectiveLath) {
+                const maxWidthKey = Object.keys(effectiveLath).find(k => k.toLowerCase().trim() === 'max width');
+                const maxWidth = maxWidthKey ? parseFloat(effectiveLath[maxWidthKey]) : 0;
                 const currentWidth = parseFloat(dom.width.value) || 0;
 
-                if (maxWidth > 0 && currentWidth > maxWidth) {
+                if (maxWidth > 0 && currentWidth > maxWidth && !dom.useCustomLath.checked) {
                     widthWarningDiv.textContent = `Warning: The entered width exceeds the maximum of ${maxWidth} mm for this lath type.`;
                     widthWarningDiv.style.display = 'block';
                 } else {
@@ -1313,10 +1361,10 @@
             
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             
-            const estCurtainProps = calculateCurtainProperties(selectedLath, selectedBottomLath, null);
+            const estCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, null);
             const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight);
 
-            const finalCurtainProps = calculateCurtainProperties(selectedLath, selectedBottomLath, bestAxle);
+            const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, bestAxle);
             const { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
             visionCalcs = visionData;
             
@@ -1325,8 +1373,8 @@
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
 
             drawDeflectionGraphic(totalLength, deflection);
-            calculateMotorRecommendation(torqueWeight, selectedLath, bestAxle, travelHeight);
-            calculateSafetyBrakeForce(totalWeight, selectedLath, bestAxle, travelHeight, fullCurtainLength);
+            calculateMotorRecommendation(torqueWeight, effectiveLath, bestAxle, travelHeight);
+            calculateSafetyBrakeForce(totalWeight, effectiveLath, bestAxle, travelHeight, fullCurtainLength);
             
             const selectedEndplateIndex = dom.endplateSelector.value;
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
@@ -1337,7 +1385,7 @@
                 parseFloat(dom.width.value),
                 parseFloat(dom.additionalLength.value),
                 parseInt(dom['lath-count'].textContent),
-                selectedLath,
+                effectiveLath,
                 selectedBottomLath,
                 bestAxle,
                 selectedEndplate,
@@ -1414,7 +1462,6 @@
                 const passesTest = perf.ratio >= 400 && perf.deflection <= 25;
                 option.classList.toggle('option-pass', passesTest);
                 option.classList.toggle('option-fail', !passesTest);
-                if (!passesTest) option.disabled = true;
                 
                 select.appendChild(option);
             });
@@ -1808,7 +1855,7 @@
 
         function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight) {
             if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
-                ['max-torque', 'total-revolutions'].forEach(id => { dom[id].textContent = '0.0'; });
+                ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
                 lastTorqueProfile = [];
                 maxCoilDiameter = 0;
                 drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
@@ -1834,6 +1881,7 @@
 
             const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
             dom['max-torque'].textContent = requiredTorque.toFixed(1);
+            dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
 
             const selectedMountType = dom.motorMountingType.value;
             const selectedVoltage = dom.motorVoltageFilter.value;
@@ -1933,8 +1981,11 @@
         function updateSelectedMotorInfo() {
             const selectedMotorIndex = dom.motorSelector.value;
             if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
-                 ['motor-name','motor-torque','motor-rpm','opening-time', 'power-consumed'].forEach(id => { dom[id].textContent = 'N/A'; });
+                 ['motor-name','motor-torque','motor-rpm','opening-time', 'power-consumed',
+                  'motor-name-inputs', 'motor-torque-inputs'
+                 ].forEach(id => { dom[id].textContent = 'N/A'; });
                  dom['motor-torque-line'].classList.remove('warning-text');
+                 dom['motor-torque-line-inputs'].classList.remove('warning-text');
                 return;
             }
 
@@ -1947,6 +1998,9 @@
             dom['motor-name'].textContent = selectedMotor['Name'];
             dom['motor-torque'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`; 
             dom['motor-rpm'].textContent = motorRPM;
+            
+            dom['motor-name-inputs'].textContent = selectedMotor['Name'];
+            dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
 
             let openingTimeSec = 0;
             if (motorRPM > 0 && calculatedRotations > 0) {
@@ -1968,8 +2022,10 @@
             const requiredTorque = parseFloat(dom['max-torque'].textContent);
             if (requiredTorque < motorTorqueMin || requiredTorque > motorTorqueMax) {
                 dom['motor-torque-line'].classList.add('warning-text');
+                dom['motor-torque-line-inputs'].classList.add('warning-text');
             } else {
                 dom['motor-torque-line'].classList.remove('warning-text');
+                dom['motor-torque-line-inputs'].classList.remove('warning-text');
             }
         }
         
