@@ -377,6 +377,7 @@
         }
 
     </style>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <img src="https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/swslogo.svg" alt="SWS Logo" id="logo-image">
@@ -419,19 +420,44 @@
                         <label for="additionalLength">Additional Axle Width (Total, mm)</label>
                         <input type="number" id="additionalLength" placeholder="e.g., 100" value="100">
                     </div>
-                    <div class="form-row">
-                        <div class="form-group form-col" data-admin-label="Lath Type">
-                            <label for="lathType">Lath Type</label>
-                            <select id="lathType" disabled>
-                                <option value="">-- Waiting for file import --</option>
-                            </select>
+                    <div class="form-group" data-admin-label="Lath Type">
+                        <label for="lathType">Lath Type</label>
+                        <select id="lathType" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
+                     <div class="form-group" data-admin-label="Custom Lath Option">
+                        <label for="useCustomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                            <input type="checkbox" id="useCustomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Use Custom Lath Properties
+                        </label>
+                    </div>
+                    <div id="custom-lath-options" data-admin-label="Custom Lath Details" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
+                        <div class="form-row">
+                            <div class="form-group form-col">
+                                <label for="customLathWeight">Lath Weight (kg/m²)</label>
+                                <input type="number" id="customLathWeight" placeholder="e.g., 9.5">
+                            </div>
+                            <div class="form-group form-col">
+                                <label for="customLathThickness">Lath Thickness (mm)</label>
+                                <input type="number" id="customLathThickness" placeholder="e.g., 0.5">
+                            </div>
                         </div>
-                        <div class="form-group form-col" data-admin-label="Endlock Type">
-                            <label for="endlockType">Endlock Type</label>
-                            <select id="endlockType" disabled>
-                                <option value="">-- Waiting for file import --</option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-group form-col">
+                                <label for="customLathCompressedHeight">Compressed Lath Height (mm)</label>
+                                <input type="number" id="customLathCompressedHeight" placeholder="e.g., 77">
+                            </div>
+                             <div class="form-group form-col">
+                                <label for="customLathUncompressedHeight">Uncompressed Lath Height (mm)</label>
+                                <input type="number" id="customLathUncompressedHeight" placeholder="e.g., 77">
+                            </div>
                         </div>
+                    </div>
+                    <div class="form-group" data-admin-label="Endlock Type">
+                        <label for="endlockType">Endlock Type</label>
+                        <select id="endlockType" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
                     </div>
                     <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
                         <img id="lathImageDisplay" src="" alt="Lath Image" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
@@ -488,6 +514,7 @@
                         <p>Laths to Lift: <span id="laths-to-lift">0</span></p>
                         <p>Uncompressed Curtain Height: <span id="curtain-height-extended">0</span> mm</p>
                         <p>Compressed Curtain Height: <span id="curtain-height-compressed">0</span> mm</p>
+                        <p>Max Required Torque: <span id="max-torque-input-page">0.00</span> Nm</p>
                     </div>
                     <div id="shutter-graphic-container"></div>
                 </div>
@@ -537,11 +564,19 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
-                     <div class="form-group" data-admin-label="Motor Voltage">
-                        <label for="motorVoltageFilter">Motor Voltage</label>
-                        <select id="motorVoltageFilter" disabled>
-                            <option value="">-- Waiting for file import --</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Motor Manufacturer">
+                            <label for="motorManufacturerFilter">Motor Manufacturer</label>
+                            <select id="motorManufacturerFilter" disabled>
+                                <option value="">-- All Manufacturers --</option>
+                            </select>
+                        </div>
+                         <div class="form-group form-col" data-admin-label="Motor Voltage">
+                            <label for="motorVoltageFilter">Motor Voltage</label>
+                            <select id="motorVoltageFilter" disabled>
+                                <option value="">-- Waiting for file import --</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group" data-admin-label="Motor Mounting Type">
                         <label for="motorMountingType">Motor Mounting Type</label>
@@ -814,17 +849,20 @@
          'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg'
+         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
+         'max-torque-input-page', 'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customLathThickness', 
+         'customLathCompressedHeight', 'customLathUncompressedHeight', 'motorManufacturerFilter'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType'
+         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
+         'customLathWeight', 'customLathThickness', 'customLathCompressedHeight', 'customLathUncompressedHeight', 'motorManufacturerFilter'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
-                if (id === 'lathType' && lathData.length > 0) {
+                if (id === 'lathType' && lathData.length > 0 && !dom.useCustomLath.checked) {
                     const selectedLath = lathData[dom.lathType.value];
                     if (selectedLath) {
                         if (selectedLath['Friction %'] !== undefined) {
@@ -844,6 +882,14 @@
                 }
                 updateAllCalculations();
             });
+        });
+
+        dom.useCustomLath.addEventListener('change', () => {
+            const useCustom = dom.useCustomLath.checked;
+            dom['custom-lath-options'].style.display = useCustom ? 'block' : 'none';
+            dom.lathType.disabled = useCustom;
+            document.getElementById('lath-image-container').style.display = 'none';
+            updateAllCalculations();
         });
 
         dom.addVision.addEventListener('change', () => {
@@ -1054,9 +1100,10 @@
                 populateDropdown(dom.endlockType, endlockData, 'Description');
                 populateMotorMountingTypes();
                 populateMotorVoltageFilter();
+                populateMotorManufacturerFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType', 'motorManufacturerFilter'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1221,6 +1268,18 @@
                 select.appendChild(option);
             });
         }
+
+        function populateMotorManufacturerFilter() {
+            const manufacturers = [...new Set(motorData.map(motor => (motor.Name || '').split(' ')[0]))].filter(Boolean);
+            const select = dom.motorManufacturerFilter;
+            select.innerHTML = '<option value="">-- All Manufacturers --</option>';
+            manufacturers.forEach(mf => {
+                const option = document.createElement('option');
+                option.value = mf;
+                option.textContent = mf;
+                select.appendChild(option);
+            });
+        }
         
         function populateMotorVoltageFilter() {
             let voltageKey = '';
@@ -1246,17 +1305,37 @@
             dom.motorVoltageFilter.parentElement.style.display = 'block';
         }
 
+        function getEffectiveLath() {
+            if (dom.useCustomLath.checked) {
+                return {
+                    'Name': 'Custom Lath',
+                    'Kgs/ m2': parseFloat(dom.customLathWeight.value) || 0,
+                    'Thickness': parseFloat(dom.customLathThickness.value) || 0,
+                    'Compressed lath height': parseFloat(dom.customLathCompressedHeight.value) || 0,
+                    'uncompressed lath height': parseFloat(dom.customLathUncompressedHeight.value) || 0,
+                    'Friction %': 10,
+                    'Max Width': 99999,
+                    'Moment of inertia iy': 0,
+                    'Allowable Bending Stress (MPa)': 0,
+                    'vision percentage': 0,
+                    'isCustom': true
+                };
+            } else {
+                return lathData[dom.lathType.value];
+            }
+        }
+
         function updateAllCalculations() {
             if (lathData.length === 0) {
                 return;
             };
 
-            const selectedLathIndex = dom.lathType.value;
+            const selectedLath = getEffectiveLath();
             const lathImageContainer = document.getElementById('lath-image-container');
             const lathImageDisplay = document.getElementById('lathImageDisplay');
             
-            if (selectedLathIndex && lathData[selectedLathIndex]) {
-                const selectedLathName = lathData[selectedLathIndex]['Name'];
+            if (selectedLath && !selectedLath.isCustom) {
+                const selectedLathName = selectedLath['Name'];
                 if (lathImageMap.has(selectedLathName)) {
                     lathImageDisplay.src = lathImageMap.get(selectedLathName);
                     lathImageContainer.style.display = 'block';
@@ -1286,9 +1365,8 @@
                  visionLathImageContainer.style.display = 'none';
             }
 
-            const selectedLath = lathData[dom.lathType.value];
             const widthWarningDiv = dom['width-warning'];
-            if (selectedLath) {
+            if (selectedLath && !selectedLath.isCustom) {
                 const maxWidthKey = Object.keys(selectedLath).find(k => k.toLowerCase().trim() === 'max width');
                 const maxWidth = maxWidthKey ? parseFloat(selectedLath[maxWidthKey]) : 0;
                 const currentWidth = parseFloat(dom.width.value) || 0;
@@ -1616,7 +1694,7 @@
         function updateSelectedEndplateInfo() {
             const selectedIndex = parseInt(dom.endplateSelector.value, 10);
             
-            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+            const selectedLath = getEffectiveLath();
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
             const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
             const numLaths = parseInt(dom['lath-count'].textContent) || 0;
@@ -1808,7 +1886,7 @@
 
         function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight) {
             if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
-                ['max-torque', 'total-revolutions'].forEach(id => { dom[id].textContent = '0.0'; });
+                ['max-torque', 'max-torque-input-page', 'total-revolutions'].forEach(id => { dom[id].textContent = '0.0'; });
                 lastTorqueProfile = [];
                 maxCoilDiameter = 0;
                 drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
@@ -1834,9 +1912,11 @@
 
             const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
             dom['max-torque'].textContent = requiredTorque.toFixed(1);
+            dom['max-torque-input-page'].textContent = requiredTorque.toFixed(1);
 
             const selectedMountType = dom.motorMountingType.value;
             const selectedVoltage = dom.motorVoltageFilter.value;
+            const selectedManufacturer = dom.motorManufacturerFilter.value;
 
             let voltageKey = '';
             if (motorData.length > 0) {
@@ -1846,7 +1926,8 @@
             currentFilteredMotors = motorData.filter(motor => {
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
                 const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
-                return mountMatch && voltageMatch;
+                const manufacturerMatch = !selectedManufacturer || (motor.Name || '').startsWith(selectedManufacturer);
+                return mountMatch && voltageMatch && manufacturerMatch;
             });
             
             const select = dom.motorSelector;
@@ -1990,11 +2071,11 @@
 
         function updateWicketCalculationsAndGraphic(endlockOffsets = {cast: 0, wind: 0}) {
             const selectedWicketIndex = dom.wicketDoorSelector.value;
-            const selectedLathIndex = dom.lathType.value;
+            
+            const selectedLath = getEffectiveLath();
             const selectedBottomLathIndex = dom.bottomLathType.value;
             
             const selectedWicket = (wicketData && selectedWicketIndex !== "") ? wicketData[selectedWicketIndex] : null;
-            const selectedLath = (lathData && selectedLathIndex !== "") ? lathData[selectedLathIndex] : null;
             const selectedBottomLath = (bottomLathData && selectedBottomLathIndex !== "") ? bottomLathData[selectedBottomLathIndex] : null;
             const selectedAxle = (axleData && dom.axleType.value !== "") ? axleData[dom.axleType.value] : null;
 
@@ -2043,7 +2124,7 @@
         }
 
         function calculateWicketTorque() {
-            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+            const selectedLath = getEffectiveLath();
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
             const selectedWicket = wicketData.length > 0 ? wicketData[dom.wicketDoorSelector.value] : null;
             const totalWeightKgs = parseFloat(dom['torque-weight-kg'].textContent) || 0;
@@ -2734,7 +2815,7 @@
 
             const mainForceYEnd = coilCenterY + coilRadius + 40;
             svg.appendChild(createElem('line', { x1: coilCenterX, y1: coilCenterY, x2: coilCenterX, y2: mainForceYEnd, ...redForceArrow }));
-            const mainForceTextEl = createElem('text', { x: coilCenterX + 5, y: mainForceYEnd, 'text-anchor': 'start', ...redForceText });
+            const mainForceTextEl = createElem('text', { x: coilCenterX + 5, y: mainForceYEnd, 'text-anchor': 'start', ...redForceText }));
             mainForceTextEl.textContent = `Shear Force on Plate: ${downwardForce.toFixed(0)} N`;
             svg.appendChild(mainForceTextEl);
             
@@ -3510,7 +3591,7 @@
                  updateWicketCalculationsAndGraphic();
             } else if (targetTabId === 'endplate-content') {
                 const selectedIndex = parseInt(dom.endplateSelector.value, 10);
-                const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+                const selectedLath = getEffectiveLath();
                 const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
                 const numLaths = parseInt(dom['lath-count'].textContent) || 0;
                 if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
@@ -3790,5 +3871,6 @@
     <!-- =================================================================== -->
     <!-- END:   CODE FOR CSV REPORT GENERATION                               -->
     <!-- =================================================================== -->
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>
