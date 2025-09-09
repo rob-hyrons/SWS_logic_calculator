@@ -211,6 +211,10 @@
             text-anchor: middle;
             pointer-events: none;
         }
+        /* New styles for top-down graphic */
+        .width-graphic-label { font-family: sans-serif; font-size: 14px; fill: #343a40; text-anchor: middle; }
+        .width-graphic-value { font-family: sans-serif; font-size: 10px; fill: #555; text-anchor: middle; }
+        .dimension-tick { stroke: #343a40; stroke-width: 1; }
 
         .print-container {
             display: flex;
@@ -3258,7 +3262,9 @@
             container.innerHTML = '';
 
             const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            if (!guide || !overallWidth || overallWidth <= 0) return;
+            if (!guide || !overallWidth || overallWidth <= 0) {
+                return;
+            }
 
             const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
             const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
@@ -3268,7 +3274,7 @@
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
             const svgWidth = 600;
-            const svgHeight = 150;
+            const svgHeight = 180; 
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
             const defs = document.createElementNS(svgNS, 'defs');
@@ -3277,8 +3283,8 @@
             marker.setAttribute('viewBox', '0 0 10 10');
             marker.setAttribute('refX', '5');
             marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '5');
-            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('markerWidth', '4');
+            marker.setAttribute('markerHeight', '4');
             marker.setAttribute('orient', 'auto-start-reverse');
             const arrowPath = document.createElementNS(svgNS, 'path');
             arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
@@ -3287,87 +3293,115 @@
             defs.appendChild(marker);
             svg.appendChild(defs);
 
-            const padding = { x: 50, y: 20 };
+            const padding = { x: 50, y: 30 };
             const graphicWidth = svgWidth - 2 * padding.x;
             const scale = graphicWidth / overallWidth;
 
-            const curtainHeight = 40;
-            const guideDepth = 20; 
-            const graphicCenterY = svgHeight / 2 - 10;
-            
+            const curtainHeight = 20;
+            const guideDepth = 30;
+            const graphicTopY = padding.y;
+
             const scaledGuideWidth = guideWidth * scale;
             const scaledCurtainWidth = curtainWidth * scale;
             const scaledClearOpening = clearOpening * scale;
+            const scaledPenetration = guidePenetration * scale;
 
             const overallStartX = padding.x;
 
-            // Draw Guides
-            const guideStyle = { fill: '#adb5bd', stroke: '#6c757d', 'stroke-width': '0.5'};
-            const leftGuide = document.createElementNS(svgNS, 'rect');
-            leftGuide.setAttribute('x', overallStartX);
-            leftGuide.setAttribute('y', graphicCenterY - guideDepth / 2);
-            leftGuide.setAttribute('width', scaledGuideWidth);
-            leftGuide.setAttribute('height', guideDepth);
-            Object.assign(leftGuide.style, guideStyle);
-            svg.appendChild(leftGuide);
+            // --- Draw U-shaped Guides ---
+            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
+            const leftGuideX = overallStartX;
+            const leftGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
+            const leftGuidePath = document.createElementNS(svgNS, 'path');
+            leftGuidePath.setAttribute('d', `M ${leftGuideX + scaledGuideWidth},${leftGuideY} L ${leftGuideX},${leftGuideY} L ${leftGuideX},${leftGuideY + guideDepth} L ${leftGuideX + scaledGuideWidth},${leftGuideY + guideDepth}`);
+            Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key]));
+            svg.appendChild(leftGuidePath);
 
-            const rightGuide = document.createElementNS(svgNS, 'rect');
-            rightGuide.setAttribute('x', overallStartX + scaledClearOpening + scaledGuideWidth);
-            rightGuide.setAttribute('y', graphicCenterY - guideDepth / 2);
-            rightGuide.setAttribute('width', scaledGuideWidth);
-            rightGuide.setAttribute('height', guideDepth);
-            Object.assign(rightGuide.style, guideStyle);
-            svg.appendChild(rightGuide);
+            const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth;
+            const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
+            const rightGuidePath = document.createElementNS(svgNS, 'path');
+            rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`);
+            Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key]));
+            svg.appendChild(rightGuidePath);
 
-            // Draw Curtain
-            const curtainX = overallStartX + (guideWidth - guidePenetration) * scale;
+            // --- Draw Curtain ---
+            const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
             const curtain = document.createElementNS(svgNS, 'rect');
             curtain.setAttribute('x', curtainX);
-            curtain.setAttribute('y', graphicCenterY - curtainHeight / 2);
+            curtain.setAttribute('y', graphicTopY);
             curtain.setAttribute('width', scaledCurtainWidth);
             curtain.setAttribute('height', curtainHeight);
-            curtain.setAttribute('class', 'shutter-lath-graphic');
+            curtain.setAttribute('class', 'shutter-bottomlath-graphic');
             svg.appendChild(curtain);
 
-            // Draw Dimensions
-            const dimY1 = graphicCenterY + curtainHeight;
-            const dimY2 = dimY1 + 15;
-            const dimY3 = dimY2 + 15;
+            const endCapWidth = 5;
+            const leftEndCap = document.createElementNS(svgNS, 'rect');
+            leftEndCap.setAttribute('x', curtainX);
+            leftEndCap.setAttribute('y', graphicTopY);
+            leftEndCap.setAttribute('width', endCapWidth);
+            leftEndCap.setAttribute('height', curtainHeight);
+            leftEndCap.setAttribute('fill', 'black');
+            svg.appendChild(leftEndCap);
 
-            const drawDim = (y, startX, endX, label) => {
+            const rightEndCap = document.createElementNS(svgNS, 'rect');
+            rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth);
+            rightEndCap.setAttribute('y', graphicTopY);
+            rightEndCap.setAttribute('width', endCapWidth);
+            rightEndCap.setAttribute('height', curtainHeight);
+            rightEndCap.setAttribute('fill', 'black');
+            svg.appendChild(rightEndCap);
+
+            // --- Draw Dimensions ---
+            const drawDim = (yOffset, startX, endX, label, value) => {
+                const lineY = graphicTopY + guideDepth + yOffset;
+                const tickHeight = 8;
+                const textGap = 5;
+
                 const line = document.createElementNS(svgNS, 'line');
-                line.setAttribute('x1', startX); line.setAttribute('y1', y);
-                line.setAttribute('x2', endX); line.setAttribute('y2', y);
+                line.setAttribute('x1', startX); line.setAttribute('y1', lineY);
+                line.setAttribute('x2', endX); line.setAttribute('y2', lineY);
                 line.setAttribute('class', 'dimension-line');
                 line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)');
                 line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)');
                 svg.appendChild(line);
 
-                const text = document.createElementNS(svgNS, 'text');
-                text.textContent = `${label}: ${Math.round(endX-startX / scale)}mm`;
-                text.setAttribute('class', 'large-dimension-text');
-                text.setAttribute('x', startX + (endX - startX) / 2);
-                text.setAttribute('y', y - 5);
-                svg.appendChild(text);
+                const tick1 = document.createElementNS(svgNS, 'line');
+                tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY);
+                tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight);
+                tick1.setAttribute('class', 'dimension-tick');
+                svg.appendChild(tick1);
 
-                const leader1 = document.createElementNS(svgNS, 'line');
-                leader1.setAttribute('x1', startX); leader1.setAttribute('y1', y);
-                leader1.setAttribute('x2', startX); leader1.setAttribute('y2', graphicCenterY);
-                leader1.setAttribute('class', 'leader-line');
-                svg.appendChild(leader1);
+                const tick2 = document.createElementNS(svgNS, 'line');
+                tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY);
+                tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight);
+                tick2.setAttribute('class', 'dimension-tick');
+                svg.appendChild(tick2);
 
-                const leader2 = document.createElementNS(svgNS, 'line');
-                leader2.setAttribute('x1', endX); leader2.setAttribute('y1', y);
-                leader2.setAttribute('x2', endX); leader2.setAttribute('y2', graphicCenterY);
-                leader2.setAttribute('class', 'leader-line');
-                svg.appendChild(leader2);
-            }
+                const labelText = document.createElementNS(svgNS, 'text');
+                labelText.textContent = label;
+                labelText.setAttribute('class', 'width-graphic-label');
+                labelText.setAttribute('x', startX + (endX - startX) / 2);
+                labelText.setAttribute('y', lineY - textGap);
+                svg.appendChild(labelText);
+                
+                const valueText = document.createElementNS(svgNS, 'text');
+                valueText.textContent = `(${value.toFixed(0)} mm)`;
+                valueText.setAttribute('class', 'width-graphic-value');
+                valueText.setAttribute('x', startX + (endX - startX) / 2);
+                valueText.setAttribute('y', lineY + textGap + 10);
+                svg.appendChild(valueText);
+            };
 
-            drawDim(dimY1, overallStartX, overallStartX + graphicWidth, 'Overall Width');
-            drawDim(dimY2, curtainX, curtainX + scaledCurtainWidth, 'Curtain Width');
-            drawDim(dimY3, overallStartX + scaledGuideWidth, overallStartX + scaledGuideWidth + scaledClearOpening, 'Clear Opening');
+            const clearOpeningStartX = overallStartX + scaledGuideWidth;
+            const clearOpeningEndX = clearOpeningStartX + scaledClearOpening;
+            drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
 
+            const curtainEndX = curtainX + scaledCurtainWidth;
+            drawDim(65, curtainX, curtainEndX, 'Curtain width', curtainWidth);
 
+            const overallEndX = overallStartX + graphicWidth;
+            drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
+            
             container.appendChild(svg);
         }
 
