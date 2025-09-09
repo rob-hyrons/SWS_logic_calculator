@@ -177,7 +177,7 @@
             color: #d93025; /* Red */
         }
 
-        #shutter-graphic-container, #wicket-graphic-container {
+        #shutter-graphic-container, #wicket-graphic-container, #width-graphic-container {
             margin-top: 1.5em;
             width: 100%;
             border: 1px solid #e9ecef;
@@ -371,7 +371,7 @@
                 border: 1px solid #ccc; border-left: none; page-break-inside: avoid;
                 margin-top: 1em; padding: 1em;
             }
-            .graph-container, #shutter-graphic-container, #wicket-graphic-container {
+            .graph-container, #shutter-graphic-container, #wicket-graphic-container, #width-graphic-container {
                 width: 100% !important; max-width: 450px;
                 margin-left: auto; margin-right: auto; page-break-inside: avoid;
             }
@@ -415,10 +415,26 @@
                          <div id="import-status">Attempting to load data from repository...</div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group form-col" data-admin-label="Curtain Width">
-                            <label for="width">Curtain Width (mm)</label>
+                        <div class="form-group form-col" data-admin-label="Input Width">
+                            <label for="width">Input Width (mm)</label>
                             <input type="number" id="width" placeholder="e.g., 3000">
                             <div id="width-warning" class="width-validation-warning"></div>
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Width Type">
+                            <label for="widthType">Width Type</label>
+                            <select id="widthType">
+                                <option value="clearOpening">Clear Opening</option>
+                                <option value="curtainWidth" selected>Curtain Width</option>
+                                <option value="overall">Overall (Reveal)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Guide Type">
+                            <label for="guideType">Guide Type</label>
+                            <select id="guideType" disabled>
+                                <option value="">-- Waiting for file import --</option>
+                            </select>
                         </div>
                         <div class="form-group form-col" data-admin-label="Curtain Height">
                             <label for="height">Curtain Height (Floor to Axle Centre, mm)</label>
@@ -501,6 +517,10 @@
 
                     <div class="results">
                         <h3>Shutter Details</h3>
+						<p>Curtain Width (Calculated): <span id="calculated-curtain-width">0</span> mm</p>
+						<p>Clear Opening (Calculated): <span id="calculated-clear-opening">0</span> mm</p>
+						<p>Overall Width (Calculated): <span id="calculated-overall-width">0</span> mm</p>
+						<hr>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Weight (for Torque): <span id="torque-weight-kg">0.00</span> kgs</p>
                         <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
@@ -520,6 +540,7 @@
                         <!-- END NEW SECTION -->
                     </div>
                     <div id="shutter-graphic-container"></div>
+                    <div id="width-graphic-container" class="graph-container"></div>
                 </div>
 
                 <!-- Axle Analysis Tab -->
@@ -844,7 +865,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
@@ -854,7 +875,7 @@
         let visionCalcs = null; 
         
         const dom = {};
-        ['width', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
+        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
          'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
@@ -871,12 +892,13 @@
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
-         'useCustomLath', 'custom-lath-options', 'customLathWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs'
+         'useCustomLath', 'custom-lath-options', 'customLathWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
+         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        ['width', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
+        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
          'useCustomLath', 'customLathWeight'
         ].forEach(id => {
@@ -1050,7 +1072,8 @@
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
-                    'Endlock': ['Description', 'Weight in grams', 'end lock offset']
+                    'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
+                    'Guides': ['Name', 'Width', 'Penetration']
                 };
 
                 for (const sheetName in required) {
@@ -1069,7 +1092,8 @@
                             'SafetyB': ['Name', 'Max Safety Torque (Nm)'],
                             'Endplate': ['Name', 'Size', 'Material'],
                             'Wicket doors': ['Name', 'Height', 'Width'],
-                            'Endlock': ['Description', 'Weight in grams', 'end lock offset']
+                            'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
+                            'Guides': ['Name', 'Width', 'Penetration']
                         };
                         const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
                         if (sheetData.length > 0) {
@@ -1094,6 +1118,7 @@
                         case 'Endplate': endplateData = objectData; break;
                         case 'Wicket doors': wicketData = objectData; break;
                         case 'Endlock': endlockData = objectData; break;
+                        case 'Guides': guideData = objectData; break;
                     }
                 }
 
@@ -1113,6 +1138,7 @@
                 }
                 
                 populateDropdown(dom.lathType, lathData, 'Name');
+                populateDropdown(dom.guideType, guideData, 'Name');
                 const visionSelect = dom.visionLathType;
                 visionSelect.innerHTML = `<option value="">-- Select a vision lath --</option>`;
                 lathData.forEach((item, index) => {
@@ -1133,7 +1159,7 @@
                 populateMotorManufacturerFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                ['lathType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1149,7 +1175,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = [];
             }
         }
 
@@ -1368,11 +1394,58 @@
             return selectedLath;
         }
 
+        function getCalculatedWidths() {
+            const inputWidth = parseFloat(dom.width.value) || 0;
+            const widthType = dom.widthType.value;
+            const selectedGuideIndex = dom.guideType.value;
+            
+            let curtainWidth = 0;
+            let clearOpening = 0;
+            let overallWidth = 0;
+
+            if (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) {
+                const guide = guideData[selectedGuideIndex];
+                const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
+                const widthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
+                
+                const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
+                const guideWidth = parseFloat(guide[widthKey]) || 0;
+
+                if (widthType === 'curtainWidth') {
+                    curtainWidth = inputWidth;
+                    clearOpening = curtainWidth - (2 * guidePenetration);
+                    overallWidth = clearOpening + (2 * guideWidth);
+                } else if (widthType === 'clearOpening') {
+                    clearOpening = inputWidth;
+                    curtainWidth = clearOpening + (2 * guidePenetration);
+                    overallWidth = clearOpening + (2 * guideWidth);
+                } else if (widthType === 'overall') {
+                    overallWidth = inputWidth;
+                    clearOpening = overallWidth - (2 * guideWidth);
+                    curtainWidth = clearOpening + (2 * guidePenetration);
+                }
+            } else {
+                // Fallback if no guide is selected
+                curtainWidth = inputWidth;
+                clearOpening = inputWidth;
+                overallWidth = inputWidth;
+            }
+
+            dom['calculated-curtain-width'].textContent = curtainWidth.toFixed(0);
+            dom['calculated-clear-opening'].textContent = clearOpening.toFixed(0);
+            dom['calculated-overall-width'].textContent = overallWidth.toFixed(0);
+
+            return { curtainWidth, clearOpening, overallWidth };
+        }
+
+
         function updateAllCalculations() {
             if (lathData.length === 0) {
                 return;
             };
 
+            const calculatedWidths = getCalculatedWidths();
+            const curtainWidth = calculatedWidths.curtainWidth;
             const effectiveLath = getLathWithCustomWeight();
 
             const lathImageContainer = document.getElementById('lath-image-container');
@@ -1413,10 +1486,9 @@
             if (effectiveLath) {
                 const maxWidthKey = Object.keys(effectiveLath).find(k => k.toLowerCase().trim() === 'max width');
                 const maxWidth = maxWidthKey ? parseFloat(effectiveLath[maxWidthKey]) : 0;
-                const currentWidth = parseFloat(dom.width.value) || 0;
-
-                if (maxWidth > 0 && currentWidth > maxWidth && !dom.useCustomLath.checked) {
-                    widthWarningDiv.textContent = `Warning: The entered width exceeds the maximum of ${maxWidth} mm for this lath type.`;
+                
+                if (maxWidth > 0 && curtainWidth > maxWidth && !dom.useCustomLath.checked) {
+                    widthWarningDiv.textContent = `Warning: Calculated curtain width (${curtainWidth.toFixed(0)} mm) exceeds the maximum of ${maxWidth} mm for this lath type.`;
                     widthWarningDiv.style.display = 'block';
                 } else {
                     widthWarningDiv.style.display = 'none';
@@ -1435,19 +1507,19 @@
             
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             
-            const estCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, null);
-            const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight);
+            const estCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, null, curtainWidth);
+            const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight, curtainWidth);
 
-            const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, bestAxle);
+            const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, bestAxle, curtainWidth);
             const { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
             visionCalcs = visionData;
             
             calculateEndplateRecommendation(); 
 
-            const { deflection, totalLength } = findAndSetBestAxle(totalWeight);
+            const { deflection, totalLength } = findAndSetBestAxle(totalWeight, curtainWidth);
 
             drawDeflectionGraphic(totalLength, deflection);
-            calculateMotorRecommendation(torqueWeight, effectiveLath, bestAxle, travelHeight);
+            calculateMotorRecommendation(torqueWeight, effectiveLath, bestAxle, travelHeight, curtainWidth);
             calculateSafetyBrakeForce(totalWeight, effectiveLath, bestAxle, travelHeight, fullCurtainLength);
             
             const selectedEndplateIndex = dom.endplateSelector.value;
@@ -1456,7 +1528,7 @@
                 : null;
 
             drawShutterGraphic(
-                parseFloat(dom.width.value),
+                curtainWidth,
                 parseFloat(dom.additionalLength.value),
                 parseInt(dom['lath-count'].textContent),
                 effectiveLath,
@@ -1466,11 +1538,15 @@
                 visionData,
                 endlockOffsets
             );
-            updateWicketCalculationsAndGraphic(endlockOffsets);
+            
+            const selectedGuide = guideData.length > 0 ? guideData[dom.guideType.value] : null;
+            drawTopDownWidthGraphic(calculatedWidths, selectedGuide);
+
+            updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
         }
         
-        function findAndSetBestAxle(totalWeightKgs) {
-            const width = parseFloat(dom.width.value) || 0;
+        function findAndSetBestAxle(totalWeightKgs, curtainWidth) {
+            const width = curtainWidth || 0;
             const additionalLength = parseFloat(dom.additionalLength.value) || 0;
             const totalLength = width + additionalLength;
             dom['total-axle-length'].textContent = totalLength.toFixed(0);
@@ -1927,7 +2003,7 @@
             updateSelectedSafetyBrakeInfo();
         }
 
-        function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight) {
+        function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight, curtainWidth) {
             if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
                 ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
                 lastTorqueProfile = [];
@@ -1946,7 +2022,7 @@
             calculatedRotations = calculateTotalRevolutions(travelHeight, effectiveStartDiameter, parseFloat(lath['Thickness']));
             dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
 
-            const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter);
+            const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
             maxCoilDiameter = finalCoilDiameter;
 
             const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
@@ -2118,10 +2194,11 @@
                 dom['wicket-door-height'].textContent = '0';
                 dom['wicket-door-width'].textContent = '0';
             }
-            updateWicketCalculationsAndGraphic();
+            const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+            updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth); // Recalc with current width
         }
 
-        function updateWicketCalculationsAndGraphic(endlockOffsets = {cast: 0, wind: 0}) {
+        function updateWicketCalculationsAndGraphic(endlockOffsets = {cast: 0, wind: 0}, curtainWidth) {
             const selectedWicketIndex = dom.wicketDoorSelector.value;
             const selectedLathIndex = dom.lathType.value;
             const selectedBottomLathIndex = dom.bottomLathType.value;
@@ -2157,7 +2234,7 @@
                 : null;
             
             drawWicketGraphic(
-                parseFloat(dom.width.value),
+                curtainWidth,
                 parseFloat(dom.additionalLength.value),
                 parseInt(dom['lath-count'].textContent),
                 selectedLath,
@@ -2169,10 +2246,10 @@
                 endlockOffsets
             );
             
-            calculateWicketTorque();
+            calculateWicketTorque(curtainWidth);
         }
 
-        function calculateWicketTorque() {
+        function calculateWicketTorque(curtainWidth) {
             const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
             const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
             const selectedWicket = wicketData.length > 0 ? wicketData[dom.wicketDoorSelector.value] : null;
@@ -2192,7 +2269,7 @@
             const axleCoilDiameter = getEffectiveCoilDiameter(selectedAxle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
 
-            const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter);
+            const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth);
             
             const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
             const adjustedProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
@@ -2203,7 +2280,7 @@
             drawTorqueGraph(adjustedProfile, dom['wicket-torque-graph-container']);
         }
 
-        function getTorqueProfileWithWicket(totalWeightKgs, lath, travelHeight, wicket, effectiveStartDiameter) {
+        function getTorqueProfileWithWicket(totalWeightKgs, lath, travelHeight, wicket, effectiveStartDiameter, curtainWidth) {
             const profileData = []; 
             let heightLifted = 0; 
             let currentRollDiameter = effectiveStartDiameter;
@@ -2212,7 +2289,7 @@
             if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
 
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
-            const widthM = (parseFloat(dom.width.value) || 0) / 1000;
+            const widthM = (curtainWidth || 0) / 1000;
             const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
             const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
             const lathsWeight = totalWeightKgs - bottomLathWeight;
@@ -2268,7 +2345,7 @@
             return (-b + Math.sqrt(discriminant)) / (2 * a);
         }
         
-        function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter) {
+        function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth) {
             const profileData = []; 
             let heightLifted = 0; 
             let currentRollDiameter = effectiveStartDiameter;
@@ -2277,7 +2354,7 @@
             if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
 
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
-            const widthM = (parseFloat(dom.width.value) || 0) / 1000;
+            const widthM = (curtainWidth || 0) / 1000;
             const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
             const lathsWeight = totalWeightKgs - bottomLathWeight;
 
@@ -2308,10 +2385,10 @@
             });
         };
         
-        function calculateCurtainProperties(lath, bottomLath, axle) {
+        function calculateCurtainProperties(lath, bottomLath, axle, curtainWidth) {
             const visionEnabled = dom.addVision.checked;
             if (visionEnabled) {
-                return calculateVisionCurtainProperties(lath, bottomLath, axle);
+                return calculateVisionCurtainProperties(lath, bottomLath, axle, curtainWidth);
             }
         
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
@@ -2358,7 +2435,7 @@
             dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
             dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
 
-            const widthM = (parseFloat(dom.width.value) || 0) / 1000;
+            const widthM = (curtainWidth || 0) / 1000;
             
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
             if (dom.powderCoated.checked) {
@@ -2462,9 +2539,9 @@
             return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData: null, endlockOffsets };
         };
         
-        function calculateVisionCurtainProperties(mainLath, bottomLath, axle) {
+        function calculateVisionCurtainProperties(mainLath, bottomLath, axle, curtainWidth) {
             const visionLath = lathData[dom.visionLathType.value];
-            const widthM = (parseFloat(dom.width.value) || 0) / 1000;
+            const widthM = (curtainWidth || 0) / 1000;
             const floorToAxleCenter = parseFloat(dom.height.value) || 0;
             const desiredVisionStart = parseFloat(dom.visionStartHeight.value) || 0;
             const desiredVisionPanelHeight = parseFloat(dom.visionPanelHeight.value) || 0;
@@ -3176,6 +3253,124 @@
             if(graphic) container.appendChild(graphic);
         }
 
+        function drawTopDownWidthGraphic(calculatedWidths, guide) {
+            const container = dom['width-graphic-container'];
+            container.innerHTML = '';
+
+            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
+            if (!guide || !overallWidth || overallWidth <= 0) return;
+
+            const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
+            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
+            const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
+            const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 600;
+            const svgHeight = 150;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'dim-arrow-width-graphic');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '5');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            const padding = { x: 50, y: 20 };
+            const graphicWidth = svgWidth - 2 * padding.x;
+            const scale = graphicWidth / overallWidth;
+
+            const curtainHeight = 40;
+            const guideDepth = 20; 
+            const graphicCenterY = svgHeight / 2 - 10;
+            
+            const scaledGuideWidth = guideWidth * scale;
+            const scaledCurtainWidth = curtainWidth * scale;
+            const scaledClearOpening = clearOpening * scale;
+
+            const overallStartX = padding.x;
+
+            // Draw Guides
+            const guideStyle = { fill: '#adb5bd', stroke: '#6c757d', 'stroke-width': '0.5'};
+            const leftGuide = document.createElementNS(svgNS, 'rect');
+            leftGuide.setAttribute('x', overallStartX);
+            leftGuide.setAttribute('y', graphicCenterY - guideDepth / 2);
+            leftGuide.setAttribute('width', scaledGuideWidth);
+            leftGuide.setAttribute('height', guideDepth);
+            Object.assign(leftGuide.style, guideStyle);
+            svg.appendChild(leftGuide);
+
+            const rightGuide = document.createElementNS(svgNS, 'rect');
+            rightGuide.setAttribute('x', overallStartX + scaledClearOpening + scaledGuideWidth);
+            rightGuide.setAttribute('y', graphicCenterY - guideDepth / 2);
+            rightGuide.setAttribute('width', scaledGuideWidth);
+            rightGuide.setAttribute('height', guideDepth);
+            Object.assign(rightGuide.style, guideStyle);
+            svg.appendChild(rightGuide);
+
+            // Draw Curtain
+            const curtainX = overallStartX + (guideWidth - guidePenetration) * scale;
+            const curtain = document.createElementNS(svgNS, 'rect');
+            curtain.setAttribute('x', curtainX);
+            curtain.setAttribute('y', graphicCenterY - curtainHeight / 2);
+            curtain.setAttribute('width', scaledCurtainWidth);
+            curtain.setAttribute('height', curtainHeight);
+            curtain.setAttribute('class', 'shutter-lath-graphic');
+            svg.appendChild(curtain);
+
+            // Draw Dimensions
+            const dimY1 = graphicCenterY + curtainHeight;
+            const dimY2 = dimY1 + 15;
+            const dimY3 = dimY2 + 15;
+
+            const drawDim = (y, startX, endX, label) => {
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', startX); line.setAttribute('y1', y);
+                line.setAttribute('x2', endX); line.setAttribute('y2', y);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)');
+                line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)');
+                svg.appendChild(line);
+
+                const text = document.createElementNS(svgNS, 'text');
+                text.textContent = `${label}: ${Math.round(endX-startX / scale)}mm`;
+                text.setAttribute('class', 'large-dimension-text');
+                text.setAttribute('x', startX + (endX - startX) / 2);
+                text.setAttribute('y', y - 5);
+                svg.appendChild(text);
+
+                const leader1 = document.createElementNS(svgNS, 'line');
+                leader1.setAttribute('x1', startX); leader1.setAttribute('y1', y);
+                leader1.setAttribute('x2', startX); leader1.setAttribute('y2', graphicCenterY);
+                leader1.setAttribute('class', 'leader-line');
+                svg.appendChild(leader1);
+
+                const leader2 = document.createElementNS(svgNS, 'line');
+                leader2.setAttribute('x1', endX); leader2.setAttribute('y1', y);
+                leader2.setAttribute('x2', endX); leader2.setAttribute('y2', graphicCenterY);
+                leader2.setAttribute('class', 'leader-line');
+                svg.appendChild(leader2);
+            }
+
+            drawDim(dimY1, overallStartX, overallStartX + graphicWidth, 'Overall Width');
+            drawDim(dimY2, curtainX, curtainX + scaledCurtainWidth, 'Curtain Width');
+            drawDim(dimY3, overallStartX + scaledGuideWidth, overallStartX + scaledGuideWidth + scaledClearOpening, 'Clear Opening');
+
+
+            container.appendChild(svg);
+        }
+
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
 
@@ -3634,7 +3829,8 @@
             } else if (targetTabId === 'motor-content') {
                 drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
             } else if(targetTabId === 'wicket-content') {
-                 updateWicketCalculationsAndGraphic();
+                 const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+                 updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth);
             } else if (targetTabId === 'endplate-content') {
                 const selectedIndex = parseInt(dom.endplateSelector.value, 10);
                 const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
