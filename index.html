@@ -428,8 +428,8 @@
                             <label for="widthType">Width Type</label>
                             <select id="widthType">
                                 <option value="clearOpening">Clear Opening</option>
-                                <option value="curtainWidth" selected>Curtain Width</option>
-                                <option value="overall">Overall (Reveal)</option>
+                                <option value="curtainWidth" selected>Curtain Width (inc. Endlocks)</option>
+                                <option value="overall">Overall (inc. Guides)</option>
                             </select>
                         </div>
                     </div>
@@ -441,7 +441,7 @@
                             </select>
                         </div>
                         <div class="form-group form-col" data-admin-label="Curtain Height">
-                            <label for="height">Curtain Height (Floor to Axle Centre, mm)</label>
+                            <label for="height">Guide Height (Floor to Axle Centre, mm)</label>
                             <input type="number" id="height" placeholder="e.g., 4000">
                         </div>
                     </div>
@@ -463,11 +463,14 @@
                             </select>
                         </div>
                     </div>
-                     <!-- NEW CUSTOM LATH SECTION -->
+                     <!-- NEW/MODIFIED CUSTOM LATH SECTION -->
                     <div class="form-group" data-admin-label="Custom Lath Option">
                         <label for="useCustomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
                             <input type="checkbox" id="useCustomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Use Custom Lath
                         </label>
+						<label for="useAttachmentStraps" style="display: inline-block; font-weight: 500; cursor: pointer; margin-left: 20px;">
+							<input type="checkbox" id="useAttachmentStraps" style="width: auto; margin-right: 8px; vertical-align: middle;">Use Attachment Straps
+						</label>
                     </div>
                     <div id="custom-lath-options" data-admin-label="Custom Lath Weight" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
                         <div class="form-group">
@@ -482,7 +485,7 @@
                     </div>
                     <div class="form-group" data-admin-label="Powder Coated Option">
                         <label for="powderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
-                            <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+1 kg/m²)
+                            <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+0.5 kg/m²)
                         </label>
                     </div>
                     <div class="form-group" data-admin-label="Bottom Lath Type">
@@ -521,9 +524,9 @@
 
                     <div class="results">
                         <h3>Shutter Details</h3>
-						<p>Curtain Width (Calculated): <span id="calculated-curtain-width">0</span> mm</p>
+						<p>Lath Cut Width (Calculated): <span id="calculated-curtain-width">0</span> mm</p>
 						<p>Clear Opening (Calculated): <span id="calculated-clear-opening">0</span> mm</p>
-						<p>Overall Width (Calculated): <span id="calculated-overall-width">0</span> mm</p>
+						<p>Overall Width (inc. Guides, Calculated): <span id="calculated-overall-width">0</span> mm</p>
 						<hr>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Weight (for Torque): <span id="torque-weight-kg">0.00</span> kgs</p>
@@ -897,14 +900,14 @@
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
          'useCustomLath', 'custom-lath-options', 'customLathWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
-         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width'
+         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'useAttachmentStraps'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight'
+         'useCustomLath', 'customLathWeight', 'useAttachmentStraps'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -1402,10 +1405,21 @@
             const inputWidth = parseFloat(dom.width.value) || 0;
             const widthType = dom.widthType.value;
             const selectedGuideIndex = dom.guideType.value;
+            const selectedEndlockIndex = dom.endlockType.value;
             
-            let curtainWidth = 0;
+            let lathCutWidth = 0;
             let clearOpening = 0;
             let overallWidth = 0;
+
+            if (widthType === 'curtainWidth') {
+                let endlockOffset = 0;
+                if (selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex]) {
+                    const endlock = endlockData[selectedEndlockIndex];
+                    const offsetKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'end lock offset');
+                    endlockOffset = offsetKey ? (parseFloat(endlock[offsetKey]) || 0) : 0;
+                }
+                lathCutWidth = inputWidth - (2 * endlockOffset);
+            }
 
             if (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) {
                 const guide = guideData[selectedGuideIndex];
@@ -1416,30 +1430,31 @@
                 const guideWidth = parseFloat(guide[widthKey]) || 0;
 
                 if (widthType === 'curtainWidth') {
-                    curtainWidth = inputWidth;
-                    clearOpening = curtainWidth - (2 * guidePenetration);
+                    // lathCutWidth is already calculated above
+                    clearOpening = lathCutWidth - (2 * guidePenetration);
                     overallWidth = clearOpening + (2 * guideWidth);
                 } else if (widthType === 'clearOpening') {
                     clearOpening = inputWidth;
-                    curtainWidth = clearOpening + (2 * guidePenetration);
+                    lathCutWidth = clearOpening + (2 * guidePenetration);
                     overallWidth = clearOpening + (2 * guideWidth);
                 } else if (widthType === 'overall') {
                     overallWidth = inputWidth;
                     clearOpening = overallWidth - (2 * guideWidth);
-                    curtainWidth = clearOpening + (2 * guidePenetration);
+                    lathCutWidth = clearOpening + (2 * guidePenetration);
                 }
             } else {
                 // Fallback if no guide is selected
-                curtainWidth = inputWidth;
-                clearOpening = inputWidth;
-                overallWidth = inputWidth;
+                lathCutWidth = (widthType === 'curtainWidth') ? lathCutWidth : inputWidth;
+                clearOpening = lathCutWidth;
+                overallWidth = lathCutWidth;
             }
 
-            dom['calculated-curtain-width'].textContent = curtainWidth.toFixed(0);
+            dom['calculated-curtain-width'].textContent = lathCutWidth.toFixed(0);
             dom['calculated-clear-opening'].textContent = clearOpening.toFixed(0);
             dom['calculated-overall-width'].textContent = overallWidth.toFixed(0);
 
-            return { curtainWidth, clearOpening, overallWidth };
+            // The value 'curtainWidth' is used throughout the app to mean lath cut width.
+            return { curtainWidth: lathCutWidth, clearOpening, overallWidth };
         }
 
 
@@ -1451,6 +1466,7 @@
             const calculatedWidths = getCalculatedWidths();
             const curtainWidth = calculatedWidths.curtainWidth;
             const effectiveLath = getLathWithCustomWeight();
+            let frontViewScale = 1;
 
             const lathImageContainer = document.getElementById('lath-image-container');
             const lathImageDisplay = document.getElementById('lathImageDisplay');
@@ -1492,7 +1508,7 @@
                 const maxWidth = maxWidthKey ? parseFloat(effectiveLath[maxWidthKey]) : 0;
                 
                 if (maxWidth > 0 && curtainWidth > maxWidth && !dom.useCustomLath.checked) {
-                    widthWarningDiv.textContent = `Warning: Calculated curtain width (${curtainWidth.toFixed(0)} mm) exceeds the maximum of ${maxWidth} mm for this lath type.`;
+                    widthWarningDiv.textContent = `Warning: Calculated lath cut width (${curtainWidth.toFixed(0)} mm) exceeds the maximum of ${maxWidth} mm for this lath type.`;
                     widthWarningDiv.style.display = 'block';
                 } else {
                     widthWarningDiv.style.display = 'none';
@@ -1531,7 +1547,7 @@
                 ? currentFilteredEndplates[selectedEndplateIndex] 
                 : null;
 
-            drawShutterGraphic(
+            const { graphic: shutterGraphic, scale: capturedScale } = drawShutterGraphic(
                 curtainWidth,
                 parseFloat(dom.additionalLength.value),
                 parseInt(dom['lath-count'].textContent),
@@ -1542,9 +1558,10 @@
                 visionData,
                 endlockOffsets
             );
+            frontViewScale = capturedScale;
             
             const selectedGuide = guideData.length > 0 ? guideData[dom.guideType.value] : null;
-            drawTopDownWidthGraphic(calculatedWidths, selectedGuide);
+            drawTopDownWidthGraphic(calculatedWidths, selectedGuide, frontViewScale);
 
             updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
         }
@@ -2303,7 +2320,7 @@
             
             let lathKgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
             if (dom.powderCoated.checked) {
-                lathKgsPerM2 += 1;
+                lathKgsPerM2 += 0.5;
             }
             
             const wicketWeightReduction = wicketWidthM * wicketHeightM * lathKgsPerM2;
@@ -2423,12 +2440,20 @@
                 axleRadius = (getEffectiveCoilDiameter(axleData[0])) / 2;
             }
 
-            const heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
+			let numLaths = 0;
+			if (dom.useAttachmentStraps.checked) {
+				const guideHeight = floorToAxleCenter;
+				const heightToCoverByLaths = guideHeight - bottomLathHeight;
+				if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
+					numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight);
+				}
+			} else {
+				const heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
+				if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
+					numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
+				}
+			}
 
-            let numLaths = 0;
-            if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
-                numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
-            }
             dom['lath-count'].textContent = numLaths;
             const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
             dom['laths-to-lift'].textContent = numLathsToLift;
@@ -2443,7 +2468,7 @@
             
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
             if (dom.powderCoated.checked) {
-                kgsPerM2 += 1;
+                kgsPerM2 += 0.5;
             }
             
             // Calculate Total MATERIAL Area (uses uncompressed height)
@@ -2574,14 +2599,14 @@
             const mainLathUncompressed = parseFloat(mainLath['uncompressed lath height']) || mainLathCompressed;
             let mainLathKgsM2 = parseFloat(mainLath['Kgs/ m2']);
             if (dom.powderCoated.checked) {
-                mainLathKgsM2 += 1;
+                mainLathKgsM2 += 0.5;
             }
 
             const visionLathCompressed = parseFloat(visionLath['Compressed lath height']);
             const visionLathUncompressed = parseFloat(visionLath['uncompressed lath height']) || visionLathCompressed;
             let visionLathKgsM2 = parseFloat(visionLath['Kgs/ m2']);
             if (dom.powderCoated.checked) {
-                visionLathKgsM2 += 1;
+                visionLathKgsM2 += 0.5;
             }
 
             if (isNaN(mainLathCompressed) || isNaN(visionLathCompressed) || mainLathCompressed <= 0 || visionLathCompressed <= 0) {
@@ -2602,13 +2627,21 @@
                 numLathsVision = Math.round(desiredVisionPanelHeight / visionLathCompressed);
             }
 
-            const heightCoveredSoFar_compressed = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed);
-            const remainingHeightToCover = (floorToAxleCenter + axleRadius) - heightCoveredSoFar_compressed;
-            
-            let numLathsAbove = 0;
-            if (remainingHeightToCover > 0) {
-                numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2;
-            }
+			let numLathsAbove = 0;
+			if (dom.useAttachmentStraps.checked) {
+				const guideHeight = floorToAxleCenter;
+				const heightCoveredSoFar_compressed = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed);
+				const remainingHeightToCover = guideHeight - heightCoveredSoFar_compressed;
+				if (remainingHeightToCover > 0) {
+					numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed);
+				}
+			} else {
+				const heightCoveredSoFar_compressed = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed);
+				const remainingHeightToCover = (floorToAxleCenter + axleRadius) - heightCoveredSoFar_compressed;
+				if (remainingHeightToCover > 0) {
+					numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2;
+				}
+			}
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
@@ -3246,35 +3279,43 @@
         function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
             const container = dom['shutter-graphic-container'];
             container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
+            const { graphic, scale } = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
             if(graphic) container.appendChild(graphic);
+            return { graphic, scale };
         }
         
         function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
             const container = dom['wicket-graphic-container'];
             container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
+            const { graphic } = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
             if(graphic) container.appendChild(graphic);
         }
 
-        function drawTopDownWidthGraphic(calculatedWidths, guide) {
+        function drawTopDownWidthGraphic(calculatedWidths, guide, frontViewScale) {
             const container = dom['width-graphic-container'];
             container.innerHTML = '';
 
             const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            if (!guide || !overallWidth || overallWidth <= 0) {
+            if (!guide || !overallWidth || overallWidth <= 0 || !frontViewScale) {
                 return;
             }
 
             const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
             const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
             const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-            const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
+            const guideWidth = parseFloat(guide[widthKey]) || 0;
 
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 600;
+            
             const svgHeight = 180; 
+            const padding = { x: 120, y: 30 };
+            
+            // Use the scale from the front view
+            const scale = frontViewScale;
+            const graphicWidth = overallWidth * scale;
+            const svgWidth = graphicWidth + 2 * padding.x;
+
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
             const defs = document.createElementNS(svgNS, 'defs');
@@ -3292,10 +3333,6 @@
             marker.appendChild(arrowPath);
             defs.appendChild(marker);
             svg.appendChild(defs);
-
-            const padding = { x: 50, y: 30 };
-            const graphicWidth = svgWidth - 2 * padding.x;
-            const scale = graphicWidth / overallWidth;
 
             const curtainHeight = 20;
             const guideDepth = 30;
@@ -3397,7 +3434,7 @@
             drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
 
             const curtainEndX = curtainX + scaledCurtainWidth;
-            drawDim(65, curtainX, curtainEndX, 'Curtain width', curtainWidth);
+            drawDim(65, curtainX, curtainEndX, 'Lath Cut width', curtainWidth);
 
             const overallEndX = overallStartX + graphicWidth;
             drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
@@ -3407,9 +3444,10 @@
 
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
+            let scale = 1;
 
             if (!realWidth || !lath || !bottomLath || !axle) {
-                return null;
+                return { graphic: null, scale: scale };
             }
 
             const { 
@@ -3435,10 +3473,10 @@
             let totalRealCompressedHeight = parseFloat(dom['curtain-height-compressed'].textContent) + axleDiameter;
 
             const totalRealAxleWidth = realWidth + (additionalLength || 0);
-            if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
+            if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return { graphic: null, scale: scale };
 
             const graphWidth = svgWidth - basePadding.left - basePadding.right;
-            const scale = graphWidth / totalRealAxleWidth;
+            scale = graphWidth / totalRealAxleWidth;
             const graphHeight = totalRealCompressedHeight * scale;
             const svgHeight = graphHeight + totalTopPadding + basePadding.bottom;
             
@@ -3786,7 +3824,7 @@
             createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
             
             const widthDimLineY = bottomY + 15;
-            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm Cut Curtain Width`, 'horizontal');
+            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm Lath Cut Width`, 'horizontal');
             createLeaderLine(lathStartX, widthDimLineY, lathStartX, bottomY);
             createLeaderLine(lathStartX + scaledShutterWidth, widthDimLineY, lathStartX + scaledShutterWidth, bottomY);
 
@@ -3802,23 +3840,27 @@
                 createLeaderLine(overallEndX, endlockWidthDimY, overallEndX, bottomY - (scaledBottomLathHeight/2));
             }
             
-            const rightDimX_Inner = startX + scaledTotalAxleWidth + 40;
-            const rightDimX_Outer = rightDimX_Inner - 15;
+            const rightDimX_Far = startX + scaledTotalAxleWidth + 60;
+			const rightDimX_Mid = rightDimX_Far - 20;
+			const rightDimX_Near = rightDimX_Mid - 20;
             
             if (selectedEndplate) {
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if(endplateSize > 0) {
                     const endplateBottomY = endplateTopY + (endplateSize * scale);
                     const heightToUnderside = parseFloat(dom.height.value) - (endplateSize / 2);
-                    drawDimensionLine(rightDimX_Inner, endplateBottomY, rightDimX_Inner, bottomY, `${heightToUnderside.toFixed(0)} mm to underside of box`, 'vertical', 'left');
-                    createLeaderLine(rightDimX_Inner, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY);
-                    createLeaderLine(rightDimX_Inner, bottomY, startX + scaledTotalAxleWidth, bottomY);
+                    drawDimensionLine(rightDimX_Mid, endplateBottomY, rightDimX_Mid, bottomY, `${heightToUnderside.toFixed(0)} mm to underside`, 'vertical', 'left');
+                    createLeaderLine(rightDimX_Mid, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY);
+
+					const totalBoxHeight = parseFloat(dom.height.value) + (endplateSize / 2);
+					drawDimensionLine(rightDimX_Far, endplateTopY, rightDimX_Far, bottomY, `${totalBoxHeight.toFixed(0)} mm to top of box`, 'vertical', 'left');
+					createLeaderLine(rightDimX_Far, endplateTopY, startX + scaledTotalAxleWidth, endplateTopY);
                 }
             }
 
-            drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
-            createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
-            createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
+            drawDimensionLine(rightDimX_Near, axleCenterlineY, rightDimX_Near, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Axle Centre`, 'vertical', 'left');
+            createLeaderLine(rightDimX_Near, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
+            createLeaderLine(rightDimX_Near, bottomY, startX + scaledTotalAxleWidth, bottomY);
             
             const leftDimX_Inner = basePadding.left - 15;
             const leftDimX_Outer = basePadding.left - 55;
@@ -3839,7 +3881,7 @@
                 createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
             }
 
-            return svg;
+            return { graphic: svg, scale: scale };
         }
 
         function switchTab(targetTabId) {
