@@ -1410,6 +1410,7 @@
             let lathCutWidth = 0;
             let clearOpening = 0;
             let overallWidth = 0;
+            let curtainWidthWithEndlocks = inputWidth; // Start with the input for 'curtainWidth' type
 
             if (widthType === 'curtainWidth') {
                 let endlockOffset = 0;
@@ -1418,7 +1419,7 @@
                     const offsetKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'end lock offset');
                     endlockOffset = offsetKey ? (parseFloat(endlock[offsetKey]) || 0) : 0;
                 }
-                lathCutWidth = inputWidth - (2 * endlockOffset);
+                lathCutWidth = curtainWidthWithEndlocks - (2 * endlockOffset);
             }
 
             if (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) {
@@ -2455,7 +2456,7 @@
 			}
 
             dom['lath-count'].textContent = numLaths;
-            const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
+            const numLathsToLift = dom.useAttachmentStraps.checked ? numLaths : (numLaths >= 3 ? numLaths - 3 : 0);
             dom['laths-to-lift'].textContent = numLathsToLift;
 
             const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
@@ -2530,9 +2531,9 @@
             const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
-            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
+            // Calculate Torque Weight
             let torqueWeight = totalWeight;
-            if (numLaths >= 3) {
+            if (!dom.useAttachmentStraps.checked && numLaths >= 3) {
                 const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
                 let bufferEndlockWeight = 0;
                 // Simplified: assume 3 laths have 2 pairs of cast endlocks.
@@ -2645,7 +2646,7 @@
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
-            const numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
+            const numLathsToLift = dom.useAttachmentStraps.checked ? totalNumLaths : (totalNumLaths >= 3 ? totalNumLaths - 3 : 0);
             dom['laths-to-lift'].textContent = numLathsToLift;
             
             // Calculate Weights based on COVERAGE area
@@ -2699,9 +2700,9 @@
             const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
 
-            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
+            // Calculate Torque Weight
             let torqueWeight = totalWeight;
-            if (numLathsAbove >= 3) {
+            if (!dom.useAttachmentStraps.checked && numLathsAbove >= 3) {
                 const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
                 let bufferEndlockWeight = 0;
                 const selectedCastEndlockIndex = dom.endlockType.value;
@@ -2729,7 +2730,7 @@
 			// Calculate Lifted COVERAGE Area
 			const areaBelowCoverage = numLathsBelow * (mainLathCompressed / 1000) * widthM;
 			const areaVisionCoverage = numLathsVision * (visionLathCompressed / 1000) * widthM;
-			const numLiftedLathsAbove = Math.max(0, numLathsAbove - 3);
+			const numLiftedLathsAbove = dom.useAttachmentStraps.checked ? numLathsAbove : Math.max(0, numLathsAbove - 3);
 			const liftedAreaAboveCoverage = numLiftedLathsAbove * (mainLathCompressed / 1000) * widthM;
 			const liftedCoverageArea = areaBelowCoverage + areaVisionCoverage + liftedAreaAboveCoverage;
 			dom['lifted-curtain-area'].textContent = liftedCoverageArea.toFixed(2);
