@@ -1467,7 +1467,6 @@
             const calculatedWidths = getCalculatedWidths();
             const curtainWidth = calculatedWidths.curtainWidth;
             const effectiveLath = getLathWithCustomWeight();
-            let frontViewScale = 1;
 
             const lathImageContainer = document.getElementById('lath-image-container');
             const lathImageDisplay = document.getElementById('lathImageDisplay');
@@ -1522,7 +1521,6 @@
                 drawDeflectionGraphic(0, 0);
                 drawAxleCrossSection(null);
                 calculateSafetyBrakeForce();
-                drawShutterGraphic(); 
                 return;
             };
             
@@ -1548,7 +1546,9 @@
                 ? currentFilteredEndplates[selectedEndplateIndex] 
                 : null;
 
-            const { graphic: shutterGraphic, scale: capturedScale } = drawShutterGraphic(
+            // --- GRAPHIC DRAWING LOGIC ---
+            // 1. Call the base function to create the front view graphic and get its scale
+            const { graphic: shutterGraphic, scale: frontViewScale } = createBaseShutterGraphic(
                 curtainWidth,
                 parseFloat(dom.additionalLength.value),
                 parseInt(dom['lath-count'].textContent),
@@ -1556,11 +1556,17 @@
                 selectedBottomLath,
                 bestAxle,
                 selectedEndplate,
-                visionData,
-                endlockOffsets
+                { visionOptions: visionData, endlockOffsets: endlockOffsets },
+                'shutter'
             );
-            frontViewScale = capturedScale;
-            
+
+            // 2. Render the front view graphic
+            dom['shutter-graphic-container'].innerHTML = '';
+            if (shutterGraphic) {
+                dom['shutter-graphic-container'].appendChild(shutterGraphic);
+            }
+
+            // 3. Render the top-down graphic, passing the scale from the front view
             const selectedGuide = guideData.length > 0 ? guideData[dom.guideType.value] : null;
             drawTopDownWidthGraphic(calculatedWidths, selectedGuide, frontViewScale);
 
@@ -2255,7 +2261,7 @@
                 ? currentFilteredEndplates[selectedEndplateIndex] 
                 : null;
             
-            drawWicketGraphic(
+            const { graphic: wicketGraphic } = createBaseShutterGraphic(
                 curtainWidth,
                 parseFloat(dom.additionalLength.value),
                 parseInt(dom['lath-count'].textContent),
@@ -2263,10 +2269,14 @@
                 selectedBottomLath,
                 selectedAxle,
                 selectedEndplate,
-                selectedWicket,
-                wicketLathHeight,
-                endlockOffsets
+                { wicket: selectedWicket, endlockOffsets: endlockOffsets }, 
+                'wicket'
             );
+
+            dom['wicket-graphic-container'].innerHTML = '';
+            if (wicketGraphic) {
+                dom['wicket-graphic-container'].appendChild(wicketGraphic);
+            }
             
             calculateWicketTorque(curtainWidth);
         }
@@ -2456,7 +2466,13 @@
 			}
 
             dom['lath-count'].textContent = numLaths;
-            const numLathsToLift = dom.useAttachmentStraps.checked ? numLaths : (numLaths >= 3 ? numLaths - 3 : 0);
+            
+            let numLathsToLift = 0;
+            if (dom.useAttachmentStraps.checked) {
+                numLathsToLift = numLaths;
+            } else {
+                numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
+            }
             dom['laths-to-lift'].textContent = numLathsToLift;
 
             const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
@@ -2532,20 +2548,25 @@
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             // Calculate Torque Weight
-            let torqueWeight = totalWeight;
-            if (!dom.useAttachmentStraps.checked && numLaths >= 3) {
-                const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
-                let bufferEndlockWeight = 0;
-                // Simplified: assume 3 laths have 2 pairs of cast endlocks.
-                const selectedCastEndlockIndex = dom.endlockType.value;
-                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
-                    const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
-                    const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
-                    if (castEndlockWeightG > 0) {
-                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
+            let torqueWeight;
+            if (dom.useAttachmentStraps.checked) {
+                torqueWeight = totalWeight;
+            } else {
+                torqueWeight = totalWeight; // Start with total
+                if (numLaths >= 3) {
+                    const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
+                    let bufferEndlockWeight = 0;
+                    // Simplified: assume 3 laths have 2 pairs of cast endlocks.
+                    const selectedCastEndlockIndex = dom.endlockType.value;
+                    if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                        const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                        if (castEndlockWeightG > 0) {
+                            bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
+                        }
                     }
+                    torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
                 }
-                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
             }
             dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
             
@@ -2646,7 +2667,13 @@
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
-            const numLathsToLift = dom.useAttachmentStraps.checked ? totalNumLaths : (totalNumLaths >= 3 ? totalNumLaths - 3 : 0);
+            
+            let numLathsToLift = 0;
+            if (dom.useAttachmentStraps.checked) {
+                numLathsToLift = totalNumLaths;
+            } else {
+                numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
+            }
             dom['laths-to-lift'].textContent = numLathsToLift;
             
             // Calculate Weights based on COVERAGE area
@@ -2701,19 +2728,24 @@
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
 
             // Calculate Torque Weight
-            let torqueWeight = totalWeight;
-            if (!dom.useAttachmentStraps.checked && numLathsAbove >= 3) {
-                const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
-                let bufferEndlockWeight = 0;
-                const selectedCastEndlockIndex = dom.endlockType.value;
-                 if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
-                    const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
-                    const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
-                    if (castEndlockWeightG > 0) {
-                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
+            let torqueWeight;
+             if (dom.useAttachmentStraps.checked) {
+                torqueWeight = totalWeight;
+            } else {
+                torqueWeight = totalWeight; // Start with total
+                if (numLathsAbove >= 3) {
+                    const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
+                    let bufferEndlockWeight = 0;
+                    const selectedCastEndlockIndex = dom.endlockType.value;
+                     if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                        const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                        if (castEndlockWeightG > 0) {
+                            bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
+                        }
                     }
+                    torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
                 }
-                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
             }
             dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
 
@@ -2926,7 +2958,8 @@
                 const marker = document.createElementNS(svgNS, 'marker');
                 marker.setAttribute('id', id); marker.setAttribute('viewBox', '0 0 10 10');
                 marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5');
-                marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
+                marker.setAttribute('markerWidth', '5');
+                marker.setAttribute('markerHeight', '5');
                 marker.setAttribute('orient', 'auto-start-reverse');
                 const arrowPath = document.createElementNS(svgNS, 'path');
                 arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', color);
@@ -3277,172 +3310,6 @@
             container.appendChild(svg);
         }
 
-        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
-            const container = dom['shutter-graphic-container'];
-            container.innerHTML = '';
-            const { graphic, scale } = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
-            if(graphic) container.appendChild(graphic);
-            return { graphic, scale };
-        }
-        
-        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
-            const container = dom['wicket-graphic-container'];
-            container.innerHTML = '';
-            const { graphic } = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
-            if(graphic) container.appendChild(graphic);
-        }
-
-        function drawTopDownWidthGraphic(calculatedWidths, guide, frontViewScale) {
-            const container = dom['width-graphic-container'];
-            container.innerHTML = '';
-
-            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            if (!guide || !overallWidth || overallWidth <= 0 || !frontViewScale) {
-                return;
-            }
-
-            const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
-            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
-            const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-            const guideWidth = parseFloat(guide[widthKey]) || 0;
-
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, "svg");
-            
-            const svgHeight = 180; 
-            const padding = { x: 120, y: 30 };
-            
-            // Use the scale from the front view
-            const scale = frontViewScale;
-            const graphicWidth = overallWidth * scale;
-            const svgWidth = graphicWidth + 2 * padding.x;
-
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker');
-            marker.setAttribute('id', 'dim-arrow-width-graphic');
-            marker.setAttribute('viewBox', '0 0 10 10');
-            marker.setAttribute('refX', '5');
-            marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '4');
-            marker.setAttribute('markerHeight', '4');
-            marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path');
-            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-            arrowPath.setAttribute('fill', '#343a40');
-            marker.appendChild(arrowPath);
-            defs.appendChild(marker);
-            svg.appendChild(defs);
-
-            const curtainHeight = 20;
-            const guideDepth = 30;
-            const graphicTopY = padding.y;
-
-            const scaledGuideWidth = guideWidth * scale;
-            const scaledCurtainWidth = curtainWidth * scale;
-            const scaledClearOpening = clearOpening * scale;
-            const scaledPenetration = guidePenetration * scale;
-
-            const overallStartX = padding.x;
-
-            // --- Draw U-shaped Guides ---
-            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
-            const leftGuideX = overallStartX;
-            const leftGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
-            const leftGuidePath = document.createElementNS(svgNS, 'path');
-            leftGuidePath.setAttribute('d', `M ${leftGuideX + scaledGuideWidth},${leftGuideY} L ${leftGuideX},${leftGuideY} L ${leftGuideX},${leftGuideY + guideDepth} L ${leftGuideX + scaledGuideWidth},${leftGuideY + guideDepth}`);
-            Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key]));
-            svg.appendChild(leftGuidePath);
-
-            const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth;
-            const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
-            const rightGuidePath = document.createElementNS(svgNS, 'path');
-            rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`);
-            Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key]));
-            svg.appendChild(rightGuidePath);
-
-            // --- Draw Curtain ---
-            const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
-            const curtain = document.createElementNS(svgNS, 'rect');
-            curtain.setAttribute('x', curtainX);
-            curtain.setAttribute('y', graphicTopY);
-            curtain.setAttribute('width', scaledCurtainWidth);
-            curtain.setAttribute('height', curtainHeight);
-            curtain.setAttribute('class', 'shutter-bottomlath-graphic');
-            svg.appendChild(curtain);
-
-            const endCapWidth = 5;
-            const leftEndCap = document.createElementNS(svgNS, 'rect');
-            leftEndCap.setAttribute('x', curtainX);
-            leftEndCap.setAttribute('y', graphicTopY);
-            leftEndCap.setAttribute('width', endCapWidth);
-            leftEndCap.setAttribute('height', curtainHeight);
-            leftEndCap.setAttribute('fill', 'black');
-            svg.appendChild(leftEndCap);
-
-            const rightEndCap = document.createElementNS(svgNS, 'rect');
-            rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth);
-            rightEndCap.setAttribute('y', graphicTopY);
-            rightEndCap.setAttribute('width', endCapWidth);
-            rightEndCap.setAttribute('height', curtainHeight);
-            rightEndCap.setAttribute('fill', 'black');
-            svg.appendChild(rightEndCap);
-
-            // --- Draw Dimensions ---
-            const drawDim = (yOffset, startX, endX, label, value) => {
-                const lineY = graphicTopY + guideDepth + yOffset;
-                const tickHeight = 8;
-                const textGap = 5;
-
-                const line = document.createElementNS(svgNS, 'line');
-                line.setAttribute('x1', startX); line.setAttribute('y1', lineY);
-                line.setAttribute('x2', endX); line.setAttribute('y2', lineY);
-                line.setAttribute('class', 'dimension-line');
-                line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)');
-                line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)');
-                svg.appendChild(line);
-
-                const tick1 = document.createElementNS(svgNS, 'line');
-                tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY);
-                tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight);
-                tick1.setAttribute('class', 'dimension-tick');
-                svg.appendChild(tick1);
-
-                const tick2 = document.createElementNS(svgNS, 'line');
-                tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY);
-                tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight);
-                tick2.setAttribute('class', 'dimension-tick');
-                svg.appendChild(tick2);
-
-                const labelText = document.createElementNS(svgNS, 'text');
-                labelText.textContent = label;
-                labelText.setAttribute('class', 'width-graphic-label');
-                labelText.setAttribute('x', startX + (endX - startX) / 2);
-                labelText.setAttribute('y', lineY - textGap);
-                svg.appendChild(labelText);
-                
-                const valueText = document.createElementNS(svgNS, 'text');
-                valueText.textContent = `(${value.toFixed(0)} mm)`;
-                valueText.setAttribute('class', 'width-graphic-value');
-                valueText.setAttribute('x', startX + (endX - startX) / 2);
-                valueText.setAttribute('y', lineY + textGap + 10);
-                svg.appendChild(valueText);
-            };
-
-            const clearOpeningStartX = overallStartX + scaledGuideWidth;
-            const clearOpeningEndX = clearOpeningStartX + scaledClearOpening;
-            drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
-
-            const curtainEndX = curtainX + scaledCurtainWidth;
-            drawDim(65, curtainX, curtainEndX, 'Lath Cut width', curtainWidth);
-
-            const overallEndX = overallStartX + graphicWidth;
-            drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
-            
-            container.appendChild(svg);
-        }
-
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
             let scale = 1;
@@ -3689,7 +3556,8 @@
                 for (let i = 0; i < vo.numLathsBelow; i++) {
                     currentY -= scaledMainLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX);
+                    lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
@@ -3710,7 +3578,8 @@
                 for (let i = 0; i < vo.numLathsVision; i++) {
                     currentY -= scaledVisionLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX);
+                    lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledVisionLathHeight);
                     lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
@@ -3731,7 +3600,8 @@
                 for (let i = 0; i < vo.numLathsAbove; i++) {
                     currentY -= scaledMainLathHeight;
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX);
+                    lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledMainLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
@@ -3756,7 +3626,8 @@
                     const lathBottomEdgeY = currentY + scaledLathHeight;
 
                     const lathRect = document.createElementNS(svgNS, 'rect');
-                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('x', lathStartX);
+                    lathRect.setAttribute('y', currentY);
                     lathRect.setAttribute('width', scaledShutterWidth);
                     lathRect.setAttribute('height', scaledLathHeight);
                     lathRect.setAttribute('class', 'shutter-lath-graphic');
