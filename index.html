@@ -475,6 +475,11 @@
                             <input type="number" id="customLathWeight" placeholder="e.g., 9.5">
                             <small style="font-size: 0.8em; color: #555;">Note: Other properties (thickness, height) will be based on the lath selected above.</small>
                         </div>
+                        <div class="form-group">
+                            <label for="customTorqueWeight">Custom Curtain Weight for Lift (kg)</label>
+                            <input type="number" id="customTorqueWeight" placeholder="e.g., 150.5">
+                            <small style="font-size: 0.8em; color: #555;">If a value is entered here, it will override the calculated 'Curtain Weight (for Torque)'.</small>
+                        </div>
                     </div>
                     <!-- END NEW SECTION -->
                     <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
@@ -482,7 +487,7 @@
                     </div>
                     <div class="form-group" data-admin-label="Powder Coated Option">
                         <label for="powderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
-                            <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+1 kg/m²)
+                            <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+0.5 kg/m²)
                         </label>
                     </div>
                     <div class="form-group" data-admin-label="Bottom Lath Type">
@@ -896,7 +901,7 @@
          'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
-         'useCustomLath', 'custom-lath-options', 'customLathWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
+         'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
          'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width'
         ].forEach(id => dom[id] = document.getElementById(id));
         
@@ -904,7 +909,7 @@
         
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight'
+         'useCustomLath', 'customLathWeight', 'customTorqueWeight'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -2303,7 +2308,7 @@
             
             let lathKgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
             if (dom.powderCoated.checked) {
-                lathKgsPerM2 += 1;
+                lathKgsPerM2 += 0.5;
             }
             
             const wicketWeightReduction = wicketWidthM * wicketHeightM * lathKgsPerM2;
@@ -2443,7 +2448,7 @@
             
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
             if (dom.powderCoated.checked) {
-                kgsPerM2 += 1;
+                kgsPerM2 += 0.5;
             }
             
             // Calculate Total MATERIAL Area (uses uncompressed height)
@@ -2506,20 +2511,27 @@
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
-            let torqueWeight = totalWeight;
-            if (numLaths >= 3) {
-                const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
-                let bufferEndlockWeight = 0;
-                // Simplified: assume 3 laths have 2 pairs of cast endlocks.
-                const selectedCastEndlockIndex = dom.endlockType.value;
-                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
-                    const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
-                    const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
-                    if (castEndlockWeightG > 0) {
-                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
+            let torqueWeight;
+            const customTorqueWeightValue = parseFloat(dom.customTorqueWeight.value);
+
+            if (dom.useCustomLath.checked && !isNaN(customTorqueWeightValue) && customTorqueWeightValue > 0) {
+                torqueWeight = customTorqueWeightValue;
+            } else {
+                torqueWeight = totalWeight;
+                if (numLaths >= 3) {
+                    const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
+                    let bufferEndlockWeight = 0;
+                    // Simplified: assume 3 laths have 2 pairs of cast endlocks.
+                    const selectedCastEndlockIndex = dom.endlockType.value;
+                    if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                        const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                        if (castEndlockWeightG > 0) {
+                            bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
+                        }
                     }
+                    torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
                 }
-                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
             }
             dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
             
@@ -2574,14 +2586,14 @@
             const mainLathUncompressed = parseFloat(mainLath['uncompressed lath height']) || mainLathCompressed;
             let mainLathKgsM2 = parseFloat(mainLath['Kgs/ m2']);
             if (dom.powderCoated.checked) {
-                mainLathKgsM2 += 1;
+                mainLathKgsM2 += 0.5;
             }
 
             const visionLathCompressed = parseFloat(visionLath['Compressed lath height']);
             const visionLathUncompressed = parseFloat(visionLath['uncompressed lath height']) || visionLathCompressed;
             let visionLathKgsM2 = parseFloat(visionLath['Kgs/ m2']);
             if (dom.powderCoated.checked) {
-                visionLathKgsM2 += 1;
+                visionLathKgsM2 += 0.5;
             }
 
             if (isNaN(mainLathCompressed) || isNaN(visionLathCompressed) || mainLathCompressed <= 0 || visionLathCompressed <= 0) {
@@ -2667,19 +2679,26 @@
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
 
             // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
-            let torqueWeight = totalWeight;
-            if (numLathsAbove >= 3) {
-                const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
-                let bufferEndlockWeight = 0;
-                const selectedCastEndlockIndex = dom.endlockType.value;
-                 if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
-                    const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
-                    const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
-                    if (castEndlockWeightG > 0) {
-                        bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
+            let torqueWeight;
+            const customTorqueWeightValue = parseFloat(dom.customTorqueWeight.value);
+
+            if (dom.useCustomLath.checked && !isNaN(customTorqueWeightValue) && customTorqueWeightValue > 0) {
+                torqueWeight = customTorqueWeightValue;
+            } else {
+                torqueWeight = totalWeight;
+                if (numLathsAbove >= 3) {
+                    const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
+                    let bufferEndlockWeight = 0;
+                    const selectedCastEndlockIndex = dom.endlockType.value;
+                     if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                        const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                        if (castEndlockWeightG > 0) {
+                            bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
+                        }
                     }
+                    torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
                 }
-                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
             }
             dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
 
