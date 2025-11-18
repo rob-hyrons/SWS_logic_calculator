@@ -768,6 +768,21 @@
                         <div id="import-status-admin" style="font-style: italic; color: #555;"></div>
                     </div>
 
+                    <!-- =================================================================== -->
+                    <!-- START: NEW AXLE FIXABILITY SECTION                                  -->
+                    <!-- =================================================================== -->
+                    <div id="axle-config-section" class="admin-section">
+                        <h3>Axle Calculation Parameters</h3>
+                        <div class="form-group">
+                            <label for="axleFixability">Deflection Constant (k)</label>
+                            <input type="number" id="axleFixability" value="5" step="0.1">
+                            <small style="font-size: 0.8em; color: #555;">This constant is used in the deflection formula: (k * W * L³) / (384 * E * I). Common values: 5 for simply supported ends, 1 for fixed ends.</small>
+                        </div>
+                    </div>
+                    <!-- =================================================================== -->
+                    <!-- END: NEW AXLE FIXABILITY SECTION                                    -->
+                    <!-- =================================================================== -->
+
                     <div class="admin-section">
                         <h3>Tab Visibility</h3>
                         <div class="admin-button-group">
@@ -902,14 +917,14 @@
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
          'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
-         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width'
+         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixability'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight', 'customTorqueWeight'
+         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixability'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -1707,9 +1722,11 @@
                 axleWeight = volumeM3 * density;
             }
             
+            const fixabilityConstant = parseFloat(dom.axleFixability.value) || 5; // Default to 5 (simply supported)
+            
             const totalForceW = (totalWeightKgs + axleWeight) * 9.81;
             const deflection = (totalLength > 0 && inertiaI > 0 && youngsModulusE > 0) 
-                ? (5 * totalForceW * Math.pow(totalLength, 3)) / (384 * youngsModulusE * inertiaI) 
+                ? (fixabilityConstant * totalForceW * Math.pow(totalLength, 3)) / (384 * youngsModulusE * inertiaI) 
                 : 0;
                 
             const ratio = (deflection > 0) ? totalLength / deflection : Infinity;
@@ -2911,7 +2928,8 @@
                 const marker = document.createElementNS(svgNS, 'marker');
                 marker.setAttribute('id', id); marker.setAttribute('viewBox', '0 0 10 10');
                 marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5');
-                marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
+                marker.setAttribute('markerWidth', '5');
+                marker.setAttribute('markerHeight', '5');
                 marker.setAttribute('orient', 'auto-start-reverse');
                 const arrowPath = document.createElementNS(svgNS, 'path');
                 arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', color);
@@ -4236,4 +4254,3 @@
     <!-- =================================================================== -->
 </body>
 </html>
---- END OF FILE index.html ---
