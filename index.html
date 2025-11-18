@@ -578,13 +578,11 @@
                         <input type="number" id="collarSize" placeholder="e.g., 150" value="0">
                     </div>
 
-                    <!-- START: MODIFICATION FOR SUPPORT FIXABILITY -->
                     <div class="form-group" data-admin-label="Support Fixability">
                         <label for="supportFixability">Support Fixability (%)</label>
                         <input type="number" id="supportFixability" value="0" min="0" max="100">
                         <small style="font-size: 0.8em; color: #555;">0% = Simply Supported, 100% = Fully Fixed.</small>
                     </div>
-                    <!-- END: MODIFICATION FOR SUPPORT FIXABILITY -->
 
                     <div id="deflection-graphic-container" class="graph-container" style="height: 150px;"></div>
                     <div id="axle-cross-section-container" class="graph-container" style="height: 250px; margin-top: 2.5em;"></div>
@@ -892,7 +890,6 @@
         let visionCalcs = null; 
         
         const dom = {};
-        // START: MODIFICATION - Add supportFixability to DOM object
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
@@ -914,14 +911,13 @@
          'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width',
          'supportFixability'
         ].forEach(id => dom[id] = document.getElementById(id));
-        // END: MODIFICATION
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        // START: MODIFICATION - Add event listener for supportFixability
+        // START: MODIFICATION - Removed 'supportFixability' from this list to give it a separate event listener.
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'supportFixability'
+         'useCustomLath', 'customLathWeight', 'customTorqueWeight'
         ].forEach(id => {
         // END: MODIFICATION
             if (dom[id]) dom[id].addEventListener('input', () => {
@@ -952,6 +948,15 @@
                 updateAllCalculations();
             });
         });
+
+        // START: MODIFICATION - Added a separate event listener for supportFixability that does NOT reset the axle selection.
+        if (dom.supportFixability) {
+            dom.supportFixability.addEventListener('input', () => {
+                // By not setting userSelectedAxleIndex to null here, the user's manual selection is preserved.
+                updateAllCalculations();
+            });
+        }
+        // END: MODIFICATION
 
         dom.addVision.addEventListener('change', () => {
             dom['vision-slat-options'].style.display = dom.addVision.checked ? 'block' : 'none';
@@ -1687,7 +1692,6 @@
             return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
         }
 
-        // START: MODIFICATION - Update deflection calculation to use fixability ratio
         function performDeflectionCalc(totalWeightKgs, axle, totalLength) {
             if (!axle) return { deflection: 0, ratio: Infinity, safetyFactor: Infinity, axleWeight: 0, materialGradeValue: 'N/A', inertiaI: 0 };
             
@@ -1740,7 +1744,6 @@
 
             return { deflection, ratio, safetyFactor, axleWeight, materialGradeValue, inertiaI };
         }
-        // END: MODIFICATION
         
         function getEffectiveCoilDiameter(axle) {
             if (!axle) return 0;
