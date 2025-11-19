@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Shutter Motor Calculator</title>
-    <!-- xlsx.js for data reading -->
+    <!-- xlsx.js for data reading (existing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ExcelJS for image extraction -->
+    <!-- ExcelJS for image extraction (new) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <!-- Papa Parse for CSV importing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -819,11 +819,6 @@
                                 <label for="reportMaxHeight">Max Height</label>
                                 <input type="number" id="reportMaxHeight" value="6000">
                             </div>
-                            <div class="form-group">
-                                <label for="axleFixity">Axle Fixity Factor (%)</label>
-                                <input type="number" id="axleFixity" value="0" min="0" max="100" title="0% = Simply Supported (Standard/Worst Case), 100% = Fully Fixed Ends (Best Case).">
-                                <small style="color: #666; display: block; margin-top: 4px;">0% = Standard, 100% = Fixed Ends.</small>
-                            </div>
                         </div>
 
                         <h4>2. Select Shutter Configuration</h4>
@@ -1201,7 +1196,8 @@
             } catch (error) {
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
-                console.error(error);
+                alert(`Error Reading File: ${error.message}`);
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = [];
             }
         }
 
@@ -1691,7 +1687,7 @@
             return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
         }
 
-        function performDeflectionCalc(totalWeightKgs, axle, totalLength, fixityPercent = 0) {
+        function performDeflectionCalc(totalWeightKgs, axle, totalLength) {
             if (!axle) return { deflection: 0, ratio: Infinity, safetyFactor: Infinity, axleWeight: 0, materialGradeValue: 'N/A', inertiaI: 0 };
             
             const outerDia = parseFloat(axle['Diameter']);
@@ -1725,21 +1721,10 @@
             }
             
             const totalForceW = (totalWeightKgs + axleWeight) * 9.81;
-            let deflection = (totalLength > 0 && inertiaI > 0 && youngsModulusE > 0) 
+            const deflection = (totalLength > 0 && inertiaI > 0 && youngsModulusE > 0) 
                 ? (5 * totalForceW * Math.pow(totalLength, 3)) / (384 * youngsModulusE * inertiaI) 
                 : 0;
-            
-            // Apply Fixity Scaling
-            // Standard (Simply Supported) = 1.0
-            // Fully Fixed = 0.2 (Factor is 1/5th for uniformly distributed load on fixed beam vs simple)
-            // But let's use linear interpolation for "percent fixed".
-            if (fixityPercent > 0) {
-                const p = Math.min(100, Math.max(0, fixityPercent)) / 100;
-                // Factor ranges from 1.0 (at 0%) down to 0.2 (at 100%)
-                const factor = 1 - (0.8 * p);
-                deflection *= factor;
-            }
-
+                
             const ratio = (deflection > 0) ? totalLength / deflection : Infinity;
             const safetyFactor = ratio / 400;
 
@@ -1757,10 +1742,2220 @@
             return diameter;
         }
         
-        // ===================================================================
-        // START: UPDATED CODE FOR CSV REPORT GENERATION
-        // ===================================================================
+        function calculateEndplateRecommendation() {
+            if (endplateData.length === 0) return;
+
+            dom['max-coil-diameter'].textContent = maxCoilDiameter.toFixed(1);
+
+            const axleDeflection = parseFloat(dom['axle-deflection'].textContent) || 0;
+            let effectiveCoilDiameter = maxCoilDiameter;
+
+            if (dom.includeDeflectionInSizing.checked && axleDeflection > 0) {
+                effectiveCoilDiameter += axleDeflection;
+                dom['effective-coil-diameter'].textContent = effectiveCoilDiameter.toFixed(1);
+                dom['effective-coil-para'].style.display = 'block';
+            } else {
+                dom['effective-coil-para'].style.display = 'none';
+            }
+            
+            const selectedMaterial = dom.matSteel.checked ? 'Steel' : 'Aluminium';
+            currentFilteredEndplates = endplateData
+                .filter(plate => plate.Material.toLowerCase() === selectedMaterial.toLowerCase())
+                .sort((a, b) => a.Size - b.Size);
+            
+            const select = dom.endplateSelector;
+            select.innerHTML = '';
+
+            if (currentFilteredEndplates.length === 0) {
+                select.innerHTML = `<option value="">-- No ${selectedMaterial} plates --</option>`;
+                updateSelectedEndplateInfo();
+                return;
+            }
+
+            let recommendedPlateIndex = -1;
+            
+            currentFilteredEndplates.forEach((plate, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${plate.Name} (${plate.Size} mm)`;
+                
+                if (plate.Size >= effectiveCoilDiameter) {
+                    option.classList.add('option-pass');
+                    if (recommendedPlateIndex === -1) {
+                         recommendedPlateIndex = index;
+                    }
+                } else {
+                    option.classList.add('option-fail');
+                    option.disabled = true;
+                }
+                select.appendChild(option);
+            });
+
+            if (recommendedPlateIndex !== -1) {
+                select.value = recommendedPlateIndex;
+            } else {
+                 const noPlateOption = document.createElement('option');
+                noPlateOption.value = "";
+                noPlateOption.textContent = "-- Coil too large for available plates --";
+                noPlateOption.selected = true;
+                noPlateOption.disabled = true;
+                select.prepend(noPlateOption);
+                drawEndplateGraphic(null, 0, null, null, 0); 
+            }
+            updateSelectedEndplateInfo();
+        }
+
+        function calculateMaxFloorToAxleHeight(endplateSize, lath, bottomLath, axle) {
+            if (!lath || !axle || !bottomLath || !endplateSize || endplateSize <= 0) return 0;
+            
+            const collarSize = parseFloat(dom.collarSize.value) || 0;
+            const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+            const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
+            const axleRadius = effectiveStartDiameter / 2;
+
+            const lathThickness = parseFloat(lath['Thickness']);
+            const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
+            const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']) || lathCompressedHeight;
+            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+
+            if (lathThickness <= 0 || effectiveStartDiameter <= 0 || endplateSize <= effectiveStartDiameter || uncompressedLathHeight <= 0) return 0;
+
+            const maxRevolutions = (endplateSize - effectiveStartDiameter) / (2 * lathThickness);
+            if (maxRevolutions <= 0) return 0;
+            
+            const maxCurtainLength = Math.PI * lathThickness * Math.pow(maxRevolutions, 2) + Math.PI * effectiveStartDiameter * maxRevolutions;
+            
+            const numLaths = (maxCurtainLength - bottomLathHeight) / uncompressedLathHeight;
+            const heightToCoverByLaths = numLaths * lathCompressedHeight;
+            const maxFloorToAxleHeight = heightToCoverByLaths + bottomLathHeight - axleRadius;
+
+            return maxFloorToAxleHeight > 0 ? maxFloorToAxleHeight : 0;
+        }
+
+        function updateSelectedEndplateInfo() {
+            const selectedIndex = parseInt(dom.endplateSelector.value, 10);
+            
+            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+            const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
+            const selectedBottomLath = bottomLathData.length > 0 ? bottomLathData[dom.bottomLathType.value] : null;
+            const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+
+            if (isNaN(selectedIndex) || !currentFilteredEndplates[selectedIndex]) {
+                ['endplate-name', 'endplate-size', 'endplate-material'].forEach(id => { dom[id].textContent = 'N/A'; });
+                ['prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height'].forEach(id => { dom[id].textContent = 'N/A'; });
+                drawEndplateGraphic(null, 0, null, null, 0);
+                calculateEndplateForces(null);
+                return;
+            }
+
+            const plate = currentFilteredEndplates[selectedIndex];
+            dom['endplate-name'].textContent = plate.Name;
+            dom['endplate-size'].textContent = plate.Size;
+            dom['endplate-material'].textContent = plate.Material;
+
+            drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths);
+            calculateEndplateForces(plate);
+            
+            const prevPlate = selectedIndex > 0 ? currentFilteredEndplates[selectedIndex - 1] : null;
+            if (prevPlate && selectedLath && selectedAxle && selectedBottomLath) {
+                dom['prev-endplate-name'].textContent = `${prevPlate.Name} (${prevPlate.Size}mm)`;
+                const maxHeight = calculateMaxFloorToAxleHeight(prevPlate.Size, selectedLath, selectedBottomLath, selectedAxle);
+                dom['prev-endplate-height'].textContent = maxHeight > 0 ? maxHeight.toFixed(0) : 'Too small';
+            } else {
+                dom['prev-endplate-name'].textContent = 'N/A';
+                dom['prev-endplate-height'].textContent = 'N/A';
+            }
+            
+            const nextPlate = selectedIndex < currentFilteredEndplates.length - 1 ? currentFilteredEndplates[selectedIndex + 1] : null;
+            if (nextPlate && selectedLath && selectedAxle && selectedBottomLath) {
+                dom['next-endplate-name'].textContent = `${nextPlate.Name} (${nextPlate.Size}mm)`;
+                 const maxHeight = calculateMaxFloorToAxleHeight(nextPlate.Size, selectedLath, selectedBottomLath, selectedAxle);
+                dom['next-endplate-height'].textContent = maxHeight > 0 ? maxHeight.toFixed(0) : 'N/A';
+            } else {
+                dom['next-endplate-name'].textContent = 'N/A';
+                dom['next-endplate-height'].textContent = 'N/A';
+            }
+        }
+
+        function calculateEndplateForces(selectedPlate) {
+            if (!selectedPlate) {
+                dom['endplate-downward-force'].textContent = '0';
+                dom['endplate-pullout-force'].textContent = '0';
+                drawEndplateForceDiagram(0, 0, 0, 0, 0);
+                return;
+            }
+
+            const fixingHolesKey = Object.keys(selectedPlate).find(k => k.toLowerCase().trim() === 'fixing holes');
+            const fixingHoleSeparation = fixingHolesKey ? parseFloat(selectedPlate[fixingHolesKey]) : 0;
+            const fixingHoleSeparationM = fixingHoleSeparation / 1000;
+
+            const curtainWeightKgs = parseFloat(dom['weight-kg'].textContent) || 0;
+            const axleWeightKgs = parseFloat(dom['axle-weight'].textContent) || 0;
+            const totalStaticWeightKgs = curtainWeightKgs + axleWeightKgs;
+            const totalStaticWeightN = totalStaticWeightKgs * 9.81;
+
+            const safetyBrakeImpactN = (parseFloat(dom['safety-brake-force-kn'].textContent) || 0) * 1000;
+            const offsetDistanceM = (parseFloat(selectedPlate.Size) / 2) / 1000;
+
+            const staticWeightOnPlateN = totalStaticWeightN / 2;
+            const impactOnPlateN = safetyBrakeImpactN / 2;
+            const totalDownwardForceOnPlate = staticWeightOnPlateN + impactOnPlateN;
+            const moment = staticWeightOnPlateN * offsetDistanceM;
+            
+            let pulloutForce = 0;
+            if (fixingHoleSeparationM > 0) {
+                pulloutForce = moment / fixingHoleSeparationM;
+            }
+
+            const safetyFactor = 1.20;
+            const finalDownwardForce = totalDownwardForceOnPlate * safetyFactor;
+            const finalPulloutForce = pulloutForce * safetyFactor;
+
+            dom['endplate-downward-force'].textContent = finalDownwardForce.toFixed(0);
+            dom['endplate-pullout-force'].textContent = finalPulloutForce.toFixed(0);
+
+            drawEndplateForceDiagram(finalDownwardForce, finalPulloutForce, offsetDistanceM, fixingHoleSeparation, parseFloat(selectedPlate.Size));
+        }
+
+        function selectSafetyBrake(impactTorqueNm) {
+            if (safetyBrakeData.length === 0) return null;
+            const suitableBrakes = safetyBrakeData
+                .map(b => ({ ...b, MaxTorque: parseFloat(b['Max Safety Torque (Nm)']) }))
+                .filter(b => b.MaxTorque >= impactTorqueNm)
+                .sort((a, b) => a.MaxTorque - b.MaxTorque);
+            return suitableBrakes.length > 0 ? suitableBrakes[0] : null;
+        }
+
+        function populateSafetyBrakeDropdown(requiredTorque) {
+            const select = dom.safetyBrakeSelector;
+            select.innerHTML = ''; 
+            if (safetyBrakeData.length === 0) {
+                select.innerHTML = '<option>-- No brake data --</option>';
+                return;
+            }
+
+            safetyBrakeData.forEach((brake, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const maxTorque = parseFloat(brake['Max Safety Torque (Nm)']);
+                option.textContent = `${brake.Name} (${maxTorque} Nm)`;
+
+                if (maxTorque >= requiredTorque) {
+                    option.classList.add('option-pass');
+                } else {
+                    option.classList.add('option-fail');
+                    option.disabled = true;
+                }
+                select.appendChild(option);
+            });
+        }
         
+        function calculateSafetyBrakeForce(totalWeight, lath, axle, travelHeight, fullCurtainLength) {
+            if (!axle || !lath || totalWeight <= 0 || !travelHeight || travelHeight <= 0) {
+                ['safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'sb-mass', 'sb-activation-height', 'sb-stop-dist', 'safety-brake-capacity'].forEach(id => dom[id].textContent = 'N/A');
+                dom['safety-brake-name'].textContent = 'N/A';
+                dom.safetyBrakeSelector.innerHTML = '<option>-- Run calculation first --</option>';
+                return;
+            }
+
+            let fallDistanceM = 0.1; 
+            if (lath && axle && fullCurtainLength > 1000) {
+                const collarSize = parseFloat(dom.collarSize.value) || 0;
+                const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+                const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
+
+                const lathThickness = parseFloat(lath['Thickness']);
+                const rolledUpLength = fullCurtainLength - 1000;
+                const a = Math.PI * lathThickness;
+                const b = Math.PI * effectiveStartDiameter;
+                const c = -rolledUpLength;
+                const discriminant = (b * b) - (4 * a * c);
+                const revolutions = (discriminant < 0 || a === 0) ? 0 : (-b + Math.sqrt(discriminant)) / (2 * a);
+                const diameterAtHeight = effectiveStartDiameter + 2 * revolutions * lathThickness;
+                const circumference = Math.PI * diameterAtHeight;
+                const calculatedFallDistance = (circumference / 8) / 1000;
+                if (calculatedFallDistance > 0) fallDistanceM = calculatedFallDistance;
+            }
+            
+            const activationHeightFromFloorM = 1.0; 
+            const heightLiftedM = (travelHeight / 1000) - activationHeightFromFloorM;
+            let percentLifted = (heightLiftedM > 0 && travelHeight > 0) ? heightLiftedM / (travelHeight / 1000) : 0;
+            percentLifted = Math.max(0, Math.min(1, percentLifted));
+            const fallingMass = totalWeight * (1 - percentLifted);
+            
+            const axleRadiusM = (parseFloat(axle['Diameter']) || 0) / 2 / 1000;
+            const g = 9.81;
+            
+            const preliminaryStopDistanceM = 0.010;
+            const potentialEnergy = fallingMass * g * fallDistanceM;
+            const impactForceN = (preliminaryStopDistanceM > 0) ? potentialEnergy / preliminaryStopDistanceM : 0;
+            const impactTorqueNm = impactForceN * axleRadiusM;
+            
+            const requiredTorqueWithSafetyFactor = impactTorqueNm * 1.20;
+
+            populateSafetyBrakeDropdown(requiredTorqueWithSafetyFactor);
+            const recommendedBrake = selectSafetyBrake(requiredTorqueWithSafetyFactor);
+
+            let finalStopDistanceM = preliminaryStopDistanceM;
+            if (recommendedBrake) {
+                const stopDistKey = Object.keys(recommendedBrake).find(k => k.toLowerCase().trim() === 'stop distance');
+                if (stopDistKey && parseFloat(recommendedBrake[stopDistKey]) > 0) {
+                    finalStopDistanceM = parseFloat(recommendedBrake[stopDistKey]) / 1000;
+                }
+            }
+
+            const finalPotentialEnergy = fallingMass * g * fallDistanceM;
+            const finalImpactForceN = (finalStopDistanceM > 0) ? finalPotentialEnergy / finalStopDistanceM : 0;
+            const finalImpactTorqueNm = finalImpactForceN * axleRadiusM;
+
+            dom['sb-activation-height'].textContent = activationHeightFromFloorM.toFixed(2);
+            dom['safety-brake-torque'].textContent = (finalImpactTorqueNm * 1.20).toFixed(2);
+            dom['safety-brake-force-kn'].textContent = (finalImpactForceN / 1000).toFixed(2);
+            dom['safety-brake-force-kg'].textContent = (finalImpactForceN / g).toFixed(2);
+            dom['sb-mass'].textContent = fallingMass.toFixed(2);
+            dom['sb-fall-dist'].textContent = fallDistanceM.toFixed(3);
+            dom['sb-stop-dist'].textContent = finalStopDistanceM.toFixed(3); 
+
+            if (recommendedBrake) {
+                const originalIndex = safetyBrakeData.findIndex(b => b.Name === recommendedBrake.Name);
+                if (originalIndex > -1) dom.safetyBrakeSelector.value = originalIndex;
+            } else {
+                dom.safetyBrakeSelector.value = "";
+            }
+            updateSelectedSafetyBrakeInfo();
+        }
+
+        function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight, curtainWidth) {
+            if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
+                ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
+                lastTorqueProfile = [];
+                maxCoilDiameter = 0;
+                drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+                dom.motorSelector.innerHTML = '<option>-- First select a mounting type --</option>';
+                dom.motorSelector.disabled = true;
+                updateSelectedMotorInfo();
+                return;
+            }
+            
+            const collarSize = parseFloat(dom.collarSize.value) || 0;
+            const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+            const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
+
+            calculatedRotations = calculateTotalRevolutions(travelHeight, effectiveStartDiameter, parseFloat(lath['Thickness']));
+            dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
+
+            const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
+            maxCoilDiameter = finalCoilDiameter;
+
+            const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
+            lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
+            drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+
+            const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
+            dom['max-torque'].textContent = requiredTorque.toFixed(1);
+            dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
+
+            const selectedMountType = dom.motorMountingType.value;
+            const selectedVoltage = dom.motorVoltageFilter.value;
+            const selectedManufacturer = dom.motorManufacturerFilter.value;
+
+            let voltageKey = '', manufacturerKey = '';
+            if (motorData.length > 0) {
+                voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
+                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+            }
+
+            currentFilteredMotors = motorData.filter(motor => {
+                const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
+                const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
+                const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
+                return mountMatch && voltageMatch && manufacturerMatch;
+            });
+            
+            const select = dom.motorSelector;
+            select.innerHTML = ''; 
+            select.disabled = false;
+
+            if (currentFilteredMotors.length === 0) {
+                select.innerHTML = '<option value="">-- No motors for this type --</option>';
+                updateSelectedMotorInfo();
+                return;
+            }
+            
+            let recommendedMotorIndexInFilteredList = -1;
+
+            currentFilteredMotors.forEach((motor, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                
+                const motorTorqueMin = parseFloat(motor['Torque (Nm) min']);
+                const motorTorqueMax = parseFloat(motor['Torque (Nm) max']);
+                option.textContent = `${motor['Name']} (${motorTorqueMin}-${motorTorqueMax} Nm)`;
+
+                const passesTest = requiredTorque >= motorTorqueMin && requiredTorque <= motorTorqueMax;
+                
+                if (passesTest) {
+                    option.classList.add('option-pass');
+                    if (recommendedMotorIndexInFilteredList === -1) {
+                        recommendedMotorIndexInFilteredList = index;
+                    }
+                } else {
+                    option.classList.add('option-fail');
+                    option.disabled = true; 
+                }
+                select.appendChild(option);
+            });
+
+            if (recommendedMotorIndexInFilteredList !== -1) {
+                select.value = recommendedMotorIndexInFilteredList;
+            } else {
+                const noMotorOption = document.createElement('option');
+                noMotorOption.value = "";
+                noMotorOption.textContent = "-- No suitable motor found --";
+                noMotorOption.selected = true;
+                noMotorOption.disabled = true;
+                select.prepend(noMotorOption);
+            }
+
+            updateSelectedMotorInfo();
+        }
+        
+        function updateSelectedSafetyBrakeInfo() {
+            const selectedIndex = dom.safetyBrakeSelector.value;
+            const imageContainer = dom['safety-brake-image-container'];
+            const imageDisplay = dom['safetyBrakeImageDisplay'];
+
+            if (selectedIndex !== "" && safetyBrakeData[selectedIndex]) {
+                const selectedBrake = safetyBrakeData[selectedIndex];
+                dom['safety-brake-name'].textContent = selectedBrake.Name;
+                dom['safety-brake-name'].classList.remove('warning-text');
+                
+                const driveshaftKey = Object.keys(selectedBrake).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
+                dom['safety-brake-driveshaft'].textContent = driveshaftKey ? selectedBrake[driveshaftKey] : 'N/A';
+
+                const maxTorque = parseFloat(selectedBrake['Max Safety Torque (Nm)']);
+                dom['safety-brake-capacity'].textContent = isNaN(maxTorque) ? 'N/A' : maxTorque.toFixed(2);
+                
+                const brakeName = selectedBrake.Name;
+                if (safetyBrakeImageMap.has(brakeName)) {
+                    imageDisplay.src = safetyBrakeImageMap.get(brakeName);
+                    imageContainer.style.display = 'block';
+                } else {
+                    imageContainer.style.display = 'none';
+                }
+
+            } else {
+                dom['safety-brake-name'].textContent = "No suitable safety brake found!";
+                dom['safety-brake-name'].classList.add('warning-text');
+                dom['safety-brake-driveshaft'].textContent = 'N/A';
+                dom['safety-brake-capacity'].textContent = 'N/A';
+                imageContainer.style.display = 'none';
+            }
+        }
+
+        function updateSelectedMotorInfo() {
+            const selectedMotorIndex = dom.motorSelector.value;
+            if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
+                 ['motor-name','motor-torque','motor-rpm','opening-time', 'power-consumed',
+                  'motor-name-inputs', 'motor-torque-inputs'
+                 ].forEach(id => { dom[id].textContent = 'N/A'; });
+                 dom['motor-torque-line'].classList.remove('warning-text');
+                 dom['motor-torque-line-inputs'].classList.remove('warning-text');
+                return;
+            }
+
+            const selectedMotor = currentFilteredMotors[selectedMotorIndex];
+            const motorTorqueMin = parseFloat(selectedMotor['Torque (Nm) min']);
+            const motorTorqueMax = parseFloat(selectedMotor['Torque (Nm) max']);
+            const motorRPM = parseFloat(selectedMotor['RPM']);
+            const motorWattage = parseFloat(selectedMotor['Wattage']);
+            
+            dom['motor-name'].textContent = selectedMotor['Name'];
+            dom['motor-torque'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`; 
+            dom['motor-rpm'].textContent = motorRPM;
+            
+            dom['motor-name-inputs'].textContent = selectedMotor['Name'];
+            dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
+
+            let openingTimeSec = 0;
+            if (motorRPM > 0 && calculatedRotations > 0) {
+                openingTimeSec = (calculatedRotations / motorRPM) * 60;
+                dom['opening-time'].textContent = openingTimeSec.toFixed(1);
+            } else {
+                dom['opening-time'].textContent = '0';
+            }
+
+            if (motorWattage > 0 && openingTimeSec > 0) {
+                const cycleTimeSec = openingTimeSec * 2;
+                const wattHours = (motorWattage * cycleTimeSec) / 3600;
+                const kiloWattHours = wattHours / 1000;
+                dom['power-consumed'].textContent = `${kiloWattHours.toFixed(4)} kWh`;
+            } else {
+                dom['power-consumed'].textContent = 'N/A';
+            }
+
+            const requiredTorque = parseFloat(dom['max-torque'].textContent);
+            if (requiredTorque < motorTorqueMin || requiredTorque > motorTorqueMax) {
+                dom['motor-torque-line'].classList.add('warning-text');
+                dom['motor-torque-line-inputs'].classList.add('warning-text');
+            } else {
+                dom['motor-torque-line'].classList.remove('warning-text');
+                dom['motor-torque-line-inputs'].classList.remove('warning-text');
+            }
+        }
+        
+        function updateSelectedWicketInfo() {
+            const selectedIndex = dom.wicketDoorSelector.value;
+            if (selectedIndex !== "" && wicketData[selectedIndex]) {
+                const selectedDoor = wicketData[selectedIndex];
+                dom['wicket-door-name'].textContent = selectedDoor.Name || 'N/A';
+                dom['wicket-door-height'].textContent = selectedDoor.Height || '0';
+                dom['wicket-door-width'].textContent = selectedDoor.Width || '0';
+            } else {
+                dom['wicket-door-name'].textContent = 'N/A';
+                dom['wicket-door-height'].textContent = '0';
+                dom['wicket-door-width'].textContent = '0';
+            }
+            const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+            updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth); // Recalc with current width
+        }
+
+        function updateWicketCalculationsAndGraphic(endlockOffsets = {cast: 0, wind: 0}, curtainWidth) {
+            const selectedWicketIndex = dom.wicketDoorSelector.value;
+            const selectedLathIndex = dom.lathType.value;
+            const selectedBottomLathIndex = dom.bottomLathType.value;
+            
+            const selectedWicket = (wicketData && selectedWicketIndex !== "") ? wicketData[selectedWicketIndex] : null;
+            const selectedLath = (lathData && selectedLathIndex !== "") ? lathData[selectedLathIndex] : null;
+            const selectedBottomLath = (bottomLathData && selectedBottomLathIndex !== "") ? bottomLathData[selectedBottomLathIndex] : null;
+            const selectedAxle = (axleData && dom.axleType.value !== "") ? axleData[dom.axleType.value] : null;
+
+            let lathsAtWicket = 0;
+            let wicketLathHeight = 0;
+
+            if (selectedWicket && selectedLath && selectedBottomLath) {
+                const wicketHeight = parseFloat(selectedWicket.Height) || 0;
+                const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
+                const lathCompressedHeight = parseFloat(selectedLath['Compressed lath height']) || 0;
+
+                if (lathCompressedHeight > 0 && wicketHeight > 0) {
+                    const wicketGap = 10; // 10mm gap
+                    const heightCoveredByWicketZone = wicketHeight + wicketGap;
+                    const lathsInZone = Math.ceil(heightCoveredByWicketZone / lathCompressedHeight);
+                    lathsAtWicket = lathsInZone;
+                    wicketLathHeight = bottomLathHeight + (lathsInZone * lathCompressedHeight);
+                }
+            }
+        
+            dom['laths-at-wicket'].textContent = lathsAtWicket;
+            dom['wicket-lath-height'].textContent = wicketLathHeight.toFixed(0);
+            
+            const selectedEndplateIndex = dom.endplateSelector.value;
+            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) 
+                ? currentFilteredEndplates[selectedEndplateIndex] 
+                : null;
+            
+            drawWicketGraphic(
+                curtainWidth,
+                parseFloat(dom.additionalLength.value),
+                parseInt(dom['lath-count'].textContent),
+                selectedLath,
+                selectedBottomLath,
+                selectedAxle,
+                selectedEndplate,
+                selectedWicket,
+                wicketLathHeight,
+                endlockOffsets
+            );
+            
+            calculateWicketTorque(curtainWidth);
+        }
+
+        function calculateWicketTorque(curtainWidth) {
+            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+            const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
+            const selectedWicket = wicketData.length > 0 ? wicketData[dom.wicketDoorSelector.value] : null;
+            const totalWeightKgs = parseFloat(dom['torque-weight-kg'].textContent) || 0;
+            
+            if (!selectedLath || !selectedAxle || !selectedWicket || totalWeightKgs <= 0) {
+                dom['wicket-max-torque'].textContent = '0.0';
+                drawTorqueGraph([], dom['wicket-torque-graph-container']);
+                return;
+            }
+            
+            const floorToAxleCenter = parseFloat(dom.height.value) || 0;
+            const bottomLathHeight = bottomLathData.length > 0 ? (parseFloat(bottomLathData[dom.bottomLathType.value]['BLath height']) || 0) : 0;
+            const travelHeight = floorToAxleCenter - bottomLathHeight;
+
+            const collarSize = parseFloat(dom.collarSize.value) || 0;
+            const axleCoilDiameter = getEffectiveCoilDiameter(selectedAxle);
+            const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
+
+            const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth);
+            
+            const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
+            const adjustedProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
+
+            const requiredTorque = adjustedProfile.length > 0 ? Math.max(...adjustedProfile.map(p => p.torque)) : 0;
+            dom['wicket-max-torque'].textContent = requiredTorque.toFixed(1);
+
+            drawTorqueGraph(adjustedProfile, dom['wicket-torque-graph-container']);
+        }
+
+        function getTorqueProfileWithWicket(totalWeightKgs, lath, travelHeight, wicket, effectiveStartDiameter, curtainWidth) {
+            const profileData = []; 
+            let heightLifted = 0; 
+            let currentRollDiameter = effectiveStartDiameter;
+            const lathThickness = parseFloat(lath['Thickness']);
+            
+            if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
+
+            const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+            const widthM = (curtainWidth || 0) / 1000;
+            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
+            const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
+            const lathsWeight = totalWeightKgs - bottomLathWeight;
+
+            const wicketWidthM = (parseFloat(wicket.Width) || 0) / 1000;
+            const wicketHeightM = (parseFloat(wicket.Height) || 0) / 1000;
+            
+            let lathKgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            if (dom.powderCoated.checked) {
+                lathKgsPerM2 += 0.5;
+            }
+            
+            const wicketWeightReduction = wicketWidthM * wicketHeightM * lathKgsPerM2;
+
+            const wicketStartHeightFromBottomM = (bottomLathHeight / 1000) + (10 / 1000); // Add 10mm gap
+            const wicketEndHeightFromBottomM = wicketStartHeightFromBottomM + wicketHeightM;
+
+            while (heightLifted < travelHeight) {
+                const percentLifted = heightLifted / travelHeight;
+                const remainingLathWeight = lathsWeight * (1 - percentLifted);
+                let remainingTotalWeight = remainingLathWeight + bottomLathWeight;
+                
+                const curtainHangingHeightM = (travelHeight - heightLifted) / 1000;
+                
+                let reduction = 0;
+                if (curtainHangingHeightM >= wicketEndHeightFromBottomM) {
+                    reduction = wicketWeightReduction;
+                } else if (curtainHangingHeightM > wicketStartHeightFromBottomM) {
+                    const hangingPortionHeight = curtainHangingHeightM - wicketStartHeightFromBottomM;
+                    reduction = wicketWeightReduction * (hangingPortionHeight / wicketHeightM);
+                }
+                remainingTotalWeight -= reduction;
+                remainingTotalWeight = Math.max(0, remainingTotalWeight);
+
+                const force = remainingTotalWeight * 9.81; 
+                const radiusM = (currentRollDiameter / 2) / 1000;
+                profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
+                
+                const circumference = Math.PI * currentRollDiameter; 
+                heightLifted += circumference / 2; 
+                currentRollDiameter += lathThickness;
+            } 
+            return { profileData, finalCoilDiameter: currentRollDiameter };
+        };
+
+        function calculateTotalRevolutions(travelHeight, initialDiameter, lathThickness) {
+            if (travelHeight <= 0 || initialDiameter <= 0 || lathThickness <= 0) return 0;
+            const a = Math.PI * lathThickness;
+            const b = Math.PI * initialDiameter;
+            const c = -travelHeight;
+            const discriminant = b * b - 4 * a * c;
+            if (discriminant < 0) return 0;
+            return (-b + Math.sqrt(discriminant)) / (2 * a);
+        }
+        
+        function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth) {
+            const profileData = []; 
+            let heightLifted = 0; 
+            let currentRollDiameter = effectiveStartDiameter;
+            const lathThickness = parseFloat(lath['Thickness']);
+            
+            if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
+
+            const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+            const widthM = (curtainWidth || 0) / 1000;
+            const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
+            const lathsWeight = totalWeightKgs - bottomLathWeight;
+
+            while (heightLifted < travelHeight) {
+                const percentLifted = heightLifted / travelHeight;
+                const remainingLathWeight = lathsWeight * (1 - percentLifted);
+                const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
+                
+                const force = remainingTotalWeight * 9.81; 
+                const radiusM = (currentRollDiameter / 2) / 1000;
+                profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
+                
+                const circumference = Math.PI * currentRollDiameter; 
+                heightLifted += circumference / 2; 
+                currentRollDiameter += lathThickness;
+            } 
+            return { profileData, finalCoilDiameter: currentRollDiameter };
+        };
+        
+        function populateDropdown(selectElement, dataArray, nameField) {
+            selectElement.innerHTML = `<option value="">-- Select an option --</option>`;
+            dataArray.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const header = Object.keys(item).find(k => k.toLowerCase().trim() === nameField.toLowerCase().trim());
+                option.textContent = item[header];
+                selectElement.appendChild(option);
+            });
+        };
+        
+        function calculateCurtainProperties(lath, bottomLath, axle, curtainWidth) {
+            const visionEnabled = dom.addVision.checked;
+            if (visionEnabled) {
+                return calculateVisionCurtainProperties(lath, bottomLath, axle, curtainWidth);
+            }
+        
+            const floorToAxleCenter = parseFloat(dom.height.value) || 0;
+            if (!lath || !bottomLath || floorToAxleCenter <= 0) {
+                dom['lath-count'].textContent = '0';
+                dom['laths-to-lift'].textContent = '0';
+                dom['weight-kg'].textContent = '0.00';
+                dom['torque-weight-kg'].textContent = '0.00';
+                dom['curtain-height-extended'].textContent = '0';
+                dom['curtain-height-compressed'].textContent = '0';
+                dom['curtain-area'].textContent = '0.00';
+				dom['lifted-curtain-area'].textContent = '0.00';
+                dom['vision-percentage-para'].style.display = 'none';
+                dom['vision-area-m2-para'].style.display = 'none';
+                dom['endlock-weight'].textContent = '0.00';
+                return { totalWeight: 0, torqueWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endlockOffsets: { cast: 0, wind: 0 } };
+            }
+
+            const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
+            const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']);
+            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+            
+            let axleRadius = 0;
+            if (axle) {
+                 const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+                axleRadius = axleCoilDiameter / 2;
+            } else if (axleData.length > 0) {
+                axleRadius = (getEffectiveCoilDiameter(axleData[0])) / 2;
+            }
+
+            const heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
+
+            let numLaths = 0;
+            if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) {
+                numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2;
+            }
+            dom['lath-count'].textContent = numLaths;
+            const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
+            dom['laths-to-lift'].textContent = numLathsToLift;
+
+            const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
+            const fullCurtainLength = (numLaths * uncompressedLathHeight) + bottomLathHeight;
+
+            dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
+            dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
+
+            const widthM = (curtainWidth || 0) / 1000;
+            
+            let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            if (dom.powderCoated.checked) {
+                kgsPerM2 += 0.5;
+            }
+            
+            // Calculate Total MATERIAL Area (uses uncompressed height)
+            const totalMaterialAreaM2 = widthM * (fullCurtainLength / 1000);
+            dom['curtain-area'].textContent = totalMaterialAreaM2.toFixed(2);
+			
+			// Calculate Lifted COVERAGE Area (uses compressed height)
+			const liftedLathCoverageLength = (numLathsToLift * lathCompressedHeight);
+			const liftedCoverageAreaM2 = widthM * (liftedLathCoverageLength / 1000);
+			dom['lifted-curtain-area'].textContent = liftedCoverageAreaM2.toFixed(2);
+
+            // Calculate weight based on COVERAGE area, not material area
+            const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
+            const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+
+            let totalEndlockWeight = 0;
+            const lathName = (lath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+            let endlockOffsets = { cast: 0, wind: 0 };
+            
+            if (numLaths > 0 && endlockData.length > 0) {
+                const selectedCastEndlockIndex = dom.endlockType.value;
+                let castEndlockWeightG = 0;
+                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                    const selectedEndlock = endlockData[selectedCastEndlockIndex];
+                    const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    castEndlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
+                    const offsetKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
+                    endlockOffsets.cast = offsetKey ? parseFloat(selectedEndlock[offsetKey]) : 0;
+                }
+
+                if (isWindLath) {
+                    let windEndlockWeightG = 0;
+                    const windEndlock = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                    if (windEndlock) {
+                        const weightKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        windEndlockWeightG = weightKey ? parseFloat(windEndlock[weightKey]) : 0;
+                        const offsetKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
+                        endlockOffsets.wind = offsetKey ? parseFloat(windEndlock[offsetKey]) : 0;
+                    }
+
+                    for (let i = 1; i <= numLaths; i++) {
+                        if (i % 2 !== 0 && castEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (castEndlockWeightG / 1000);
+                        }
+                        const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
+                        if (isWindLathPosition && windEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (windEndlockWeightG / 1000);
+                        }
+                    }
+                } else {
+                    if (castEndlockWeightG > 0) {
+                         const numEndlockPairs = Math.ceil(numLaths / 2);
+                         totalEndlockWeight = numEndlockPairs * 2 * (castEndlockWeightG / 1000);
+                    }
+                }
+            }
+            dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
+            dom['weight-kg'].textContent = totalWeight.toFixed(2);
+            
+            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
+            let torqueWeight;
+            const customTorqueWeightValue = parseFloat(dom.customTorqueWeight.value);
+
+            if (dom.useCustomLath.checked && !isNaN(customTorqueWeightValue) && customTorqueWeightValue > 0) {
+                torqueWeight = customTorqueWeightValue;
+            } else {
+                torqueWeight = totalWeight;
+                if (numLaths >= 3) {
+                    const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
+                    let bufferEndlockWeight = 0;
+                    // Simplified: assume 3 laths have 2 pairs of cast endlocks.
+                    const selectedCastEndlockIndex = dom.endlockType.value;
+                    if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                        const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                        if (castEndlockWeightG > 0) {
+                            bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs
+                        }
+                    }
+                    torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
+                }
+            }
+            dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
+            
+            const travelHeight = floorToAxleCenter - bottomLathHeight;
+            
+            const mainLathVisionKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(lath[mainLathVisionKey]) || 0) : 0;
+
+            if (mainLathVisionPercent > 0) {
+                const visionArea = totalMaterialAreaM2 * (mainLathVisionPercent / 100);
+                dom['vision-area-m2'].textContent = visionArea.toFixed(2);
+                dom['vision-percentage'].textContent = mainLathVisionPercent.toFixed(2);
+                
+                dom['vision-percentage-para'].style.display = 'block';
+                dom['vision-area-m2-para'].style.display = 'block';
+            } else {
+                dom['vision-percentage-para'].style.display = 'none';
+                dom['vision-area-m2-para'].style.display = 'none';
+            }
+            
+            return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData: null, endlockOffsets };
+        };
+        
+        function calculateVisionCurtainProperties(mainLath, bottomLath, axle, curtainWidth) {
+            const visionLath = lathData[dom.visionLathType.value];
+            const widthM = (curtainWidth || 0) / 1000;
+            const floorToAxleCenter = parseFloat(dom.height.value) || 0;
+            const desiredVisionStart = parseFloat(dom.visionStartHeight.value) || 0;
+            const desiredVisionPanelHeight = parseFloat(dom.visionPanelHeight.value) || 0;
+            let endlockOffsets = { cast: 0, wind: 0 };
+
+            const resetAndReturn = () => {
+                dom['lath-count'].textContent = '0';
+                dom['laths-to-lift'].textContent = '0';
+                dom['weight-kg'].textContent = '0.00';
+                dom['torque-weight-kg'].textContent = '0.00';
+                dom['curtain-height-extended'].textContent = '0';
+                dom['curtain-height-compressed'].textContent = '0';
+                dom['curtain-area'].textContent = '0.00';
+				dom['lifted-curtain-area'].textContent = '0.00';
+                dom['vision-percentage-para'].style.display = 'none';
+                dom['vision-area-m2-para'].style.display = 'none';
+                dom['endlock-weight'].textContent = '0.00';
+                return { totalWeight: 0, torqueWeight: 0, travelHeight: 0, fullCurtainLength: 0, visionData: null, endlockOffsets };
+            };
+
+            if (!mainLath || !bottomLath || !visionLath || !axle || floorToAxleCenter <= 0 || widthM <= 0) {
+                return resetAndReturn();
+            }
+
+            const mainLathCompressed = parseFloat(mainLath['Compressed lath height']);
+            const mainLathUncompressed = parseFloat(mainLath['uncompressed lath height']) || mainLathCompressed;
+            let mainLathKgsM2 = parseFloat(mainLath['Kgs/ m2']);
+            if (dom.powderCoated.checked) {
+                mainLathKgsM2 += 0.5;
+            }
+
+            const visionLathCompressed = parseFloat(visionLath['Compressed lath height']);
+            const visionLathUncompressed = parseFloat(visionLath['uncompressed lath height']) || visionLathCompressed;
+            let visionLathKgsM2 = parseFloat(visionLath['Kgs/ m2']);
+            if (dom.powderCoated.checked) {
+                visionLathKgsM2 += 0.5;
+            }
+
+            if (isNaN(mainLathCompressed) || isNaN(visionLathCompressed) || mainLathCompressed <= 0 || visionLathCompressed <= 0) {
+                 return resetAndReturn();
+            }
+
+            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+            const bottomLathWeightPerM = parseFloat(bottomLath['BLath weight / m length']) || 0;
+            const axleRadius = getEffectiveCoilDiameter(axle) / 2;
+            
+            let numLathsBelow = 0;
+            if (desiredVisionStart > bottomLathHeight) {
+                numLathsBelow = Math.round((desiredVisionStart - bottomLathHeight) / mainLathCompressed);
+            }
+            
+            let numLathsVision = 0;
+            if (desiredVisionPanelHeight > 0) {
+                numLathsVision = Math.round(desiredVisionPanelHeight / visionLathCompressed);
+            }
+
+            const heightCoveredSoFar_compressed = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed);
+            const remainingHeightToCover = (floorToAxleCenter + axleRadius) - heightCoveredSoFar_compressed;
+            
+            let numLathsAbove = 0;
+            if (remainingHeightToCover > 0) {
+                numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2;
+            }
+
+            const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
+            dom['lath-count'].textContent = totalNumLaths;
+            const numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
+            dom['laths-to-lift'].textContent = numLathsToLift;
+            
+            // Calculate Weights based on COVERAGE area
+            const weightBelow = numLathsBelow * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
+            const weightVision = numLathsVision * (visionLathCompressed / 1000) * widthM * visionLathKgsM2;
+            const weightAbove = numLathsAbove * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
+            const bottomLathWeight = widthM * bottomLathWeightPerM;
+            
+            let totalEndlockWeight = 0;
+            const lathName = (mainLath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+
+            if (totalNumLaths > 0 && endlockData.length > 0) {
+                const selectedCastEndlockIndex = dom.endlockType.value;
+                let castEndlockWeightG = 0;
+                if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                    const selectedEndlock = endlockData[selectedCastEndlockIndex];
+                    const weightKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    castEndlockWeightG = weightKey ? parseFloat(selectedEndlock[weightKey]) : 0;
+                    const offsetKey = Object.keys(selectedEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
+                    endlockOffsets.cast = offsetKey ? parseFloat(selectedEndlock[offsetKey]) : 0;
+                }
+
+                if (isWindLath) {
+                    let windEndlockWeightG = 0;
+                    const windEndlock = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                    if (windEndlock) {
+                        const weightKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        windEndlockWeightG = weightKey ? parseFloat(windEndlock[weightKey]) : 0;
+                        const offsetKey = Object.keys(windEndlock).find(k => k.toLowerCase().trim() === 'end lock offset');
+                        endlockOffsets.wind = offsetKey ? parseFloat(windEndlock[offsetKey]) : 0;
+                    }
+
+                    for (let i = 1; i <= totalNumLaths; i++) {
+                        if (i % 2 !== 0 && castEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (castEndlockWeightG / 1000);
+                        }
+                        const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
+                        if (isWindLathPosition && windEndlockWeightG > 0) {
+                            totalEndlockWeight += 2 * (windEndlockWeightG / 1000);
+                        }
+                    }
+                } else {
+                    if (castEndlockWeightG > 0) {
+                         const numEndlockPairs = Math.ceil(totalNumLaths / 2);
+                         totalEndlockWeight = numEndlockPairs * 2 * (castEndlockWeightG / 1000);
+                    }
+                }
+            }
+            dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
+            const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
+            dom['weight-kg'].textContent = totalWeight.toFixed(2);
+
+            // Calculate Torque Weight (Total weight minus 3 buffer laths and their endlocks)
+            let torqueWeight;
+            const customTorqueWeightValue = parseFloat(dom.customTorqueWeight.value);
+
+            if (dom.useCustomLath.checked && !isNaN(customTorqueWeightValue) && customTorqueWeightValue > 0) {
+                torqueWeight = customTorqueWeightValue;
+            } else {
+                torqueWeight = totalWeight;
+                if (numLathsAbove >= 3) {
+                    const bufferLathWeight = 3 * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
+                    let bufferEndlockWeight = 0;
+                    const selectedCastEndlockIndex = dom.endlockType.value;
+                     if (selectedCastEndlockIndex !== "" && endlockData[selectedCastEndlockIndex]) {
+                        const weightKey = Object.keys(endlockData[selectedCastEndlockIndex]).find(k => k.toLowerCase().trim() === 'weight in grams');
+                        const castEndlockWeightG = weightKey ? parseFloat(endlockData[selectedCastEndlockIndex][weightKey]) : 0;
+                        if (castEndlockWeightG > 0) {
+                            bufferEndlockWeight = 4 * (castEndlockWeightG / 1000); // two pairs for 3 laths
+                        }
+                    }
+                    torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
+                }
+            }
+            dom['torque-weight-kg'].textContent = torqueWeight.toFixed(2);
+
+            const compressedCurtainHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed) + (numLathsAbove * mainLathCompressed);
+            const fullCurtainLength = bottomLathHeight + (numLathsBelow * mainLathUncompressed) + (numLathsVision * visionLathUncompressed) + (numLathsAbove * mainLathUncompressed);
+            
+            // Calculate Total MATERIAL Area
+            const areaBelowMaterial = numLathsBelow * (mainLathUncompressed / 1000) * widthM;
+            const areaVisionMaterial = numLathsVision * (visionLathUncompressed / 1000) * widthM;
+            const areaAboveMaterial = numLathsAbove * (mainLathUncompressed / 1000) * widthM;
+            const totalMaterialArea = areaBelowMaterial + areaVisionMaterial + areaAboveMaterial;
+            dom['curtain-area'].textContent = totalMaterialArea.toFixed(2);
+
+			// Calculate Lifted COVERAGE Area
+			const areaBelowCoverage = numLathsBelow * (mainLathCompressed / 1000) * widthM;
+			const areaVisionCoverage = numLathsVision * (visionLathCompressed / 1000) * widthM;
+			const numLiftedLathsAbove = Math.max(0, numLathsAbove - 3);
+			const liftedAreaAboveCoverage = numLiftedLathsAbove * (mainLathCompressed / 1000) * widthM;
+			const liftedCoverageArea = areaBelowCoverage + areaVisionCoverage + liftedAreaAboveCoverage;
+			dom['lifted-curtain-area'].textContent = liftedCoverageArea.toFixed(2);
+
+            dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
+            dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
+
+            const travelHeight = floorToAxleCenter - bottomLathHeight;
+            
+            const actualVisionStartHeight = bottomLathHeight + (numLathsBelow * mainLathCompressed);
+            const actualVisionPanelHeight = numLathsVision * visionLathCompressed;
+
+            const mainLathVisionKey = Object.keys(mainLath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const mainLathVisionPercent = mainLathVisionKey ? (parseFloat(mainLath[mainLathVisionKey]) || 0) : 0;
+            
+            const visionLathVisionKey = Object.keys(visionLath).find(k => k.toLowerCase().trim() === 'vision percentage');
+            const visionLathVisionPercent = visionLathVisionKey ? (parseFloat(visionLath[visionLathVisionKey]) || 0) : 0;
+
+            const visionAreaFromMain = (areaBelowMaterial + areaAboveMaterial) * (mainLathVisionPercent / 100);
+            const visionAreaFromVisionPanel = areaVisionMaterial * (visionLathVisionPercent / 100);
+            const totalActualVisionArea = visionAreaFromMain + visionAreaFromVisionPanel;
+            
+            const overallVisionPercentage = (totalMaterialArea > 0) ? (totalActualVisionArea / totalMaterialArea) * 100 : 0;
+            
+            dom['vision-area-m2'].textContent = totalActualVisionArea.toFixed(2);
+            dom['vision-percentage'].textContent = overallVisionPercentage.toFixed(2);
+
+            dom['vision-percentage-para'].style.display = 'block';
+            dom['vision-area-m2-para'].style.display = 'block';
+
+            const visionData = {
+                visionLath,
+                numLathsBelow,
+                numLathsVision,
+                numLathsAbove,
+                actualVisionStartHeight,
+                actualVisionPanelHeight
+            };
+
+            return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets };
+        }
+
+        function drawTorqueGraph(profileData, container) {
+            container.innerHTML = '';
+            if (!profileData || profileData.length === 0) return;
+            
+            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
+            let svgWidth = container.clientWidth;
+            if (svgWidth === 0) svgWidth = 550; 
+            let svgHeight = container.clientHeight;
+            if (svgHeight === 0) svgHeight = 280;
+            
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+            const padding = { top: 30, right: 20, bottom: 60, left: 40 }; 
+            const graphWidth = svgWidth - padding.left - padding.right;
+            const graphHeight = svgHeight - padding.top - padding.bottom;
+            const maxTorque = Math.max(...profileData.map(p => p.torque)) * 1.1 || 10;
+
+            const yAxis = document.createElementNS(svgNS, 'line');
+            yAxis.setAttribute('x1', padding.left); yAxis.setAttribute('y1', padding.top);
+            yAxis.setAttribute('x2', padding.left); yAxis.setAttribute('y2', padding.top + graphHeight);
+            yAxis.setAttribute('class', 'axis-line');
+            svg.appendChild(yAxis);
+            
+            const xLabel = document.createElementNS(svgNS, 'text');
+            xLabel.setAttribute('class', 'graph-text');
+            xLabel.setAttribute('transform', `translate(${svgWidth/2}, ${svgHeight - 15})`);
+            xLabel.textContent = 'Coil Diameter (mm) / Revolutions';
+            svg.appendChild(xLabel);
+            
+            const barWidth = Math.max(5, graphWidth / profileData.length * 0.8);
+            const barSpacing = Math.max(1, graphWidth / profileData.length * 0.2);
+
+            profileData.forEach((item, index) => {
+                const barHeight = (item.torque / maxTorque) * graphHeight;
+                const x = padding.left + index * (barWidth + barSpacing);
+                const y = padding.top + graphHeight - barHeight;
+                const revs = (index + 1) * 0.5;
+
+                const bar = document.createElementNS(svgNS, 'rect');
+                bar.setAttribute('x', x);
+                bar.setAttribute('y', y);
+                bar.setAttribute('width', barWidth);
+                bar.setAttribute('height', barHeight);
+                bar.setAttribute('class', 'torque-bar');
+                
+                const title = document.createElementNS(svgNS, 'title');
+                title.textContent = `Rev ${revs.toFixed(1)}: ${item.torque.toFixed(1)} Nm | Dia: ${item.diameter.toFixed(0)} mm`;
+                bar.appendChild(title);
+                svg.appendChild(bar);
+
+                const textX = x + barWidth / 2;
+
+                if (barHeight > 15) {
+                    const torqueText = document.createElementNS(svgNS, 'text');
+                    torqueText.setAttribute('x', textX);
+                    torqueText.setAttribute('y', y - 5); 
+                    torqueText.setAttribute('class', 'graph-data-label'); 
+                    torqueText.textContent = `${item.torque.toFixed(1)} Nm`;
+                    svg.appendChild(torqueText);
+                }
+
+                const showAxisLabel = profileData.length < 15 || index % Math.ceil(profileData.length / 15) === 0;
+                if (showAxisLabel) {
+                    const diaText = document.createElementNS(svgNS, 'text');
+                    diaText.setAttribute('x', textX);
+                    diaText.setAttribute('y', padding.top + graphHeight + 15); 
+                    diaText.setAttribute('class', 'graph-data-label');
+                    diaText.textContent = `Ø${item.diameter.toFixed(0)}`;
+                    svg.appendChild(diaText);
+                
+                    const revText = document.createElementNS(svgNS, 'text');
+                    revText.setAttribute('x', textX);
+                    revText.setAttribute('y', padding.top + graphHeight + 28);
+                    revText.setAttribute('class', 'graph-data-label');
+                    revText.textContent = `(${revs.toFixed(1)}r)`;
+                    svg.appendChild(revText);
+                }
+            });
+            container.appendChild(svg);
+        }
+        
+        function drawDeflectionGraphic(length, deflection, isWarning = false) {
+            const container = dom['deflection-graphic-container'];
+            container.innerHTML = '';
+            
+            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
+            let svgWidth = container.clientWidth;
+            if (svgWidth === 0) svgWidth = 550;
+            let svgHeight = container.clientHeight;
+            if (svgHeight === 0) svgHeight = 150;
+
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const padding = 30, beamY = svgHeight / 2 + 10;
+            const maxVisualDeflection = svgHeight * 0.3;
+            const numericDeflection = parseFloat(deflection) || 0;
+            const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 25));
+
+            const startX = padding, endX = svgWidth - padding;
+            
+            const refPath = document.createElementNS(svgNS, 'path');
+            refPath.setAttribute('d', `M ${startX} ${beamY} H ${endX}`);
+            refPath.setAttribute('class', 'beam-path');
+            svg.appendChild(refPath);
+
+            const deflectedPath = document.createElementNS(svgNS, 'path');
+            const controlX = svgWidth / 2, controlY = beamY + visualDeflection;
+            deflectedPath.setAttribute('d', `M ${startX},${beamY} Q ${controlX},${controlY} ${endX},${beamY}`);
+            deflectedPath.setAttribute('class', 'deflected-path');
+            
+            const ratio = (numericDeflection > 0) ? length / numericDeflection : Infinity;
+            if (isWarning || numericDeflection > 25 || ratio < 400) {
+                 deflectedPath.classList.add('warning');
+            }
+            svg.appendChild(deflectedPath);
+
+            const supportSize = 10;
+            const leftSupport = document.createElementNS(svgNS, 'path');
+            leftSupport.setAttribute('d', `M ${startX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`);
+            leftSupport.setAttribute('class', 'support-symbol');
+            svg.appendChild(leftSupport);
+            
+            const rightSupport = document.createElementNS(svgNS, 'path');
+            rightSupport.setAttribute('d', `M ${endX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`);
+            rightSupport.setAttribute('class', 'support-symbol');
+            svg.appendChild(rightSupport);
+
+            if (numericDeflection > 0.1) {
+                const text = document.createElementNS(svgNS, 'text');
+                text.setAttribute('x', controlX);
+                text.setAttribute('y', controlY + 15);
+                text.setAttribute('class', 'graph-text');
+                text.textContent = `${numericDeflection.toFixed(2)} mm`;
+                svg.appendChild(text);
+            }
+            container.appendChild(svg);
+        }
+
+        function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSeparation, endplateSize) {
+            const container = dom['endplate-force-diagram-container'];
+            container.innerHTML = '';
+            if (downwardForce <= 0 && pulloutForce <= 0) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 450;
+            const svgHeight = 250;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const createMarker = (id, color) => {
+                const marker = document.createElementNS(svgNS, 'marker');
+                marker.setAttribute('id', id); marker.setAttribute('viewBox', '0 0 10 10');
+                marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5');
+                marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
+                marker.setAttribute('orient', 'auto-start-reverse');
+                const arrowPath = document.createElementNS(svgNS, 'path');
+                arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', color);
+                marker.appendChild(arrowPath);
+                return marker;
+            };
+
+            defs.appendChild(createMarker('arrow-force-red', '#d93025'));
+            defs.appendChild(createMarker('arrow-force-blue', '#007bff'));
+            defs.appendChild(createMarker('arrow-dim', '#343a40'));
+            svg.appendChild(defs);
+            
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
+            const wallX = 120;
+            const plateWidth = 20;
+            const plateHeight = 160;
+            const plateY = (svgHeight - plateHeight) / 2;
+            const plateCenterX = wallX + plateWidth / 2;
+            const plateCenterY = plateY + plateHeight / 2;
+            
+            svg.appendChild(createElem('line', { x1: wallX, y1: 20, x2: wallX, y2: svgHeight - 40, stroke: '#343a40', 'stroke-width': '4' }));
+            svg.appendChild(createElem('rect', { x: wallX, y: plateY, width: plateWidth, height: plateHeight, fill: '#adb5bd', stroke: '#495057'}));
+
+            const scaledFixingSep = Math.min(plateHeight * 0.7, fixingSeparation * 0.5); 
+            const topFixingY = plateCenterY - scaledFixingSep / 2;
+            const bottomFixingY = plateCenterY + scaledFixingSep / 2;
+            svg.appendChild(createElem('circle', { cx: plateCenterX, cy: topFixingY, r: 4, fill: '#495057' }));
+            svg.appendChild(createElem('circle', { cx: plateCenterX, cy: bottomFixingY, r: 4, fill: '#495057' }));
+
+            const coilCenterX = wallX + plateWidth + (offsetM * 1000 * 0.5);
+            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: plateCenterY, r: 40, fill: '#e9ecef', stroke: '#adb5bd', 'stroke-dasharray': '4,2' }));
+            svg.appendChild(createElem('circle', { cx: coilCenterX, cy: plateCenterY, r: 5, fill: '#6c757d' }));
+
+            // Forces Arrows
+            const arrowStyleRed = { stroke: '#d93025', 'stroke-width': '2', 'marker-end': 'url(#arrow-force-red)' };
+            const arrowStyleBlue = { stroke: '#007bff', 'stroke-width': '2', 'marker-start': 'url(#arrow-force-blue)' };
+
+            // Main Shear
+            svg.appendChild(createElem('line', { x1: coilCenterX, y1: plateCenterY + 40, x2: coilCenterX, y2: plateCenterY + 80, ...arrowStyleRed }));
+            const mainForceText = createElem('text', { x: coilCenterX, y: plateCenterY + 95, class: 'force-text red' });
+            mainForceText.textContent = `Total Shear: ${downwardForce.toFixed(0)} N`;
+            svg.appendChild(mainForceText);
+
+            // Pull-out & Compression
+            svg.appendChild(createElem('line', { x1: wallX, y1: topFixingY, x2: wallX - 40, y2: topFixingY, ...arrowStyleRed }));
+            svg.appendChild(createElem('line', { x1: wallX - 40, y1: bottomFixingY, x2: wallX, y2: bottomFixingY, ...arrowStyleBlue }));
+            const pulloutText = createElem('text', { x: wallX - 45, y: topFixingY, class: 'force-text red', 'text-anchor': 'end', 'dominant-baseline': 'middle' });
+            pulloutText.textContent = `${pulloutForce.toFixed(0)} N`;
+            svg.appendChild(pulloutText);
+            const compText = createElem('text', { x: wallX - 45, y: bottomFixingY, class: 'force-text blue', 'text-anchor': 'end', 'dominant-baseline': 'middle' });
+            compText.textContent = `${pulloutForce.toFixed(0)} N`;
+            svg.appendChild(compText);
+
+            // Shear on Bolts
+            const shearForcePerBolt = downwardForce / 2;
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: topFixingY, x2: plateCenterX, y2: topFixingY + 30, ...arrowStyleRed }));
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: bottomFixingY, x2: plateCenterX, y2: bottomFixingY + 30, ...arrowStyleRed }));
+            const shearText = createElem('text', { x: plateCenterX + 5, y: bottomFixingY + 45, class: 'force-text red', 'text-anchor': 'start' });
+            shearText.textContent = `Shear: ${shearForcePerBolt.toFixed(0)} N (each)`;
+            svg.appendChild(shearText);
+
+            // Dimensions
+            const dimStyle = { class: 'dimension-line', 'marker-start': 'url(#arrow-dim)', 'marker-end': 'url(#arrow-dim)' };
+            
+            // Fixing Separation Dim
+            const fixDimX = wallX + plateWidth + 20;
+            svg.appendChild(createElem('line', { x1: fixDimX, y1: topFixingY, x2: fixDimX, y2: bottomFixingY, ...dimStyle }));
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: topFixingY, x2: fixDimX, y2: topFixingY, class: 'leader-line'}));
+            svg.appendChild(createElem('line', { x1: plateCenterX, y1: bottomFixingY, x2: fixDimX, y2: bottomFixingY, class: 'leader-line'}));
+            const fixText = createElem('text', { x: fixDimX + 4, y: plateCenterY, class: 'dim-text-force-diagram', 'text-anchor':'start', 'dominant-baseline':'middle', transform:`rotate(-90, ${fixDimX+4}, ${plateCenterY})`});
+            fixText.textContent = `${fixingSeparation.toFixed(0)} mm`;
+            svg.appendChild(fixText);
+
+            // Offset Dim
+            const offsetDimY = 20;
+            svg.appendChild(createElem('line', { x1: wallX, y1: offsetDimY, x2: coilCenterX, y2: offsetDimY, ...dimStyle }));
+            const offsetText = createElem('text', { x: wallX + (coilCenterX - wallX)/2, y: offsetDimY - 4, class: 'dim-text-force-diagram' });
+            offsetText.textContent = `Offset: ${(offsetM * 1000).toFixed(0)} mm`;
+            svg.appendChild(offsetText);
+
+            container.appendChild(svg);
+        }
+
+        function drawEndplateGraphic(endplate, coilDiameter, axle, lath, numLaths) {
+            const container = dom['endplate-graphic-container'];
+            container.innerHTML = '';
+            if (!endplate || !coilDiameter || !axle || !lath || !numLaths || coilDiameter <= 0) {
+                return;
+            }
+
+            const endplateSize = parseFloat(endplate.Size);
+            const lathThickness = parseFloat(lath['Thickness']);
+            if (isNaN(endplateSize) || isNaN(lathThickness) || endplateSize <= 0) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 550;
+            const svgHeight = 250;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'arrow-endplate');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '1');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            const padding = { top: 20, right: 120, bottom: 40, left: 20 };
+            const graphHeight = svgHeight - padding.top - padding.bottom;
+            
+            const scale = graphHeight / endplateSize;
+            const scaledBoxSize = endplateSize * scale;
+            
+            const boxX = padding.left;
+            const boxY = padding.top + (graphHeight - scaledBoxSize) / 2;
+            const centerX = boxX + scaledBoxSize / 2;
+            const centerY = boxY + scaledBoxSize / 2;
+
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
+            // Draw Endplate Box
+            svg.appendChild(createElem('rect', {
+                x: boxX, y: boxY, width: scaledBoxSize, height: scaledBoxSize,
+                fill: '#f8f9fa', stroke: '#ced4da', 'stroke-width': '1'
+            }));
+
+            // Draw Axle
+            const axleDiameter = getEffectiveCoilDiameter(axle);
+            const scaledAxleRadius = (axleDiameter / 2) * scale;
+            svg.appendChild(createElem('circle', {
+                cx: centerX, cy: centerY, r: scaledAxleRadius,
+                class: 'shutter-axle-graphic'
+            }));
+
+            // Draw each lath wrap based on total laths
+            for (let i = 1; i <= numLaths; i++) {
+                const currentRadius = (axleDiameter / 2) + (i * lathThickness);
+                if (currentRadius * 2 > coilDiameter) break; // Don't draw outside the final calculated diameter
+                svg.appendChild(createElem('circle', {
+                    cx: centerX, cy: centerY, r: currentRadius * scale,
+                    class: 'coil-wrap-graphic'
+                }));
+            }
+            
+            // Draw Final Coil Outline
+            const scaledCoilRadius = (coilDiameter / 2) * scale;
+            svg.appendChild(createElem('circle', {
+                cx: centerX, cy: centerY, r: scaledCoilRadius,
+                fill: 'none', stroke: '#007bff', 'stroke-width': '2'
+            }));
+
+            // Dimensions
+            const dimLineX = boxX + scaledBoxSize + 25;
+            svg.appendChild(createElem('line', { x1: boxX, y1: boxY, x2: dimLineX, y2: boxY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: boxX, y1: boxY + scaledBoxSize, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: dimLineX, y1: boxY, x2: dimLineX, y2: boxY + scaledBoxSize, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
+            const boxSizeTextX = dimLineX + 12;
+            const boxSizeText = createElem('text', { x: boxSizeTextX, y: centerY, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${boxSizeTextX}, ${centerY})` });
+            boxSizeText.textContent = `${endplateSize.toFixed(0)} mm`;
+            svg.appendChild(boxSizeText);
+            
+            const coilDimY = boxY + scaledBoxSize + 20;
+            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: centerY, x2: centerX - scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: centerX + scaledCoilRadius, y1: centerY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: centerX - scaledCoilRadius, y1: coilDimY, x2: centerX + scaledCoilRadius, y2: coilDimY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
+            const coilDimText = createElem('text', { x: centerX, y: coilDimY + 15, class: 'large-dimension-text' });
+            coilDimText.textContent = `Ø ${coilDiameter.toFixed(1)} mm`;
+            svg.appendChild(coilDimText);
+
+            const clearance = (endplateSize - coilDiameter) / 2;
+            if (clearance > 1) {
+                const clearanceDimX = dimLineX + 40;
+                const topY = boxY;
+                const coilTopY = centerY - scaledCoilRadius;
+                svg.appendChild(createElem('line', { x1: centerX, y1: topY, x2: clearanceDimX, y2: topY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+                svg.appendChild(createElem('line', { x1: centerX, y1: coilTopY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+                svg.appendChild(createElem('line', { x1: clearanceDimX, y1: topY, x2: clearanceDimX, y2: coilTopY, class: 'dimension-line', 'marker-start': 'url(#arrow-endplate)', 'marker-end': 'url(#arrow-endplate)' }));
+                const clearanceTextX = clearanceDimX + 12;
+                const clearanceText = createElem('text', { x: clearanceTextX, y: topY + (coilTopY - topY) / 2, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${clearanceTextX}, ${topY + (coilTopY - topY) / 2})` });
+                clearanceText.textContent = `${clearance.toFixed(1)} mm`;
+                svg.appendChild(clearanceText);
+            }
+            
+            container.appendChild(svg);
+        }
+
+        function drawAxleCrossSection(axle, collarSize = 0) {
+            const container = dom['axle-cross-section-container'];
+            container.innerHTML = '';
+            if (!axle) return;
+
+            const outerDia = parseFloat(axle['Diameter']);
+            const wallThick = parseFloat(axle['Wall Thickness']);
+            const shape = (axle['Shape'] || 'circular').toLowerCase();
+
+            if (isNaN(outerDia) || isNaN(wallThick) || outerDia <= 0 || wallThick <= 0) return;
+            
+            const innerDia = outerDia - (2 * wallThick);
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 550;
+            const svgHeight = 250;
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const padding = { top: 20, right: 100, bottom: 20, left: 100 };
+            const graphSize = Math.min(svgWidth - padding.left - padding.right, svgHeight - padding.top - padding.bottom) * 0.75;
+            
+            const displayDiameter = collarSize > outerDia ? collarSize : outerDia;
+            const scale = graphSize / displayDiameter;
+            const cx = svgWidth / 2;
+            const cy = svgHeight / 2;
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'arrow');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '1');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            if (shape === 'octagonal') {
+                const createOctagon = (flatToFlat, style) => {
+                    const circumRadius = (flatToFlat / 2) / Math.cos(Math.PI / 8);
+                    const points = [];
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI / 8) + i * (Math.PI / 4);
+                        const x = cx + (circumRadius * scale) * Math.cos(angle);
+                        const y = cy - (circumRadius * scale) * Math.sin(angle);
+                        points.push(`${x},${y}`);
+                    }
+                    const polygon = document.createElementNS(svgNS, 'polygon');
+                    polygon.setAttribute('points', points.join(' '));
+                    for (const key in style) polygon.setAttribute(key, style[key]);
+                    return polygon;
+                };
+                const polyStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
+                svg.appendChild(createOctagon(outerDia, polyStyle));
+                svg.appendChild(createOctagon(innerDia, polyStyle));
+
+            } else { // Circular
+                const createCircle = (diameter, style) => {
+                    const circle = document.createElementNS(svgNS, 'circle');
+                    circle.setAttribute('cx', cx);
+                    circle.setAttribute('cy', cy);
+                    circle.setAttribute('r', (diameter / 2) * scale);
+                    for (const key in style) circle.setAttribute(key, style[key]);
+                    return circle;
+                };
+                const circleStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
+                svg.appendChild(createCircle(outerDia, circleStyle));
+                svg.appendChild(createCircle(innerDia, circleStyle));
+            }
+            
+            if (collarSize > outerDia) {
+                const collarRadius = (collarSize / 2) * scale;
+                const collarCircle = document.createElementNS(svgNS, 'circle');
+                collarCircle.setAttribute('cx', cx);
+                collarCircle.setAttribute('cy', cy);
+                collarCircle.setAttribute('r', collarRadius);
+                collarCircle.setAttribute('stroke', 'black');
+                collarCircle.setAttribute('stroke-width', '3');
+                collarCircle.setAttribute('fill', 'none');
+                svg.appendChild(collarCircle);
+            }
+
+            const createElem = (type, attrs) => {
+                const el = document.createElementNS(svgNS, type);
+                for (const key in attrs) el.setAttribute(key, attrs[key]);
+                return el;
+            };
+
+            const outerRadiusScaled = (outerDia / 2) * scale;
+            const innerRadiusScaled = (innerDia / 2) * scale;
+
+            const od_dim_x = cx + outerRadiusScaled + 40;
+            svg.appendChild(createElem('line', { x1: cx, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy - outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: cx, y1: cy + outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: od_dim_x, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
+            const odTextX = od_dim_x + 15;
+            const odText = createElem('text', { x: odTextX, y: cy, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${odTextX}, ${cy})` });
+            odText.textContent = `${outerDia.toFixed(1)}`;
+            svg.appendChild(odText);
+
+            const id_dim_x = cx + innerRadiusScaled + 15;
+            svg.appendChild(createElem('line', { x1: cx, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy - innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: cx, y1: cy + innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
+            svg.appendChild(createElem('line', { x1: id_dim_x, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
+            const idTextX = id_dim_x + 15;
+            const idText = createElem('text', { x: idTextX, y: cy, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${idTextX}, ${cy})` });
+            idText.textContent = `${innerDia.toFixed(1)}`;
+            svg.appendChild(idText);
+
+            const angle = 135 * Math.PI / 180;
+            const arrowTipX = cx + outerRadiusScaled * Math.cos(angle);
+            const arrowTipY = cy - outerRadiusScaled * Math.sin(angle);
+            const leaderElbowX = cx - outerRadiusScaled - 20;
+            const leaderElbowY = cy - outerRadiusScaled - 20;
+
+            svg.appendChild(createElem('line', {
+                x1: leaderElbowX, y1: leaderElbowY,
+                x2: arrowTipX, y2: arrowTipY,
+                class: 'dimension-line',
+                'marker-end': 'url(#arrow)'
+            }));
+
+            const textLineStartX = leaderElbowX - 30;
+            svg.appendChild(createElem('line', {
+                x1: leaderElbowX, y1: leaderElbowY,
+                x2: textLineStartX, y2: leaderElbowY,
+                class: 'dimension-line'
+            }));
+            
+            const wtText = createElem('text', {
+                x: textLineStartX + (leaderElbowX - textLineStartX) / 2,
+                y: leaderElbowY - 8,
+                class: 'large-dimension-text'
+            });
+            wtText.textContent = `${wallThick.toFixed(1)}`;
+            svg.appendChild(wtText);
+
+            container.appendChild(svg);
+        }
+
+        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
+            const container = dom['shutter-graphic-container'];
+            container.innerHTML = '';
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
+            if(graphic) container.appendChild(graphic);
+        }
+        
+        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
+            const container = dom['wicket-graphic-container'];
+            container.innerHTML = '';
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
+            if(graphic) container.appendChild(graphic);
+        }
+
+        function drawTopDownWidthGraphic(calculatedWidths, guide) {
+            const container = dom['width-graphic-container'];
+            container.innerHTML = '';
+
+            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
+            if (!guide || !overallWidth || overallWidth <= 0) {
+                return;
+            }
+
+            const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
+            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
+            const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
+            const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 600;
+            const svgHeight = 180; 
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', 'dim-arrow-width-graphic');
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '5');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '4');
+            marker.setAttribute('markerHeight', '4');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            const padding = { x: 50, y: 30 };
+            const graphicWidth = svgWidth - 2 * padding.x;
+            const scale = graphicWidth / overallWidth;
+
+            const curtainHeight = 20;
+            const guideDepth = 30;
+            const graphicTopY = padding.y;
+
+            const scaledGuideWidth = guideWidth * scale;
+            const scaledCurtainWidth = curtainWidth * scale;
+            const scaledClearOpening = clearOpening * scale;
+            const scaledPenetration = guidePenetration * scale;
+
+            const overallStartX = padding.x;
+
+            // --- Draw U-shaped Guides ---
+            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
+            const leftGuideX = overallStartX;
+            const leftGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
+            const leftGuidePath = document.createElementNS(svgNS, 'path');
+            leftGuidePath.setAttribute('d', `M ${leftGuideX + scaledGuideWidth},${leftGuideY} L ${leftGuideX},${leftGuideY} L ${leftGuideX},${leftGuideY + guideDepth} L ${leftGuideX + scaledGuideWidth},${leftGuideY + guideDepth}`);
+            Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key]));
+            svg.appendChild(leftGuidePath);
+
+            const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth;
+            const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
+            const rightGuidePath = document.createElementNS(svgNS, 'path');
+            rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`);
+            Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key]));
+            svg.appendChild(rightGuidePath);
+
+            // --- Draw Curtain ---
+            const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
+            const curtain = document.createElementNS(svgNS, 'rect');
+            curtain.setAttribute('x', curtainX);
+            curtain.setAttribute('y', graphicTopY);
+            curtain.setAttribute('width', scaledCurtainWidth);
+            curtain.setAttribute('height', curtainHeight);
+            curtain.setAttribute('class', 'shutter-bottomlath-graphic');
+            svg.appendChild(curtain);
+
+            const endCapWidth = 5;
+            const leftEndCap = document.createElementNS(svgNS, 'rect');
+            leftEndCap.setAttribute('x', curtainX);
+            leftEndCap.setAttribute('y', graphicTopY);
+            leftEndCap.setAttribute('width', endCapWidth);
+            leftEndCap.setAttribute('height', curtainHeight);
+            leftEndCap.setAttribute('fill', 'black');
+            svg.appendChild(leftEndCap);
+
+            const rightEndCap = document.createElementNS(svgNS, 'rect');
+            rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth);
+            rightEndCap.setAttribute('y', graphicTopY);
+            rightEndCap.setAttribute('width', endCapWidth);
+            rightEndCap.setAttribute('height', curtainHeight);
+            rightEndCap.setAttribute('fill', 'black');
+            svg.appendChild(rightEndCap);
+
+            // --- Draw Dimensions ---
+            const drawDim = (yOffset, startX, endX, label, value) => {
+                const lineY = graphicTopY + guideDepth + yOffset;
+                const tickHeight = 8;
+                const textGap = 5;
+
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', startX); line.setAttribute('y1', lineY);
+                line.setAttribute('x2', endX); line.setAttribute('y2', lineY);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)');
+                line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)');
+                svg.appendChild(line);
+
+                const tick1 = document.createElementNS(svgNS, 'line');
+                tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY);
+                tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight);
+                tick1.setAttribute('class', 'dimension-tick');
+                svg.appendChild(tick1);
+
+                const tick2 = document.createElementNS(svgNS, 'line');
+                tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY);
+                tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight);
+                tick2.setAttribute('class', 'dimension-tick');
+                svg.appendChild(tick2);
+
+                const labelText = document.createElementNS(svgNS, 'text');
+                labelText.textContent = label;
+                labelText.setAttribute('class', 'width-graphic-label');
+                labelText.setAttribute('x', startX + (endX - startX) / 2);
+                labelText.setAttribute('y', lineY - textGap);
+                svg.appendChild(labelText);
+                
+                const valueText = document.createElementNS(svgNS, 'text');
+                valueText.textContent = `(${value.toFixed(0)} mm)`;
+                valueText.setAttribute('class', 'width-graphic-value');
+                valueText.setAttribute('x', startX + (endX - startX) / 2);
+                valueText.setAttribute('y', lineY + textGap + 10);
+                svg.appendChild(valueText);
+            };
+
+            const clearOpeningStartX = overallStartX + scaledGuideWidth;
+            const clearOpeningEndX = clearOpeningStartX + scaledClearOpening;
+            drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
+
+            const curtainEndX = curtainX + scaledCurtainWidth;
+            drawDim(65, curtainX, curtainEndX, 'Curtain width', curtainWidth);
+
+            const overallEndX = overallStartX + graphicWidth;
+            drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
+            
+            container.appendChild(svg);
+        }
+
+        function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
+            const svgNS = "http://www.w3.org/2000/svg";
+
+            if (!realWidth || !lath || !bottomLath || !axle) {
+                return null;
+            }
+
+            const { 
+                wicket = null, 
+                visionOptions = null,
+                endlockOffsets = { cast: 0, wind: 0 }
+            } = options;
+
+            const selectedEndlockIndex = dom.endlockType.value;
+            const endlocksSelected = selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex];
+
+            const svg = document.createElementNS(svgNS, "svg");
+            
+            const basePadding = { top: 25, right: 120, bottom: 60, left: 120 };
+            const topDimClearance = 35; // Extra space for top dimension
+            const totalTopPadding = basePadding.top + topDimClearance;
+            const svgWidth = 600; 
+
+            const mainLathHeight = parseFloat(lath['Compressed lath height']);
+            const bottomLathHeight = parseFloat(bottomLath['BLath height'] || mainLathHeight);
+            const axleDiameter = parseFloat(axle['Diameter']);
+
+            let totalRealCompressedHeight = parseFloat(dom['curtain-height-compressed'].textContent) + axleDiameter;
+
+            const totalRealAxleWidth = realWidth + (additionalLength || 0);
+            if (totalRealCompressedHeight <= 0 || totalRealAxleWidth <= 0) return null;
+
+            const graphWidth = svgWidth - basePadding.left - basePadding.right;
+            const scale = graphWidth / totalRealAxleWidth;
+            const graphHeight = totalRealCompressedHeight * scale;
+            const svgHeight = graphHeight + totalTopPadding + basePadding.bottom;
+            
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker');
+            marker.setAttribute('id', `dim-arrow-${idSuffix}`);
+            marker.setAttribute('viewBox', '0 0 10 10');
+            marker.setAttribute('refX', '5');
+            marker.setAttribute('refY', '5');
+            marker.setAttribute('markerWidth', '5');
+            marker.setAttribute('markerHeight', '5');
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path');
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            arrowPath.setAttribute('fill', '#343a40');
+            marker.appendChild(arrowPath);
+            defs.appendChild(marker);
+            svg.appendChild(defs);
+
+            const scaledTotalAxleWidth = totalRealAxleWidth * scale;
+            const scaledShutterWidth = realWidth * scale;
+            const startX = basePadding.left;
+            const lathStartX = startX + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
+            const scaledCastOffset = endlockOffsets.cast * scale;
+            const scaledWindOffset = endlockOffsets.wind * scale;
+
+            const createLeaderLine = (x1, y1, x2, y2) => {
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('class', 'leader-line');
+                svg.appendChild(line);
+            };
+
+            const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal', textSide = 'right') => {
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`);
+                line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`);
+                svg.appendChild(line);
+
+                const text = document.createElementNS(svgNS, 'text');
+                text.textContent = label;
+                text.setAttribute('class', 'dimension-text');
+
+                if (orientation === 'horizontal') {
+                    text.setAttribute('x', x1 + (x2 - x1) / 2);
+                    text.setAttribute('y', y1 - 4);
+                } else { // vertical
+                    const textY = y1 + (y2 - y1) / 2;
+                    let textX;
+                    if (textSide === 'left') {
+                        textX = x1 - 4;
+                        text.setAttribute('text-anchor', 'end');
+                    } else {
+                        textX = x1 + 4;
+                        text.setAttribute('text-anchor', 'start');
+                    }
+                    text.setAttribute('x', textX);
+                    text.setAttribute('y', textY);
+                    text.setAttribute('dominant-baseline', 'middle');
+                    text.setAttribute('transform', `rotate(-90, ${textX}, ${textY})`);
+                }
+                svg.appendChild(text);
+            };
+            
+            const drawAnnotation = (startY, endY, label) => {
+                const lineX = basePadding.left - 55;
+                const textX = lineX - 8;
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', lineX); line.setAttribute('y1', startY);
+                line.setAttribute('x2', lineX); line.setAttribute('y2', endY);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`);
+                line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`);
+                svg.appendChild(line);
+
+                const text = document.createElementNS(svgNS, 'text');
+                text.setAttribute('x', textX);
+                text.setAttribute('class', 'dimension-text');
+                text.setAttribute('text-anchor', 'end');
+                
+                const charLimit = 14;
+                const words = label.split(' ');
+                let currentLine = '';
+                words.forEach(word => {
+                    if ((currentLine + ' ' + word).length > charLimit && currentLine.length > 0) {
+                        const tspan = document.createElementNS(svgNS, 'tspan');
+                        tspan.setAttribute('x', textX);
+                        tspan.setAttribute('dy', '1.2em');
+                        tspan.textContent = word;
+                        text.appendChild(tspan);
+                        currentLine = word;
+                    } else {
+                        if (currentLine.length > 0) currentLine += ' ';
+                        currentLine += word;
+                        if (text.childElementCount === 0) {
+                             text.textContent = currentLine;
+                        } else {
+                            text.lastChild.textContent = currentLine;
+                        }
+                    }
+                });
+
+                const numLines = 1 + text.querySelectorAll('tspan').length;
+                const middleY = startY + (endY - startY) / 2;
+                const lineHeight = 6; 
+                const startYForBlock = middleY - ((numLines - 1) * lineHeight / 2);
+                text.setAttribute('y', startYForBlock);
+
+                svg.appendChild(text);
+            };
+
+            // Drawing starts from a new top position to account for padding
+            const scaledAxleHeight = axleDiameter * scale;
+            const axleY = totalTopPadding;
+            const axleCenterlineY = axleY + scaledAxleHeight / 2;
+            const bottomY = totalTopPadding + graphHeight;
+            let currentY = bottomY;
+
+            let endplateTopY = axleY; // Default to top of axle if no endplate
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    const scaledEndplateHeight = endplateSize * scale;
+                    endplateTopY = axleCenterlineY - (scaledEndplateHeight / 2);
+                }
+            }
+
+            // --- DRAW CURTAIN FROM BOTTOM UP ---
+            const scaledBottomLathHeight = bottomLathHeight * scale;
+            currentY -= scaledBottomLathHeight;
+            const bottomLathRect = document.createElementNS(svgNS, 'rect');
+            bottomLathRect.setAttribute('x', lathStartX);
+            bottomLathRect.setAttribute('y', currentY);
+            bottomLathRect.setAttribute('width', scaledShutterWidth);
+            bottomLathRect.setAttribute('height', scaledBottomLathHeight);
+            bottomLathRect.setAttribute('class', 'shutter-bottomlath-graphic');
+            svg.appendChild(bottomLathRect);
+            const bottomLathTopY = currentY;
+
+            const drawEndlocks = (lathY, lathH, leftOffset = 0) => {
+                const endlockSide = lathH * 0.8;
+                const endlockY = lathY + (lathH - endlockSide) / 2;
+                
+                const leftEndlock = document.createElementNS(svgNS, 'rect');
+                leftEndlock.setAttribute('x', lathStartX + leftOffset - scaledCastOffset);
+                leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockSide);
+                leftEndlock.setAttribute('height', endlockSide);
+                leftEndlock.setAttribute('class', 'endlock-graphic');
+                svg.appendChild(leftEndlock);
+                
+                const rightEndlock = document.createElementNS(svgNS, 'rect');
+                const curtainRightEdge = lathStartX + scaledShutterWidth;
+                rightEndlock.setAttribute('x', curtainRightEdge + scaledCastOffset - endlockSide);
+                rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockSide);
+                rightEndlock.setAttribute('height', endlockSide);
+                rightEndlock.setAttribute('class', 'endlock-graphic');
+                svg.appendChild(rightEndlock);
+            };
+
+            const drawWindEndlocks = (lathY, lathH, leftOffset = 0) => {
+                const endlockHeight = lathH * 0.8;
+                const endlockWidth = endlockHeight * 2.5;
+                const endlockY = lathY + (lathH - endlockHeight) / 2;
+
+                const leftEndlock = document.createElementNS(svgNS, 'rect');
+                leftEndlock.setAttribute('x', lathStartX + leftOffset - scaledWindOffset);
+                leftEndlock.setAttribute('y', endlockY);
+                leftEndlock.setAttribute('width', endlockWidth);
+                leftEndlock.setAttribute('height', endlockHeight);
+                leftEndlock.setAttribute('class', 'wind-endlock-graphic');
+                svg.appendChild(leftEndlock);
+                
+                const rightEndlock = document.createElementNS(svgNS, 'rect');
+                const curtainRightEdge = lathStartX + scaledShutterWidth;
+                rightEndlock.setAttribute('x', curtainRightEdge + scaledWindOffset - endlockWidth);
+                rightEndlock.setAttribute('y', endlockY);
+                rightEndlock.setAttribute('width', endlockWidth);
+                rightEndlock.setAttribute('height', endlockHeight);
+                rightEndlock.setAttribute('class', 'wind-endlock-graphic');
+                svg.appendChild(rightEndlock);
+            };
+
+            let lathVisualCounter = 1;
+            const isWindLath = (lath['Name'] || '').toLowerCase().includes('wind');
+            
+            const wicketRealHeight = wicket ? (parseFloat(wicket.Height) || 0) : 0;
+            const scaledWicketHeight = wicketRealHeight * scale;
+            const wicketGap = 10; // 10mm gap
+            const scaledWicketGap = wicketGap * scale;
+            const wicketTopY = bottomLathTopY - scaledWicketGap - scaledWicketHeight;
+            const scaledWicketWidth = wicket ? (parseFloat(wicket.Width) || 0) * scale : 0;
+
+
+            if (visionOptions && visionOptions.visionLath) {
+                 const vo = visionOptions;
+                const visionLathCompHeight = parseFloat(vo.visionLath['Compressed lath height']);
+                const scaledMainLathHeight = mainLathHeight * scale;
+                const scaledVisionLathHeight = visionLathCompHeight * scale;
+
+                let sectionBottomY = currentY;
+                for (let i = 0; i < vo.numLathsBelow; i++) {
+                    currentY -= scaledMainLathHeight;
+                    const lathRect = document.createElementNS(svgNS, 'rect');
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledMainLathHeight);
+                    lathRect.setAttribute('class', 'shutter-lath-graphic');
+                    svg.appendChild(lathRect);
+
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledMainLathHeight);
+                    }
+                    lathVisualCounter++;
+                }
+                if (vo.numLathsBelow > 0) drawAnnotation(currentY, sectionBottomY, `${lath['Name']} (x${vo.numLathsBelow})`);
+
+                sectionBottomY = currentY;
+                for (let i = 0; i < vo.numLathsVision; i++) {
+                    currentY -= scaledVisionLathHeight;
+                    const lathRect = document.createElementNS(svgNS, 'rect');
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledVisionLathHeight);
+                    lathRect.setAttribute('class', 'shutter-vision-lath-graphic');
+                    svg.appendChild(lathRect);
+                    
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledVisionLathHeight);
+                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledVisionLathHeight);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledVisionLathHeight);
+                    }
+                    lathVisualCounter++;
+                }
+                if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottomY, `${vo.visionLath['Name']} (x${vo.numLathsVision})`);
+                
+                sectionBottomY = currentY;
+                for (let i = 0; i < vo.numLathsAbove; i++) {
+                    currentY -= scaledMainLathHeight;
+                    const lathRect = document.createElementNS(svgNS, 'rect');
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledMainLathHeight);
+                    lathRect.setAttribute('class', 'shutter-lath-graphic');
+                    svg.appendChild(lathRect);
+
+                    if (isWindLath) {
+                        if (lathVisualCounter % 2 !== 0) drawEndlocks(currentY, scaledMainLathHeight);
+                        const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
+                        if (isWindPos) drawWindEndlocks(currentY, scaledMainLathHeight);
+                    } else if (endlocksSelected && lathVisualCounter % 2 !== 0) {
+                        drawEndlocks(currentY, scaledMainLathHeight);
+                    }
+                    lathVisualCounter++;
+                }
+                if (vo.numLathsAbove > 0) drawAnnotation(currentY, sectionBottomY, `${lath['Name']} (x${vo.numLathsAbove})`);
+
+            } else if (numLaths > 0) {
+                 const scaledLathHeight = mainLathHeight * scale;
+                 for (let i = 0; i < numLaths; i++) {
+                    currentY -= scaledLathHeight;
+                    const lathNumber = i + 1;
+                    const lathBottomEdgeY = currentY + scaledLathHeight;
+
+                    const lathRect = document.createElementNS(svgNS, 'rect');
+                    lathRect.setAttribute('x', lathStartX); lathRect.setAttribute('y', currentY);
+                    lathRect.setAttribute('width', scaledShutterWidth);
+                    lathRect.setAttribute('height', scaledLathHeight);
+                    lathRect.setAttribute('class', 'shutter-lath-graphic');
+                    svg.appendChild(lathRect);
+                    
+                    const leftOffset = (wicket && lathBottomEdgeY > wicketTopY) ? scaledWicketWidth : 0;
+
+                    if (isWindLath) {
+                        if (lathNumber % 2 !== 0) {
+                            drawEndlocks(currentY, scaledLathHeight, leftOffset);
+                        }
+                        const isWindLathPosition = (lathNumber === 2 || lathNumber === 4 || lathNumber === 6 || lathNumber === 8) || (lathNumber > 8 && lathNumber % 8 === 0);
+                        if (isWindLathPosition) {
+                            drawWindEndlocks(currentY, scaledLathHeight, leftOffset);
+                        }
+                    } else if (endlocksSelected && lathNumber % 2 !== 0) {
+                        drawEndlocks(currentY, scaledLathHeight, leftOffset);
+                    }
+                }
+                drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`);
+            }
+            
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if (endplateSize > 0) {
+                    const scaledEndplateHeight = endplateSize * scale;
+                    // endplateTopY is already calculated
+                    const endplateBox = document.createElementNS(svgNS, 'rect');
+                    endplateBox.setAttribute('x', startX);
+                    endplateBox.setAttribute('y', endplateTopY);
+                    endplateBox.setAttribute('width', scaledTotalAxleWidth);
+                    endplateBox.setAttribute('height', scaledEndplateHeight);
+                    endplateBox.setAttribute('class', 'endplate-box-graphic');
+                    svg.appendChild(endplateBox);
+                }
+            }
+
+            const axleRect = document.createElementNS(svgNS, 'rect');
+            axleRect.setAttribute('x', startX);
+            axleRect.setAttribute('y', axleY);
+            axleRect.setAttribute('width', scaledTotalAxleWidth);
+            axleRect.setAttribute('height', scaledAxleHeight);
+            axleRect.setAttribute('class', 'shutter-axle-graphic');
+            svg.appendChild(axleRect);
+            
+            const centerline = document.createElementNS(svgNS, 'line');
+            centerline.setAttribute('x1', startX); centerline.setAttribute('y1', axleCenterlineY);
+            centerline.setAttribute('x2', startX + scaledTotalAxleWidth); centerline.setAttribute('y2', axleCenterlineY);
+            centerline.setAttribute('class', 'axle-centerline-graphic');
+            svg.appendChild(centerline);
+
+            if (wicket) {
+                const wicketRect = document.createElementNS(svgNS, 'rect');
+                wicketRect.setAttribute('x', lathStartX);
+                wicketRect.setAttribute('y', wicketTopY);
+                wicketRect.setAttribute('width', scaledWicketWidth);
+                wicketRect.setAttribute('height', scaledWicketHeight);
+                wicketRect.setAttribute('class', 'wicket-door-graphic');
+                svg.appendChild(wicketRect);
+            }
+
+            // --- Draw Dimensions ---
+            const totalWidthDimY = basePadding.top;
+            drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm Axle Width`, 'horizontal');
+            createLeaderLine(startX, totalWidthDimY, startX, axleY);
+            createLeaderLine(startX + scaledTotalAxleWidth, totalWidthDimY, startX + scaledTotalAxleWidth, axleY);
+            
+            const widthDimLineY = bottomY + 15;
+            drawDimensionLine(lathStartX, widthDimLineY, lathStartX + scaledShutterWidth, widthDimLineY, `${realWidth.toFixed(0)} mm Cut Curtain Width`, 'horizontal');
+            createLeaderLine(lathStartX, widthDimLineY, lathStartX, bottomY);
+            createLeaderLine(lathStartX + scaledShutterWidth, widthDimLineY, lathStartX + scaledShutterWidth, bottomY);
+
+            const maxOffset = Math.max(endlockOffsets.cast, endlockOffsets.wind);
+            if (maxOffset > 0) {
+                const scaledMaxOffset = maxOffset * scale;
+                const endlockWidthDimY = bottomY + 28;
+                const overallWidth = realWidth + (2 * maxOffset);
+                const overallStartX = lathStartX - scaledMaxOffset;
+                const overallEndX = lathStartX + scaledShutterWidth + scaledMaxOffset;
+                drawDimensionLine(overallStartX, endlockWidthDimY, overallEndX, endlockWidthDimY, `${overallWidth.toFixed(0)} mm Overall Endlock Width`, 'horizontal');
+                createLeaderLine(overallStartX, endlockWidthDimY, overallStartX, bottomY - (scaledBottomLathHeight/2));
+                createLeaderLine(overallEndX, endlockWidthDimY, overallEndX, bottomY - (scaledBottomLathHeight/2));
+            }
+            
+            const rightDimX_Inner = startX + scaledTotalAxleWidth + 40;
+            const rightDimX_Outer = rightDimX_Inner - 15;
+            
+            if (selectedEndplate) {
+                const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                if(endplateSize > 0) {
+                    const endplateBottomY = endplateTopY + (endplateSize * scale);
+                    const heightToUnderside = parseFloat(dom.height.value) - (endplateSize / 2);
+                    drawDimensionLine(rightDimX_Inner, endplateBottomY, rightDimX_Inner, bottomY, `${heightToUnderside.toFixed(0)} mm to underside of box`, 'vertical', 'left');
+                    createLeaderLine(rightDimX_Inner, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY);
+                    createLeaderLine(rightDimX_Inner, bottomY, startX + scaledTotalAxleWidth, bottomY);
+                }
+            }
+
+            drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
+            createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
+            createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
+            
+            const leftDimX_Inner = basePadding.left - 15;
+            const leftDimX_Outer = basePadding.left - 55;
+            if (selectedEndplate) {
+                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
+                 if (endplateSize > 0) {
+                    const scaledEndplateHeight = endplateSize * scale;
+                    const endplateBottomY = endplateTopY + scaledEndplateHeight;
+                    drawDimensionLine(leftDimX_Inner, endplateTopY, leftDimX_Inner, endplateBottomY, `${endplateSize.toFixed(0)} mm Endplate`, 'vertical', 'left');
+                    createLeaderLine(leftDimX_Inner, endplateTopY, startX, endplateTopY);
+                    createLeaderLine(leftDimX_Inner, endplateBottomY, startX, endplateBottomY);
+                 }
+            }
+
+            if (bottomLathHeight > 0) {
+                drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
+                createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY);
+                createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
+            }
+
+            return svg;
+        }
+
+        function switchTab(targetTabId) {
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            tabButtons.forEach(b => b.classList.remove('active'));
+            document.getElementById(targetTabId).classList.add('active');
+            document.querySelector(`.tab-button[data-tab="${targetTabId}"]`).classList.add('active');
+
+            if (targetTabId === 'axle-content') {
+                const length = parseFloat(dom['total-axle-length'].textContent) || 0;
+                const deflection = parseFloat(dom['axle-deflection'].textContent) || 0;
+                drawDeflectionGraphic(length, deflection);
+
+                const selectedAxleIndex = dom.axleType.value;
+                if(selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
+                    const collarSize = parseFloat(dom.collarSize.value) || 0;
+                    drawAxleCrossSection(axleData[selectedAxleIndex], collarSize);
+                } else {
+                    drawAxleCrossSection(null);
+                }
+            } else if (targetTabId === 'motor-content') {
+                drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+            } else if(targetTabId === 'wicket-content') {
+                 const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+                 updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth);
+            } else if (targetTabId === 'endplate-content') {
+                const selectedIndex = parseInt(dom.endplateSelector.value, 10);
+                const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+                const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
+                const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+                if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
+                    const plate = currentFilteredEndplates[selectedIndex];
+                    drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths);
+                    calculateEndplateForces(plate);
+                } else {
+                    drawEndplateGraphic(null, 0, null, null, 0);
+                    calculateEndplateForces(null);
+                }
+            }
+        };
+        
+        updateAllCalculations();
+    </script>
+
+    <script>
+        window.addEventListener('load', () => {
+            // Set default hidden tabs
+            ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
+                const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+                if(tabButton) {
+                    tabButton.style.display = 'none';
+                }
+            });
+
+            initializeAdminControls(); 
+
+            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
+            const statusDiv = document.getElementById('import-status');
+            
+            statusDiv.textContent = 'Loading data from repository...';
+            statusDiv.style.color = '#555';
+
+            fetch(excelFileUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    return response.arrayBuffer();
+                })
+                .then(fileData => {
+                    processExcelFile(fileData);
+                })
+                .catch(error => {
+                    statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.';
+                    statusDiv.style.color = 'red';
+                    console.error('There has been a problem with the fetch operation:', error);
+                });
+        });
+    </script>
+    
+    <!-- =================================================================== -->
+    <!-- START: CODE FOR CSV REPORT GENERATION (UPDATED)                     -->
+    <!-- =================================================================== -->
+    <script>
         // This function sets up the dropdowns and filter checkboxes once data is loaded
         function setupReportFilters() {
             // 1. Populate the new Dropdowns using the existing global data arrays
@@ -1848,6 +4043,8 @@
                 endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
                 
                 if (endlockWeightG > 0 && numLaths > 0) {
+                    // Assume standard configuration: 1 pair per lath or 1 pair every 2nd lath.
+                    // Based on main calculator logic: numEndlockPairs = Math.ceil(numLaths / 2);
                     const numEndlockPairs = Math.ceil(numLaths / 2); 
                     totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
                 }
@@ -1871,7 +4068,7 @@
             return { totalWeight, torqueWeight, travelHeight };
         }
 
-        function findBestAxleHeadless(totalWeightKgs, totalLength, fixityPercent) {
+        function findBestAxleHeadless(totalWeightKgs, totalLength) {
              if (totalLength <= 0 || axleData.length === 0) {
                 return { name: 'null', status: 'N/A', axleObj: null };
             }
@@ -1880,7 +4077,7 @@
 
             let bestAxle = null;
             for (const axle of axlesForShape) {
-                const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, fixityPercent);
+                const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
                 if (perf.ratio >= 400 && perf.deflection <= 25) {
                     bestAxle = axle;
                     break;
@@ -1922,13 +4119,11 @@
             const minHeight = parseInt(document.getElementById('reportMinHeight').value);
             const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
             const interval = parseInt(document.getElementById('reportInterval').value);
-            const fixityPercent = parseFloat(document.getElementById('axleFixity').value) || 0;
             
             // Get Dropdown Selections
             const lathIndex = document.getElementById('reportLathType').value;
             const endlockIndex = document.getElementById('reportEndlockType').value;
             const bottomLathIndex = document.getElementById('reportBottomLathType').value;
-            const collarSize = parseFloat(document.getElementById('collarSize').value) || 0; // Need for rotations
 
             // Validation
             if (lathIndex === "" || endlockIndex === "" || bottomLathIndex === "") {
@@ -1982,21 +4177,9 @@
 
                     const props = calculateCurtainPropertiesHeadless(selectedLath, selectedBottomLath, selectedEndlock, width, height);
                     const totalLength = width + defaultAdditionalLength;
-                    
-                    // Pass fixityPercent here
-                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, fixityPercent);
-                    
+                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
                     const defaultFriction = parseFloat(selectedLath['Friction %']) || 10;
-                    
                     const requiredTorque = calculateTorqueHeadless(props.torqueWeight, selectedLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
-                    
-                    // Calculate Rotations for Lift Time (if axle found)
-                    let totalRotations = 0;
-                    if (axleResult.axleObj) {
-                        const axleCoilDiameter = getEffectiveCoilDiameter(axleResult.axleObj);
-                        const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
-                        totalRotations = calculateTotalRevolutions(props.travelHeight, effectiveStartDiameter, parseFloat(selectedLath['Thickness']));
-                    }
 
                     const result = {
                         'Total Weight (kg)': props.totalWeight.toFixed(2),
@@ -2010,8 +4193,6 @@
                         for (const vol of selectedVoltages) {
                             for (const mou of selectedMountings) {
                                 const scenarioKey = `Motor: ${man} (${vol}, ${mou})`;
-                                const timeKey = `Lift Time: ${man} (${vol}, ${mou})`; // New Key for Time
-
                                 const suitableMotors = motorData
                                     .filter(m => 
                                         m[manufacturerKey] == man &&
@@ -2023,23 +4204,7 @@
                                     )
                                     .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
                                 
-                                if (suitableMotors.length > 0) {
-                                    const selectedMotor = suitableMotors[0];
-                                    result[scenarioKey] = selectedMotor.Name;
-                                    
-                                    // Calculate Lift Time
-                                    const rpm = parseFloat(selectedMotor['RPM']);
-                                    if (rpm > 0 && totalRotations > 0) {
-                                        const timeSec = (totalRotations / rpm) * 60;
-                                        result[timeKey] = timeSec.toFixed(1) + 's';
-                                    } else {
-                                        result[timeKey] = 'N/A';
-                                    }
-
-                                } else {
-                                    result[scenarioKey] = 'null';
-                                    result[timeKey] = 'N/A';
-                                }
+                                result[scenarioKey] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
                             }
                         }
                     }
@@ -2063,7 +4228,7 @@
 
             for (const tableType of tableTypes) {
                 // Add table title
-                csvData.push([`Lath: ${selectedLath.Name} | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']} | Fixity: ${fixityPercent}%`]);
+                csvData.push([`Lath: ${selectedLath.Name} | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`]);
                 csvData.push([`Data: ${tableType}`]);
                 
                 // Add width headers
@@ -2111,6 +4276,3 @@
     <!-- =================================================================== -->
 </body>
 </html>
-```
-265.7s
-Use Arrow Up and Arrow Down to select a turn, Enter to jump to it, and Escape to return to the chat.
