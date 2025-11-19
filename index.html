@@ -768,21 +768,6 @@
                         <div id="import-status-admin" style="font-style: italic; color: #555;"></div>
                     </div>
 
-                    <!-- =================================================================== -->
-                    <!-- START: NEW AXLE FIXABILITY SECTION                                  -->
-                    <!-- =================================================================== -->
-                    <div id="axle-config-section" class="admin-section">
-                        <h3>Axle Calculation Parameters</h3>
-                        <div class="form-group">
-                            <label for="axleFixability">Deflection Constant (k)</label>
-                            <input type="number" id="axleFixability" value="5" step="0.1">
-                            <small style="font-size: 0.8em; color: #555;">This constant is used in the deflection formula: (k * W * L³) / (384 * E * I). Common values: 5 for simply supported ends, 1 for fixed ends.</small>
-                        </div>
-                    </div>
-                    <!-- =================================================================== -->
-                    <!-- END: NEW AXLE FIXABILITY SECTION                                    -->
-                    <!-- =================================================================== -->
-
                     <div class="admin-section">
                         <h3>Tab Visibility</h3>
                         <div class="admin-button-group">
@@ -836,13 +821,26 @@
                             </div>
                         </div>
 
-                        <h4>2. Select Lath Types to Include</h4>
-                        <div class="admin-button-group">
-                            <button id="reportLathSelectAll">Select All</button>
-                            <button id="reportLathDeselectAll">Deselect All</button>
-                        </div>
-                        <div id="report-lath-filter-container" class="report-filter-container">
-                            <p>Loading lath data...</p>
+                        <h4>2. Select Shutter Configuration</h4>
+                        <div class="form-row">
+                            <div class="form-group form-col">
+                                <label for="reportLathType">Lath Type</label>
+                                <select id="reportLathType">
+                                    <option value="">-- Loading... --</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-col">
+                                <label for="reportEndlockType">Endlock Type</label>
+                                <select id="reportEndlockType">
+                                    <option value="">-- Loading... --</option>
+                                </select>
+                            </div>
+                            <div class="form-group form-col">
+                                <label for="reportBottomLathType">Bottom Lath Type</label>
+                                <select id="reportBottomLathType">
+                                    <option value="">-- Loading... --</option>
+                                </select>
+                            </div>
                         </div>
 
                         <h4>3. Select Motor Manufacturers to Include</h4>
@@ -917,14 +915,14 @@
          'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
          'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
-         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixability'
+         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixability'
+         'useCustomLath', 'customLathWeight', 'customTorqueWeight'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -1722,11 +1720,9 @@
                 axleWeight = volumeM3 * density;
             }
             
-            const fixabilityConstant = parseFloat(dom.axleFixability.value) || 5; // Default to 5 (simply supported)
-            
             const totalForceW = (totalWeightKgs + axleWeight) * 9.81;
             const deflection = (totalLength > 0 && inertiaI > 0 && youngsModulusE > 0) 
-                ? (fixabilityConstant * totalForceW * Math.pow(totalLength, 3)) / (384 * youngsModulusE * inertiaI) 
+                ? (5 * totalForceW * Math.pow(totalLength, 3)) / (384 * youngsModulusE * inertiaI) 
                 : 0;
                 
             const ratio = (deflection > 0) ? totalLength / deflection : Infinity;
@@ -2928,8 +2924,7 @@
                 const marker = document.createElementNS(svgNS, 'marker');
                 marker.setAttribute('id', id); marker.setAttribute('viewBox', '0 0 10 10');
                 marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5');
-                marker.setAttribute('markerWidth', '5');
-                marker.setAttribute('markerHeight', '5');
+                marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5');
                 marker.setAttribute('orient', 'auto-start-reverse');
                 const arrowPath = document.createElementNS(svgNS, 'path');
                 arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', color);
@@ -3958,22 +3953,22 @@
     </script>
     
     <!-- =================================================================== -->
-    <!-- START: CODE FOR CSV REPORT GENERATION (MODIFIED)                    -->
+    <!-- START: CODE FOR CSV REPORT GENERATION (UPDATED)                     -->
     <!-- =================================================================== -->
     <script>
-        // This function sets up the filter checkboxes once the main data is loaded
+        // This function sets up the dropdowns and filter checkboxes once data is loaded
         function setupReportFilters() {
-            // Lath Filter Setup
-            const lathContainer = document.getElementById('report-lath-filter-container');
-            lathContainer.innerHTML = ''; // Clear "Loading..." message
-            lathData.forEach((lath, index) => {
-                const controlItem = document.createElement('div');
-                controlItem.className = 'admin-control-item';
-                controlItem.innerHTML = `<label><input type="checkbox" class="report-lath-checkbox" value="${index}" checked> ${lath.Name}</label>`;
-                lathContainer.appendChild(controlItem);
-            });
+            // 1. Populate the new Dropdowns using the existing global data arrays
+            const lathSelect = document.getElementById('reportLathType');
+            populateDropdown(lathSelect, lathData, 'Name');
 
-            // Motor Filters Setup
+            const endlockSelect = document.getElementById('reportEndlockType');
+            populateDropdown(endlockSelect, endlockData, 'Description');
+
+            const bottomLathSelect = document.getElementById('reportBottomLathType');
+            populateDropdown(bottomLathSelect, bottomLathData, 'Bottom lath name');
+
+            // 2. Motor Filters Setup (Keep existing logic for checkboxes)
             let manufacturerKey = '', voltageKey = '', mountingKey = '';
             if (motorData.length > 0) {
                 const firstMotor = motorData[0];
@@ -4002,10 +3997,7 @@
             setupFilterGroup('report-motor-voltage-filter-container', voltageKey, motorData, 'report-voltage-checkbox');
             setupFilterGroup('report-motor-mounting-filter-container', mountingKey, motorData, 'report-mounting-checkbox');
 
-
-            // Add event listeners for Select/Deselect All buttons
-            document.getElementById('reportLathSelectAll').addEventListener('click', () => document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = true));
-            document.getElementById('reportLathDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-lath-checkbox').forEach(cb => cb.checked = false));
+            // Add event listeners for Select/Deselect All buttons (Motors only now)
             document.getElementById('reportMotorSelectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true));
             document.getElementById('reportMotorDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false));
             document.getElementById('reportVoltageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = true));
@@ -4013,17 +4005,19 @@
             document.getElementById('reportMountingSelectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = true));
             document.getElementById('reportMountingDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = false));
 
-
-            // Bind the main generation function to the button
+            // Bind the main generation function
             document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
         }
 
-        // --- Headless Calculation Functions ---
-        function calculateCurtainPropertiesHeadless(lath, bottomLath, width_mm, height_mm) {
+        // --- Updated Headless Calculation Function ---
+        // Now accepts Endlock object to calculate combined weight
+        function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
             if (!lath || !bottomLath || height_mm <= 0) {
                 return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 };
             }
-            const axleRadius = 60; 
+            
+            // 1. Lath Calculation
+            const axleRadius = 60; // Estimate
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
             
@@ -4034,16 +4028,42 @@
 
             const widthM = width_mm / 1000;
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            
+            // Weight based on coverage
             const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
+            
+            // 2. Bottom Lath Weight
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             
-            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight;
+            // 3. Endlock Weight Calculation
+            let totalEndlockWeight = 0;
+            let endlockWeightG = 0;
+            if (endlock) {
+                const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
+                
+                if (endlockWeightG > 0 && numLaths > 0) {
+                    // Assume standard configuration: 1 pair per lath or 1 pair every 2nd lath.
+                    // Based on main calculator logic: numEndlockPairs = Math.ceil(numLaths / 2);
+                    const numEndlockPairs = Math.ceil(numLaths / 2); 
+                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
+                }
+            }
+
+            // 4. Combined Total Weight
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
             
+            // 5. Torque Weight (Total minus buffer)
             let torqueWeight = totalWeight;
             if (numLaths >= 3) {
                 const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
-                torqueWeight = totalWeight - bufferLathWeight;
+                let bufferEndlockWeight = 0;
+                if (endlockWeightG > 0) {
+                    bufferEndlockWeight = 4 * (endlockWeightG / 1000); // 2 pairs for 3 buffer laths approx
+                }
+                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
             }
+            
             const travelHeight = height_mm - bottomLathHeight;
             return { totalWeight, torqueWeight, travelHeight };
         }
@@ -4088,10 +4108,9 @@
 
         async function generateCsvReport() {
             const statusDiv = document.getElementById('csv-generation-status');
-            statusDiv.textContent = 'Starting report generation... This may take a moment.';
+            statusDiv.textContent = 'Starting report generation...';
             statusDiv.style.color = 'blue';
 
-            // Use a short timeout to allow the UI to update before the heavy work begins
             await new Promise(resolve => setTimeout(resolve, 50));
 
             // --- 1. Get user-defined parameters ---
@@ -4101,14 +4120,31 @@
             const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
             const interval = parseInt(document.getElementById('reportInterval').value);
             
+            // Get Dropdown Selections
+            const lathIndex = document.getElementById('reportLathType').value;
+            const endlockIndex = document.getElementById('reportEndlockType').value;
+            const bottomLathIndex = document.getElementById('reportBottomLathType').value;
+
+            // Validation
+            if (lathIndex === "" || endlockIndex === "" || bottomLathIndex === "") {
+                statusDiv.textContent = 'Error: Please select Lath, Endlock, and Bottom Lath types.';
+                statusDiv.style.color = 'red';
+                return;
+            }
+
+            // Get Object Data
+            const selectedLath = lathData[lathIndex];
+            const selectedEndlock = endlockData[endlockIndex];
+            const selectedBottomLath = bottomLathData[bottomLathIndex];
+
+            // Get Motor Filters
             const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
-            const selectedLathIndices = getSelectedValues('report-lath-checkbox').map(v => parseInt(v));
             const selectedManufacturers = getSelectedValues('report-motor-checkbox');
             const selectedVoltages = getSelectedValues('report-voltage-checkbox');
             const selectedMountings = getSelectedValues('report-mounting-checkbox');
 
-            if (selectedLathIndices.length === 0 || selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0) {
-                statusDiv.textContent = 'Error: Please select at least one option from each filter category.';
+            if (selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0) {
+                statusDiv.textContent = 'Error: Please select at least one option from each motor filter category.';
                 statusDiv.style.color = 'red';
                 return;
             }
@@ -4123,61 +4159,56 @@
             }
 
             // --- 2. Pre-calculate all data and store in a cache ---
+            // Structure: cache[width][height] = { results }
             const calculationCache = {};
-            const defaultBottomLath = bottomLathData[0];
             const defaultAdditionalLength = 100;
             let calculationCount = 0;
             
-            statusDiv.textContent = 'Step 1 of 2: Calculating all size combinations...';
+            statusDiv.textContent = `Step 1 of 2: Calculating configuration for ${selectedLath.Name}...`;
 
-            for (const lathIndex of selectedLathIndices) {
-                const lath = lathData[lathIndex];
-                calculationCache[lath.Name] = {};
+            for (let width = minWidth; width <= maxWidth; width += interval) {
+                calculationCache[width] = {};
+                for (let height = minHeight; height <= maxHeight; height += interval) {
+                    calculationCount++;
+                    if (calculationCount % 50 === 0) {
+                            statusDiv.textContent = `Step 1 of 2: Calculating... (${calculationCount} sizes processed)`;
+                            await new Promise(resolve => setTimeout(resolve, 0)); 
+                    }
 
-                for (let width = minWidth; width <= maxWidth; width += interval) {
-                    calculationCache[lath.Name][width] = {};
-                    for (let height = minHeight; height <= maxHeight; height += interval) {
-                        calculationCount++;
-                        if (calculationCount % 50 === 0) {
-                             statusDiv.textContent = `Step 1 of 2: Calculating... (${calculationCount} sizes processed)`;
-                             await new Promise(resolve => setTimeout(resolve, 0)); // Prevent browser freeze
-                        }
+                    const props = calculateCurtainPropertiesHeadless(selectedLath, selectedBottomLath, selectedEndlock, width, height);
+                    const totalLength = width + defaultAdditionalLength;
+                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
+                    const defaultFriction = parseFloat(selectedLath['Friction %']) || 10;
+                    const requiredTorque = calculateTorqueHeadless(props.torqueWeight, selectedLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
 
-                        const props = calculateCurtainPropertiesHeadless(lath, defaultBottomLath, width, height);
-                        const totalLength = width + defaultAdditionalLength;
-                        const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
-                        const defaultFriction = parseFloat(lath['Friction %']) || 10;
-                        const requiredTorque = calculateTorqueHeadless(props.torqueWeight, lath, props.travelHeight, axleResult.axleObj, width, defaultBottomLath, defaultFriction);
+                    const result = {
+                        'Total Weight (kg)': props.totalWeight.toFixed(2),
+                        'Required Axle Name': axleResult.name,
+                        'Axle Deflection Status': axleResult.status,
+                        'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
+                    };
 
-                        const result = {
-                            'Total Weight (kg)': props.totalWeight.toFixed(2),
-                            'Required Axle Name': axleResult.name,
-                            'Axle Deflection Status': axleResult.status,
-                            'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
-                        };
-
-                        // Calculate motor for each scenario
-                        for (const man of selectedManufacturers) {
-                            for (const vol of selectedVoltages) {
-                                for (const mou of selectedMountings) {
-                                    const scenarioKey = `Motor: ${man} (${vol}, ${mou})`;
-                                    const suitableMotors = motorData
-                                        .filter(m => 
-                                            m[manufacturerKey] == man &&
-                                            String(m[voltageKey]) == String(vol) &&
-                                            m[mountingKey] == mou &&
-                                            requiredTorque > 0 && 
-                                            requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
-                                            requiredTorque <= parseFloat(m['Torque (Nm) max'])
-                                        )
-                                        .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
-                                    
-                                    result[scenarioKey] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
-                                }
+                    // Calculate motor for each scenario
+                    for (const man of selectedManufacturers) {
+                        for (const vol of selectedVoltages) {
+                            for (const mou of selectedMountings) {
+                                const scenarioKey = `Motor: ${man} (${vol}, ${mou})`;
+                                const suitableMotors = motorData
+                                    .filter(m => 
+                                        m[manufacturerKey] == man &&
+                                        String(m[voltageKey]) == String(vol) &&
+                                        m[mountingKey] == mou &&
+                                        requiredTorque > 0 && 
+                                        requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
+                                        requiredTorque <= parseFloat(m['Torque (Nm) max'])
+                                    )
+                                    .sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                
+                                result[scenarioKey] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
                             }
                         }
-                        calculationCache[lath.Name][width][height] = result;
                     }
+                    calculationCache[width][height] = result;
                 }
             }
 
@@ -4191,40 +4222,31 @@
                 widthHeaders.push(w);
             }
 
-            const tableTypes = [
-                'Total Weight (kg)',
-                'Required Axle Name',
-                'Axle Deflection Status',
-                'Max Required Torque (Nm)',
-                // Add all motor scenario keys
-                ...Object.keys(calculationCache[lathData[selectedLathIndices[0]].Name][minWidth][minHeight]).filter(k => k.startsWith('Motor:'))
-            ];
+            // Determine the table keys from the first calculated entry
+            const firstEntry = calculationCache[minWidth][minHeight];
+            const tableTypes = Object.keys(firstEntry);
 
-            for (const lathIndex of selectedLathIndices) {
-                const lath = lathData[lathIndex];
+            for (const tableType of tableTypes) {
+                // Add table title
+                csvData.push([`Lath: ${selectedLath.Name} | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`]);
+                csvData.push([`Data: ${tableType}`]);
                 
-                for (const tableType of tableTypes) {
-                    // Add table title
-                    csvData.push([`Lath: ${lath.Name}`]);
-                    csvData.push([`Data: ${tableType}`]);
-                    
-                    // Add width headers
-                    csvData.push(widthHeaders);
+                // Add width headers
+                csvData.push(widthHeaders);
 
-                    // Add data rows
-                    for (let height = minHeight; height <= maxHeight; height += interval) {
-                        const row = [height];
-                        for (let width = minWidth; width <= maxWidth; width += interval) {
-                            const value = calculationCache[lath.Name][width]?.[height]?.[tableType] || 'N/A';
-                            row.push(value);
-                        }
-                        csvData.push(row);
+                // Add data rows
+                for (let height = minHeight; height <= maxHeight; height += interval) {
+                    const row = [height];
+                    for (let width = minWidth; width <= maxWidth; width += interval) {
+                        const value = calculationCache[width]?.[height]?.[tableType] || 'N/A';
+                        row.push(value);
                     }
-
-                    // Add spacer rows between tables
-                    csvData.push([]);
-                    csvData.push([]);
+                    csvData.push(row);
                 }
+
+                // Add spacer rows between tables
+                csvData.push([]);
+                csvData.push([]);
             }
 
             // --- 4. Trigger Download ---
@@ -4250,7 +4272,7 @@
         }
     </script>
     <!-- =================================================================== -->
-    <!-- END:   CODE FOR CSV REPORT GENERATION (MODIFIED)                    -->
+    <!-- END:   CODE FOR CSV REPORT GENERATION (UPDATED)                     -->
     <!-- =================================================================== -->
 </body>
 </html>
