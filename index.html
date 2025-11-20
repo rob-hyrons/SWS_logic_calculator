@@ -2675,25 +2675,6 @@
     </script>
 
     <script>
-        window.addEventListener('load', () => {
-            ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
-                const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
-                if(tabButton) { tabButton.style.display = 'none'; }
-            });
-            initializeAdminControls(); 
-            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
-            const statusDiv = document.getElementById('import-status');
-            statusDiv.textContent = 'Loading data from repository...'; statusDiv.style.color = '#555';
-            fetch(excelFileUrl).then(response => {
-                if (!response.ok) { throw new Error(`Network response was not ok: ${response.statusText}`); }
-                return response.arrayBuffer();
-            }).then(fileData => { processExcelFile(fileData); }).catch(error => {
-                statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.'; statusDiv.style.color = 'red'; console.error('There has been a problem with the fetch operation:', error);
-            });
-        });
-    </script>
-    
-    <script>
         function setupReportFilters() {
             const lathSelect = document.getElementById('reportLathType');
             populateDropdown(lathSelect, lathData, 'Name');
@@ -2817,23 +2798,43 @@
             return { name: bestAxle.Name, status: 'Pass', axleObj: bestAxle };
         }
         
-        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, collarSize_mm) {
-            if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
-            
-            const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
-            
-            // Use largest start diameter (Axle vs Collar)
-            const calculationDiameter = Math.max(effectiveStartDiameter, (collarSize_mm || 0));
+        function calculateTorqueHeadless(totalWeightKgs, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, collarSize_mm) {
+            if (!lath || !axle || !bottomLath || travelHeight <= 0 || totalWeightKgs <= 0) return 0;
 
-            const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-            const lathsWeight = torqueWeight - bottomLathWeight;
-            const force = (lathsWeight + bottomLathWeight) * 9.81;
-            
-            const radiusM = (calculationDiameter / 2) / 1000;
-            
-            const maxTorque = force * radiusM;
+            const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+            let currentRollDiameter = Math.max(effectiveStartDiameter, (collarSize_mm || 0));
+            const lathThickness = parseFloat(lath['Thickness']);
+            const widthM = width_mm / 1000;
+            const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            const lathsWeight = totalWeightKgs - bottomLathWeight;
+
+            let heightLifted = 0;
+            let maxTorqueFound = 0;
             const frictionMultiplier = 1 + (friction_percent || 0) / 100;
-            return maxTorque * frictionMultiplier;
+
+            // Simulate the lift loop to find Peak Torque
+            while (heightLifted < travelHeight) {
+                // Calculate remaining weight
+                const percentLifted = heightLifted / travelHeight;
+                // Prevent negative weight
+                const remainingLathWeight = Math.max(0, lathsWeight * (1 - percentLifted));
+                const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
+
+                const force = remainingTotalWeight * 9.81;
+                const radiusM = (currentRollDiameter / 2) / 1000;
+                const currentTorque = force * radiusM * frictionMultiplier;
+
+                if (currentTorque > maxTorqueFound) {
+                    maxTorqueFound = currentTorque;
+                }
+
+                // Increment coil size (matching UI logic: half rev per step, adding 1x thickness to diameter)
+                const circumference = Math.PI * currentRollDiameter;
+                heightLifted += circumference / 2; 
+                currentRollDiameter += lathThickness;
+            }
+            
+            return maxTorqueFound;
         }
 
         async function generateCsvReport() {
@@ -2866,7 +2867,6 @@
             const selectedBottomLath = bottomLathData[bottomLathIndex];
             
             // EXTRACT MIN AXLE DIAMETER FROM LATH DATA
-            // Looks for column "min axle diameter" (case insensitive)
             const minAxleKey = Object.keys(selectedLath).find(k => k.toLowerCase().trim() === 'min axle diameter');
             const minAxleDiameter = minAxleKey ? (parseFloat(selectedLath[minAxleKey]) || 0) : 0;
             
@@ -2906,6 +2906,8 @@
                     const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, selectedShape, minAxleDiameter);
                     
                     const defaultFriction = parseFloat(selectedLath['Friction %']) || 10;
+                    
+                    // Use updated torque calculation with Loop
                     const requiredTorque = calculateTorqueHeadless(props.torqueWeight, selectedLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, collarSize);
                     
                     const result = {
@@ -2914,6 +2916,15 @@
                         'Axle Deflection Status': axleResult.status,
                         'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
                     };
+                    
+                    let effectiveDiameter = 0;
+                    if(axleResult.axleObj) { 
+                        effectiveDiameter = Math.max(getEffectiveCoilDiameter(axleResult.axleObj), collarSize); 
+                    }
+                    const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(selectedLath['Thickness']));
+                    
+                    // Add Total Revolutions to the output table
+                    result['Total Revolutions'] = rotations > 0 ? rotations.toFixed(1) : 'N/A';
                     
                     for (const man of selectedManufacturers) {
                         for (const vol of selectedVoltages) {
@@ -2933,11 +2944,6 @@
                                     const selectedMotor = suitableMotors[0];
                                     result[scenarioKey] = selectedMotor.Name;
                                     
-                                    let effectiveDiameter = 0;
-                                    if(axleResult.axleObj) { 
-                                        effectiveDiameter = Math.max(getEffectiveCoilDiameter(axleResult.axleObj), collarSize); 
-                                    }
-                                    const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(selectedLath['Thickness']));
                                     const rpm = parseFloat(selectedMotor['RPM']) || 0;
                                     const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
                                     const timeKey = `Opening Time (sec): ${scenarioName}`;
