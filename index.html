@@ -2804,6 +2804,12 @@
             const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
             let currentRollDiameter = Math.max(effectiveStartDiameter, (collarSize_mm || 0));
             const lathThickness = parseFloat(lath['Thickness']);
+
+            // SAFETY CHECK: Prevent Infinite Loop if Axle/Collar Missing or Thickness Bad
+            if (currentRollDiameter <= 0 || isNaN(lathThickness) || lathThickness <= 0) {
+                return 0;
+            }
+
             const widthM = width_mm / 1000;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             const lathsWeight = totalWeightKgs - bottomLathWeight;
