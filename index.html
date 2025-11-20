@@ -892,7 +892,7 @@
             try {
                 const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                 const required = {
-                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
+                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                     'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer'],
@@ -1265,13 +1265,22 @@
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
             }
 
+            // Filter axles by shape AND min axle diameter if present in lath data
+            const currentLath = lathData[dom.lathType.value];
+            let minAxleDiameter = 0;
+            if (currentLath) {
+                const minAxleKey = Object.keys(currentLath).find(k => k.toLowerCase().trim() === 'min axle diameter');
+                minAxleDiameter = minAxleKey ? (parseFloat(currentLath[minAxleKey]) || 0) : 0;
+            }
+
             const axlesForShape = axleData.map((axle, index) => ({ ...axle, originalIndex: index })).filter(axle => {
                 const axleShapeInSheet = (axle.Shape || 'circular').toLowerCase().trim();
-                return axleShapeInSheet === selectedShape;
+                const axleDia = parseFloat(axle['Diameter']) || 0;
+                return axleShapeInSheet === selectedShape && axleDia >= minAxleDiameter;
             });
 
             if (axlesForShape.length === 0) {
-                dom.axleType.innerHTML = `<option>-- No ${selectedShape} axles available --</option>`;
+                dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available (Min Dia: ${minAxleDiameter}mm) --</option>`;
                 ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
                 dom['axle-material-grade'].textContent = 'N/A'; drawAxleCrossSection(null);
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
@@ -1289,8 +1298,13 @@
             });
             if (recommendedAxleOriginalIndex === -1) { recommendedAxleOriginalIndex = axlesForShape.length > 0 ? axlesForShape[0].originalIndex : -1; }
             let finalSelectedOriginalIndex = userSelectedAxleIndex !== null ? userSelectedAxleIndex : recommendedAxleOriginalIndex;
-            const isUserSelectionValidForShape = axlesForShape.some(axle => axle.originalIndex == finalSelectedOriginalIndex);
-            if (userSelectedAxleIndex !== null && !isUserSelectionValidForShape) { finalSelectedOriginalIndex = recommendedAxleOriginalIndex; }
+            
+            // Verify user selection fits shape and size constraints
+            const isUserSelectionValid = axlesForShape.some(axle => axle.originalIndex == finalSelectedOriginalIndex);
+            if (userSelectedAxleIndex !== null && !isUserSelectionValid) { 
+                // If filtered out, revert to recommended
+                finalSelectedOriginalIndex = recommendedAxleOriginalIndex; 
+            }
 
             const select = dom.axleType; select.innerHTML = '';
             axlesForShape.forEach((axle, index) => {
@@ -2752,10 +2766,24 @@
             return { totalWeight, torqueWeight, travelHeight };
         }
 
-        function findBestAxleHeadless(totalWeightKgs, totalLength) {
+        function findBestAxleHeadless(totalWeightKgs, totalLength, lath) {
              if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', status: 'N/A', axleObj: null }; }
-            const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
+            
+            // Filter for Circular shape AND Min Axle Diameter
+            let minAxleDiameter = 0;
+            if (lath) {
+                const minAxleKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'min axle diameter');
+                minAxleDiameter = minAxleKey ? (parseFloat(lath[minAxleKey]) || 0) : 0;
+            }
+
+            const axlesForShape = axleData.filter(axle => {
+                const isCircular = (axle.Shape || 'circular').toLowerCase().trim() === 'circular';
+                const dia = parseFloat(axle['Diameter']) || 0;
+                return isCircular && dia >= minAxleDiameter;
+            });
+
             if (axlesForShape.length === 0) return { name: 'null', status: 'N/A', axleObj: null };
+
             let bestAxle = null;
             for (const axle of axlesForShape) {
                 const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
@@ -2765,15 +2793,42 @@
         }
         
         function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent) {
+            // Simulate the lift just like getTorqueProfile to account for diameter increase
             if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
+            
+            const lathThickness = parseFloat(lath['Thickness']) || 0;
             const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
             const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             const lathsWeight = torqueWeight - bottomLathWeight;
-            const force = (lathsWeight + bottomLathWeight) * 9.81;
-            const radiusM = (effectiveStartDiameter / 2) / 1000;
-            const maxTorque = force * radiusM;
+
+            let heightLifted = 0;
+            let currentRollDiameter = effectiveStartDiameter;
+            let maxTorqueFound = 0;
+
+            // Iterate through the lift
+            while (heightLifted < travelHeight) {
+                const percentLifted = heightLifted / travelHeight;
+                // Remaining weight decreases as curtain lifts
+                const remainingLathWeight = lathsWeight * (1 - percentLifted);
+                const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
+                
+                const force = remainingTotalWeight * 9.81;
+                // Radius increases as curtain rolls up
+                const radiusM = (currentRollDiameter / 2) / 1000;
+                
+                const currentTorque = force * radiusM;
+                if (currentTorque > maxTorqueFound) {
+                    maxTorqueFound = currentTorque;
+                }
+
+                // Advance simulation by one wrap
+                const circumference = Math.PI * currentRollDiameter;
+                heightLifted += circumference / 2; // Matches getTorqueProfile logic step
+                currentRollDiameter += lathThickness;
+            }
+
             const frictionMultiplier = 1 + (friction_percent || 0) / 100;
-            return maxTorque * frictionMultiplier;
+            return maxTorqueFound * frictionMultiplier;
         }
 
         async function generateCsvReport() {
@@ -2819,9 +2874,14 @@
                     if (calculationCount % 50 === 0) { statusDiv.textContent = `Step 1 of 2: Calculating... (${calculationCount} sizes processed)`; await new Promise(resolve => setTimeout(resolve, 0)); }
                     const props = calculateCurtainPropertiesHeadless(selectedLath, selectedBottomLath, selectedEndlock, width, height);
                     const totalLength = width + defaultAdditionalLength;
-                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
+                    
+                    // Pass Lath to axle selector to enforce min diameter
+                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, selectedLath);
+                    
                     const defaultFriction = parseFloat(selectedLath['Friction %']) || 10;
+                    // Pass width and Bottom Lath to torque calc
                     const requiredTorque = calculateTorqueHeadless(props.torqueWeight, selectedLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
+                    
                     const result = {
                         'Total Weight (kg)': props.totalWeight.toFixed(2),
                         'Required Axle Name': axleResult.name,
