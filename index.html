@@ -609,7 +609,7 @@
                         <div id="input-controls-container" class="admin-controls"></div>
                     </div>
 
-                    <!-- NEW: AXLE CALCULATION SETTINGS -->
+                    <!-- AXLE CALCULATION SETTINGS -->
                     <div class="admin-section">
                         <h3>Axle Calculation Settings</h3>
                         <div class="form-group">
@@ -671,6 +671,17 @@
                                 <select id="reportBottomLathType">
                                     <option value="">-- Loading... --</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- NEW: Toggle for Axle Shape specifically for the Report -->
+                        <div class="form-group" style="margin-top: 1em;">
+                            <label>Report Axle Shape Strategy</label>
+                            <div class="shape-toggle">
+                                <input type="radio" id="reportShapeCircular" name="reportAxleShape" value="circular" checked>
+                                <label for="reportShapeCircular">Circular</label>
+                                <input type="radio" id="reportShapeOctagonal" name="reportAxleShape" value="octagonal">
+                                <label for="reportShapeOctagonal">Octagonal</label>
                             </div>
                         </div>
 
@@ -892,7 +903,7 @@
             try {
                 const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                 const required = {
-                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage'],
+                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                     'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer'],
@@ -2720,17 +2731,25 @@
             document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
         }
 
-        function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
+        function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm, isPowderCoated) {
             if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
-            const axleRadius = 60;
+            
+            // Estimate baseline axle radius for lath count calculation
+            const axleRadius = 60; 
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
             const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
             let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
+            
             const widthM = width_mm / 1000;
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            
+            // Apply Powder Coating Weight if selected
+            if (isPowderCoated) kgsPerM2 += 0.5;
+
             const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            
             let totalEndlockWeight = 0; let endlockWeightG = 0;
             if (endlock) {
                 const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
@@ -2741,6 +2760,7 @@
                 }
             }
             const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
+            
             let torqueWeight = totalWeight;
             if (numLaths >= 3) {
                 const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
@@ -2752,25 +2772,65 @@
             return { totalWeight, torqueWeight, travelHeight };
         }
 
-        function findBestAxleHeadless(totalWeightKgs, totalLength) {
-             if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', status: 'N/A', axleObj: null }; }
-            const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
-            if (axlesForShape.length === 0) return { name: 'null', status: 'N/A', axleObj: null };
+        function findBestAxleHeadless(totalWeightKgs, totalLength, preferredShape, minAxleDiameter) {
+            if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', status: 'N/A', axleObj: null }; }
+            
+            // 1. Filter by the Report's selected shape (Circular vs Octagonal)
+            // 2. Filter by Minimum Axle Diameter from Lath Sheet
+            let axlesForShape = axleData.filter(axle => {
+                const shapeMatch = (axle.Shape || 'circular').toLowerCase().trim() === preferredShape;
+                const diameter = parseFloat(axle['Diameter']) || 0;
+                const sizeMatch = diameter >= minAxleDiameter;
+                return shapeMatch && sizeMatch;
+            });
+            
+            // If no axles match both shape AND size constraints
+            if (axlesForShape.length === 0) {
+                // Fallback: Try to find ANY axle of that shape, ignoring min diameter, just to return a "Fail" result
+                const fallbackAxles = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === preferredShape);
+                if (fallbackAxles.length > 0) {
+                     return { name: fallbackAxles[fallbackAxles.length - 1].Name + " (Too Small)", status: 'Fail', axleObj: null };
+                }
+                return { name: 'No Axle Found', status: 'N/A', axleObj: null }; 
+            }
+
+            // SORT Axles by Diameter (Ascending) to ensure we pick the smallest valid one
+            axlesForShape.sort((a, b) => {
+                return (parseFloat(a['Diameter']) || 0) - (parseFloat(b['Diameter']) || 0);
+            });
+
             let bestAxle = null;
             for (const axle of axlesForShape) {
                 const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
-                if (perf.ratio >= 400 && perf.deflection <= 25) { bestAxle = axle; break; }
+                if (perf.ratio >= 400 && perf.deflection <= 25) { 
+                    bestAxle = axle; 
+                    break; // Stop at the first (smallest) axle that passes
+                }
             }
-            if (bestAxle) { return { name: bestAxle.Name, status: 'Pass', axleObj: bestAxle }; } else { return { name: axlesForShape[0].Name, status: 'Fail', axleObj: axlesForShape[0] }; }
+            
+            // If none pass deflection, return the largest available marked as Fail
+            if (!bestAxle) {
+                const largestAxle = axlesForShape[axlesForShape.length - 1];
+                return { name: largestAxle.Name, status: 'Fail', axleObj: largestAxle }; 
+            }
+
+            return { name: bestAxle.Name, status: 'Pass', axleObj: bestAxle };
         }
         
-        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent) {
+        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, collarSize_mm) {
             if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
+            
             const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+            
+            // Use largest start diameter (Axle vs Collar)
+            const calculationDiameter = Math.max(effectiveStartDiameter, (collarSize_mm || 0));
+
             const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             const lathsWeight = torqueWeight - bottomLathWeight;
             const force = (lathsWeight + bottomLathWeight) * 9.81;
-            const radiusM = (effectiveStartDiameter / 2) / 1000;
+            
+            const radiusM = (calculationDiameter / 2) / 1000;
+            
             const maxTorque = force * radiusM;
             const frictionMultiplier = 1 + (friction_percent || 0) / 100;
             return maxTorque * frictionMultiplier;
@@ -2780,6 +2840,7 @@
             const statusDiv = document.getElementById('csv-generation-status');
             statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
             await new Promise(resolve => setTimeout(resolve, 50));
+            
             const minWidth = parseInt(document.getElementById('reportMinWidth').value);
             const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
             const minHeight = parseInt(document.getElementById('reportMinHeight').value);
@@ -2788,19 +2849,36 @@
             const lathIndex = document.getElementById('reportLathType').value;
             const endlockIndex = document.getElementById('reportEndlockType').value;
             const bottomLathIndex = document.getElementById('reportBottomLathType').value;
+
+            // Get global inputs
+            const collarSize = parseFloat(document.getElementById('collarSize').value) || 0;
+            const isPowderCoated = document.getElementById('powderCoated').checked;
+            
+            // Capture the Axle Shape from the NEW Admin Toggle
+            const reportShapeInput = document.querySelector('input[name="reportAxleShape"]:checked');
+            const selectedShape = reportShapeInput ? reportShapeInput.value : 'circular';
+
             if (lathIndex === "" || endlockIndex === "" || bottomLathIndex === "") {
                 statusDiv.textContent = 'Error: Please select Lath, Endlock, and Bottom Lath types.'; statusDiv.style.color = 'red'; return;
             }
             const selectedLath = lathData[lathIndex];
             const selectedEndlock = endlockData[endlockIndex];
             const selectedBottomLath = bottomLathData[bottomLathIndex];
+            
+            // EXTRACT MIN AXLE DIAMETER FROM LATH DATA
+            // Looks for column "min axle diameter" (case insensitive)
+            const minAxleKey = Object.keys(selectedLath).find(k => k.toLowerCase().trim() === 'min axle diameter');
+            const minAxleDiameter = minAxleKey ? (parseFloat(selectedLath[minAxleKey]) || 0) : 0;
+            
             const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
             const selectedManufacturers = getSelectedValues('report-motor-checkbox');
             const selectedVoltages = getSelectedValues('report-voltage-checkbox');
             const selectedMountings = getSelectedValues('report-mounting-checkbox');
+            
             if (selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0) {
                 statusDiv.textContent = 'Error: Please select at least one option from each motor filter category.'; statusDiv.style.color = 'red'; return;
             }
+            
             let manufacturerKey = '', voltageKey = '', mountingKey = '';
             if (motorData.length > 0) {
                 const firstMotor = motorData[0];
@@ -2808,26 +2886,35 @@
                 voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
                 mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
             }
+            
             const calculationCache = {};
             const defaultAdditionalLength = 100;
             let calculationCount = 0;
             statusDiv.textContent = `Step 1 of 2: Calculating configuration for ${selectedLath.Name}...`;
+            
             for (let width = minWidth; width <= maxWidth; width += interval) {
                 calculationCache[width] = {};
                 for (let height = minHeight; height <= maxHeight; height += interval) {
                     calculationCount++;
                     if (calculationCount % 50 === 0) { statusDiv.textContent = `Step 1 of 2: Calculating... (${calculationCount} sizes processed)`; await new Promise(resolve => setTimeout(resolve, 0)); }
-                    const props = calculateCurtainPropertiesHeadless(selectedLath, selectedBottomLath, selectedEndlock, width, height);
+                    
+                    const props = calculateCurtainPropertiesHeadless(selectedLath, selectedBottomLath, selectedEndlock, width, height, isPowderCoated);
+                    
                     const totalLength = width + defaultAdditionalLength;
-                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength);
+                    
+                    // Pass Shape and Min Diameter to axle finder
+                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, selectedShape, minAxleDiameter);
+                    
                     const defaultFriction = parseFloat(selectedLath['Friction %']) || 10;
-                    const requiredTorque = calculateTorqueHeadless(props.torqueWeight, selectedLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
+                    const requiredTorque = calculateTorqueHeadless(props.torqueWeight, selectedLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, collarSize);
+                    
                     const result = {
                         'Total Weight (kg)': props.totalWeight.toFixed(2),
                         'Required Axle Name': axleResult.name,
                         'Axle Deflection Status': axleResult.status,
                         'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
                     };
+                    
                     for (const man of selectedManufacturers) {
                         for (const vol of selectedVoltages) {
                             for (const mou of selectedMountings) {
@@ -2841,12 +2928,15 @@
                                         requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
                                         requiredTorque <= parseFloat(m['Torque (Nm) max'])
                                     ).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                
                                 if (suitableMotors.length > 0) {
                                     const selectedMotor = suitableMotors[0];
                                     result[scenarioKey] = selectedMotor.Name;
-                                    // OPENING TIME CALCULATION
+                                    
                                     let effectiveDiameter = 0;
-                                    if(axleResult.axleObj) { effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); }
+                                    if(axleResult.axleObj) { 
+                                        effectiveDiameter = Math.max(getEffectiveCoilDiameter(axleResult.axleObj), collarSize); 
+                                    }
                                     const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(selectedLath['Thickness']));
                                     const rpm = parseFloat(selectedMotor['RPM']) || 0;
                                     const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
@@ -2863,6 +2953,7 @@
                     calculationCache[width][height] = result;
                 }
             }
+            
             statusDiv.textContent = 'Step 2 of 2: Assembling CSV file...';
             await new Promise(resolve => setTimeout(resolve, 0));
             const csvData = [];
@@ -2870,8 +2961,16 @@
             for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
             const firstEntry = calculationCache[minWidth][minHeight];
             const tableTypes = Object.keys(firstEntry).sort();
+            
             for (const tableType of tableTypes) {
                 csvData.push([`Lath: ${selectedLath.Name} | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`]);
+                
+                // Add Context to header
+                let contextInfo = `Axle Shape: ${selectedShape} | Min Axle Dia: ${minAxleDiameter > 0 ? minAxleDiameter + 'mm' : 'None'}`;
+                if (collarSize > 0) contextInfo += ` | Collar: ${collarSize}mm`;
+                if (isPowderCoated) contextInfo += ` | Powder Coated: Yes`;
+                csvData.push([contextInfo]);
+
                 csvData.push([`Data: ${tableType}`]);
                 csvData.push(widthHeaders);
                 for (let height = minHeight; height <= maxHeight; height += interval) {
