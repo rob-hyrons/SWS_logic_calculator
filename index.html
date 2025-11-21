@@ -1671,7 +1671,8 @@
                     option.classList.add('option-pass');
                     if (recommendedMotorIndexInFilteredList === -1) { recommendedMotorIndexInFilteredList = index; }
                 } else {
-                    option.classList.add('option-fail'); option.disabled = true; 
+                    option.classList.add('option-fail'); 
+                    // Removed option.disabled = true; to allow selection of failed motors
                 }
                 select.appendChild(option);
             });
