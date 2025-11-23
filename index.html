@@ -420,6 +420,12 @@
                 <!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
+                    <div class="form-group" data-admin-label="Motor Usage Type">
+                        <label for="motorUsageFilter">Motor Usage Type</label>
+                        <select id="motorUsageFilter" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
                      <div class="form-group" data-admin-label="Motor Manufacturer">
                         <label for="motorManufacturerFilter">Motor Manufacturer</label>
                         <select id="motorManufacturerFilter" disabled>
@@ -692,7 +698,16 @@
                             </div>
                         </div>
 
-                        <h4>3. Select Motor Manufacturers to Include</h4>
+                        <h4>3. Select Motor Usage Types</h4>
+                        <div class="admin-button-group">
+                            <button id="reportUsageSelectAll">Select All</button>
+                            <button id="reportUsageDeselectAll">Deselect All</button>
+                        </div>
+                        <div id="report-motor-usage-filter-container" class="report-filter-container">
+                            <p>Loading motor data...</p>
+                        </div>
+
+                        <h4>4. Select Motor Manufacturers to Include</h4>
                         <div class="admin-button-group">
                             <button id="reportMotorSelectAll">Select All</button>
                             <button id="reportMotorDeselectAll">Deselect All</button>
@@ -701,7 +716,7 @@
                             <p>Loading motor data...</p>
                         </div>
                         
-                        <h4>4. Select Motor Voltages to Include</h4>
+                        <h4>5. Select Motor Voltages to Include</h4>
                         <div class="admin-button-group">
                             <button id="reportVoltageSelectAll">Select All</button>
                             <button id="reportVoltageDeselectAll">Deselect All</button>
@@ -710,7 +725,7 @@
                             <p>Loading motor data...</p>
                         </div>
 
-                        <h4>5. Select Motor Mounting Types to Include</h4>
+                        <h4>6. Select Motor Mounting Types to Include</h4>
                         <div class="admin-button-group">
                             <button id="reportMountingSelectAll">Select All</button>
                             <button id="reportMountingDeselectAll">Deselect All</button>
@@ -744,7 +759,7 @@
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
-         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
+         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
          'sb-activation-height', 'sb-activation-height-explainer', 'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
@@ -765,7 +780,7 @@
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
+        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
          'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity'
         ].forEach(id => {
@@ -914,7 +929,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -975,9 +990,10 @@
                 populateMotorMountingTypes();
                 populateMotorVoltageFilter();
                 populateMotorManufacturerFilter();
+                populateMotorUsageFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1154,6 +1170,22 @@
                 option.value = type; option.textContent = type; select.appendChild(option);
             });
             dom.motorManufacturerFilter.parentElement.style.display = 'block';
+        }
+
+        function populateMotorUsageFilter() {
+            let usageKey = '';
+            if (motorData.length > 0) {
+                usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
+            }
+            if (!usageKey) { dom.motorUsageFilter.parentElement.style.display = 'none'; return; }
+            const usageTypes = [...new Set(motorData.map(motor => motor[usageKey]).filter(m => m))];
+            const select = dom.motorUsageFilter;
+            select.innerHTML = '<option value="">-- All Usage Types --</option>';
+            usageTypes.sort().forEach(type => {
+                const option = document.createElement('option');
+                option.value = type; option.textContent = type; select.appendChild(option);
+            });
+            dom.motorUsageFilter.parentElement.style.display = 'block';
         }
 
         function getLathWithCustomWeight() {
@@ -1661,16 +1693,20 @@
             const selectedMountType = dom.motorMountingType.value;
             const selectedVoltage = dom.motorVoltageFilter.value;
             const selectedManufacturer = dom.motorManufacturerFilter.value;
-            let voltageKey = '', manufacturerKey = '';
+            const selectedUsage = dom.motorUsageFilter.value;
+
+            let voltageKey = '', manufacturerKey = '', usageKey = '';
             if (motorData.length > 0) {
                 voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
                 manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+                usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
             }
             currentFilteredMotors = motorData.filter(motor => {
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
                 const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
                 const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
-                return mountMatch && voltageMatch && manufacturerMatch;
+                const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
+                return mountMatch && voltageMatch && manufacturerMatch && usageMatch;
             });
             
             const select = dom.motorSelector; select.innerHTML = ''; select.disabled = false;
@@ -2736,12 +2772,13 @@
             populateDropdown(endlockSelect, endlockData, 'Description');
             const bottomLathSelect = document.getElementById('reportBottomLathType');
             populateDropdown(bottomLathSelect, bottomLathData, 'Bottom lath name');
-            let manufacturerKey = '', voltageKey = '', mountingKey = '';
+            let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
             if (motorData.length > 0) {
                 const firstMotor = motorData[0];
                 manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
                 voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
                 mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
+                usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
             }
             const setupFilterGroup = (containerId, key, data, className) => {
                 const container = document.getElementById(containerId); container.innerHTML = '';
@@ -2757,12 +2794,16 @@
             setupFilterGroup('report-motor-filter-container', manufacturerKey, motorData, 'report-motor-checkbox');
             setupFilterGroup('report-motor-voltage-filter-container', voltageKey, motorData, 'report-voltage-checkbox');
             setupFilterGroup('report-motor-mounting-filter-container', mountingKey, motorData, 'report-mounting-checkbox');
+            setupFilterGroup('report-motor-usage-filter-container', usageKey, motorData, 'report-usage-checkbox');
+
             document.getElementById('reportMotorSelectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true));
             document.getElementById('reportMotorDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false));
             document.getElementById('reportVoltageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = true));
             document.getElementById('reportVoltageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = false));
             document.getElementById('reportMountingSelectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = true));
             document.getElementById('reportMountingDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportUsageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-usage-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportUsageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-usage-checkbox').forEach(cb => cb.checked = false));
             
             const genBtn = document.getElementById('generateCsvButton');
             const newBtn = genBtn.cloneNode(true);
@@ -2855,8 +2896,9 @@
             
             const lathThickness = parseFloat(lath['Thickness']) || 0;
             const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
-            const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-            const lathsWeight = torqueWeight - bottomLathWeight;
+            const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath height']) || 0); // Using BLath height here as a proxy for weight if 'weight' field is missing or separate, check standard logic
+            const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            const lathsWeight = torqueWeight - bottomLathWeightActual;
 
             let heightLifted = 0;
             let currentRollDiameter = effectiveStartDiameter;
@@ -2867,7 +2909,7 @@
                 const percentLifted = heightLifted / travelHeight;
                 // Remaining weight decreases as curtain lifts
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
-                const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
+                const remainingTotalWeight = remainingLathWeight + bottomLathWeightActual;
                 
                 const force = remainingTotalWeight * 9.81;
                 // Radius increases as curtain rolls up
@@ -2921,16 +2963,19 @@
             const selectedManufacturers = getSelectedValues('report-motor-checkbox');
             const selectedVoltages = getSelectedValues('report-voltage-checkbox');
             const selectedMountings = getSelectedValues('report-mounting-checkbox');
-            if (selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0) {
-                statusDiv.textContent = 'Error: Please select at least one option from each motor filter category.'; statusDiv.style.color = 'red'; return;
+            const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
+            
+            if (selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0 || selectedUsageTypes.length === 0) {
+                statusDiv.textContent = 'Error: Please select at least one option from each motor filter category (including Usage Type).'; statusDiv.style.color = 'red'; return;
             }
             
-            let manufacturerKey = '', voltageKey = '', mountingKey = '';
+            let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
             if (motorData.length > 0) {
                 const firstMotor = motorData[0];
                 manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
                 voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
                 mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
+                usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
             }
             
             const calculationCache = {};
@@ -2964,33 +3009,38 @@
                         'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
                     };
 
-                    for (const man of selectedManufacturers) {
-                        for (const vol of selectedVoltages) {
-                            for (const mou of selectedMountings) {
-                                const scenarioName = `${man} (${vol}, ${mou})`;
-                                const scenarioKey = `Motor: ${scenarioName}`;
-                                const suitableMotors = motorData.filter(m => 
-                                        m[manufacturerKey] == man &&
-                                        String(m[voltageKey]) == String(vol) &&
-                                        m[mountingKey] == mou &&
-                                        requiredTorque > 0 && 
-                                        requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
-                                        requiredTorque <= parseFloat(m['Torque (Nm) max'])
-                                    ).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
-                                if (suitableMotors.length > 0) {
-                                    const selectedMotor = suitableMotors[0];
-                                    result[scenarioKey] = selectedMotor.Name;
-                                    let effectiveDiameter = 0;
-                                    if(axleResult.axleObj) { effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); }
-                                    const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(currentLath['Thickness']));
-                                    const rpm = parseFloat(selectedMotor['RPM']) || 0;
-                                    const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
-                                    const timeKey = `Opening Time (sec): ${scenarioName}`;
-                                    result[timeKey] = timeSeconds > 0 ? timeSeconds.toFixed(1) : 'N/A';
-                                } else {
-                                    result[scenarioKey] = 'null';
-                                    const timeKey = `Opening Time (sec): ${scenarioName}`;
-                                    result[timeKey] = 'N/A';
+                    // Iterate Usage Types first
+                    for (const usage of selectedUsageTypes) {
+                        for (const man of selectedManufacturers) {
+                            for (const vol of selectedVoltages) {
+                                for (const mou of selectedMountings) {
+                                    const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
+                                    const scenarioKey = `Motor: ${scenarioName}`;
+                                    const suitableMotors = motorData.filter(m => 
+                                            m[usageKey] == usage &&
+                                            m[manufacturerKey] == man &&
+                                            String(m[voltageKey]) == String(vol) &&
+                                            m[mountingKey] == mou &&
+                                            requiredTorque > 0 && 
+                                            requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
+                                            requiredTorque <= parseFloat(m['Torque (Nm) max'])
+                                        ).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                    
+                                    if (suitableMotors.length > 0) {
+                                        const selectedMotor = suitableMotors[0];
+                                        result[scenarioKey] = selectedMotor.Name;
+                                        let effectiveDiameter = 0;
+                                        if(axleResult.axleObj) { effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); }
+                                        const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(currentLath['Thickness']));
+                                        const rpm = parseFloat(selectedMotor['RPM']) || 0;
+                                        const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
+                                        const timeKey = `Opening Time (sec): ${scenarioName}`;
+                                        result[timeKey] = timeSeconds > 0 ? timeSeconds.toFixed(1) : 'N/A';
+                                    } else {
+                                        result[scenarioKey] = 'null';
+                                        const timeKey = `Opening Time (sec): ${scenarioName}`;
+                                        result[timeKey] = 'N/A';
+                                    }
                                 }
                             }
                         }
