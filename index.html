@@ -2813,32 +2813,88 @@
 
         function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
             if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
-            const axleRadius = 60;
+            
+            const axleRadius = 60; // Standard assumption for reporting if no specific axle selected yet
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
             const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
+            
             let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
+            
             const widthM = width_mm / 1000;
             let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
             const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
             const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-            let totalEndlockWeight = 0; let endlockWeightG = 0;
-            if (endlock) {
-                const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
-                endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
-                if (endlockWeightG > 0 && numLaths > 0) {
-                    const numEndlockPairs = Math.ceil(numLaths / 2); 
-                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
+            
+            // --- UPDATED ENDLOCK WEIGHT CALCULATION ---
+            let totalEndlockWeight = 0;
+            let bufferEndlockWeight = 0; // For torque calculation later
+
+            const lathName = (lath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+
+            if (isWindLath) {
+                // LOGIC MIRROR: If Wind Lath, switch to Cast + Wind locks regardless of dropdown selection
+                
+                // 1. Find Cast Endlock (Looking for "75mm cast" in global endlockData)
+                const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
+                let castWeightG = 0;
+                if (castEndlockObj) {
+                    const wKey = Object.keys(castEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    castWeightG = wKey ? parseFloat(castEndlockObj[wKey]) : 0;
                 }
+
+                // 2. Find Wind Endlock (Looking for "75mm wind" in global endlockData)
+                const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                let windWeightG = 0;
+                if (windEndlockObj) {
+                    const wKey = Object.keys(windEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    windWeightG = wKey ? parseFloat(windEndlockObj[wKey]) : 0;
+                }
+
+                // 3. Apply the specific Wind Loop Formula
+                for (let i = 1; i <= numLaths; i++) {
+                    // Cast lock on every Odd lath (1, 3, 5...)
+                    if (i % 2 !== 0 && castWeightG > 0) { 
+                        totalEndlockWeight += 2 * (castWeightG / 1000); 
+                    }
+                    
+                    // Wind lock on specific positions (2, 4, 6, 8, then every 8th)
+                    const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
+                    if (isWindLathPosition && windWeightG > 0) { 
+                        totalEndlockWeight += 2 * (windWeightG / 1000); 
+                    }
+                }
+
+                // Calculate buffer for Torque (Mirroring main logic: usually 4 cast locks)
+                if (castWeightG > 0) { bufferEndlockWeight = 4 * (castWeightG / 1000); }
+
+            } else {
+                // STANDARD LOGIC: Use the selected endlock (e.g., Plastic)
+                let endlockWeightG = 0;
+                if (endlock) {
+                    const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
+                    
+                    if (endlockWeightG > 0 && numLaths > 0) {
+                        const numEndlockPairs = Math.ceil(numLaths / 2); 
+                        totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
+                    }
+                }
+                
+                // Calculate buffer for Torque
+                if (endlockWeightG > 0) { bufferEndlockWeight = 4 * (endlockWeightG / 1000); }
             }
+            // ------------------------------------------
+
             const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
+            
             let torqueWeight = totalWeight;
             if (numLaths >= 3) {
                 const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
-                let bufferEndlockWeight = 0;
-                if (endlockWeightG > 0) { bufferEndlockWeight = 4 * (endlockWeightG / 1000); }
                 torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
             }
+            
             const travelHeight = height_mm - bottomLathHeight;
             return { totalWeight, torqueWeight, travelHeight };
         }
