@@ -396,7 +396,7 @@
                         </select>
                     </div>
                     
-                    <div class="form-group" id="collar-size-group" data-admin-label="Collar Size">
+                    <div class="form-group" id="collar-size-group" data-admin-label="Collar Size" style="display: none;">
                         <label for="collarSize">Collar Size (mm)</label>
                         <input type="number" id="collarSize" placeholder="e.g., 150" value="0">
                     </div>
@@ -907,6 +907,14 @@
             
             // MODIFICATION: Always show collar group for both Circular and Octagonal
             collarGroup.style.display = 'block';
+            
+            // Original logic was:
+            // if (selectedShape === 'octagonal') {
+            //     collarGroup.style.display = 'block';
+            // } else {
+            //     collarGroup.style.display = 'none';
+            //     dom.collarSize.value = 0; 
+            // }
 
             userSelectedAxleIndex = null;
             updateAllCalculations();
@@ -2483,6 +2491,50 @@
             if(graphic) container.appendChild(graphic);
         }
 
+        function drawTopDownWidthGraphic(calculatedWidths, guide) {
+            const container = dom['width-graphic-container']; container.innerHTML = '';
+            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
+            if (!guide || !overallWidth || overallWidth <= 0) { return; }
+            const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
+            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
+            const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
+            const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
+            const svgNS = "http://www.w3.org/2000/svg"; const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 600; const svgHeight = 180; 
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker'); marker.setAttribute('id', 'dim-arrow-width-graphic'); marker.setAttribute('viewBox', '0 0 10 10'); marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path'); arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
+            const padding = { x: 50, y: 30 }; const graphicWidth = svgWidth - 2 * padding.x; const scale = graphicWidth / overallWidth;
+            const curtainHeight = 20; const guideDepth = 30; const graphicTopY = padding.y;
+            const scaledGuideWidth = guideWidth * scale; const scaledCurtainWidth = curtainWidth * scale; const scaledClearOpening = clearOpening * scale; const scaledPenetration = guidePenetration * scale;
+            const overallStartX = padding.x;
+            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
+            const leftGuideX = overallStartX; const leftGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
+            const leftGuidePath = document.createElementNS(svgNS, 'path'); leftGuidePath.setAttribute('d', `M ${leftGuideX + scaledGuideWidth},${leftGuideY} L ${leftGuideX},${leftGuideY} L ${leftGuideX},${leftGuideY + guideDepth} L ${leftGuideX + scaledGuideWidth},${leftGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(leftGuidePath);
+            const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth; const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
+            const rightGuidePath = document.createElementNS(svgNS, 'path'); rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(rightGuidePath);
+            const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
+            const curtain = document.createElementNS(svgNS, 'rect'); curtain.setAttribute('x', curtainX); curtain.setAttribute('y', graphicTopY); curtain.setAttribute('width', scaledCurtainWidth); curtain.setAttribute('height', curtainHeight); curtain.setAttribute('class', 'shutter-bottomlath-graphic'); svg.appendChild(curtain);
+            const endCapWidth = 5; const leftEndCap = document.createElementNS(svgNS, 'rect'); leftEndCap.setAttribute('x', curtainX); leftEndCap.setAttribute('y', graphicTopY); leftEndCap.setAttribute('width', endCapWidth); leftEndCap.setAttribute('height', curtainHeight); leftEndCap.setAttribute('fill', 'black'); svg.appendChild(leftEndCap);
+            const rightEndCap = document.createElementNS(svgNS, 'rect'); rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth); rightEndCap.setAttribute('y', graphicTopY); rightEndCap.setAttribute('width', endCapWidth); rightEndCap.setAttribute('height', curtainHeight); rightEndCap.setAttribute('fill', 'black'); svg.appendChild(rightEndCap);
+            const drawDim = (yOffset, startX, endX, label, value) => {
+                const lineY = graphicTopY + guideDepth + yOffset; const tickHeight = 8; const textGap = 5;
+                const line = document.createElementNS(svgNS, 'line'); line.setAttribute('x1', startX); line.setAttribute('y1', lineY); line.setAttribute('x2', endX); line.setAttribute('y2', lineY); line.setAttribute('class', 'dimension-line'); line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); svg.appendChild(line);
+                const tick1 = document.createElementNS(svgNS, 'line'); tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY); tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight); tick1.setAttribute('class', 'dimension-tick'); svg.appendChild(tick1);
+                const tick2 = document.createElementNS(svgNS, 'line'); tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY); tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight); tick2.setAttribute('class', 'dimension-tick'); svg.appendChild(tick2);
+                const labelText = document.createElementNS(svgNS, 'text'); labelText.textContent = label; labelText.setAttribute('class', 'width-graphic-label'); labelText.setAttribute('x', startX + (endX - startX) / 2); labelText.setAttribute('y', lineY - textGap); svg.appendChild(labelText);
+                const valueText = document.createElementNS(svgNS, 'text'); valueText.textContent = `(${value.toFixed(0)} mm)`; valueText.setAttribute('class', 'width-graphic-value'); valueText.setAttribute('x', startX + (endX - startX) / 2); valueText.setAttribute('y', lineY + textGap + 10); svg.appendChild(valueText);
+            };
+            const clearOpeningStartX = overallStartX + scaledGuideWidth; const clearOpeningEndX = clearOpeningStartX + scaledClearOpening;
+            drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
+            const curtainEndX = curtainX + scaledCurtainWidth;
+            drawDim(65, curtainX, curtainEndX, 'Curtain width', curtainWidth);
+            const overallEndX = overallStartX + graphicWidth;
+            drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
+            container.appendChild(svg);
+        }
+
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
             if (!realWidth || !lath || !bottomLath || !axle) { return null; }
@@ -2680,6 +2732,431 @@
         };
         
         updateAllCalculations();
+    </script>
+
+    <script>
+        window.addEventListener('load', () => {
+            ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
+                const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+                if(tabButton) { tabButton.style.display = 'none'; }
+            });
+            initializeAdminControls(); 
+            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
+            const statusDiv = document.getElementById('import-status');
+            statusDiv.textContent = 'Loading data from repository...'; statusDiv.style.color = '#555';
+            fetch(excelFileUrl).then(response => {
+                if (!response.ok) { throw new Error(`Network response was not ok: ${response.statusText}`); }
+                return response.arrayBuffer();
+            }).then(fileData => { processExcelFile(fileData); }).catch(error => {
+                statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.'; statusDiv.style.color = 'red'; console.error('There has been a problem with the fetch operation:', error);
+            });
+        });
+    </script>
+    
+    <script>
+        function setupReportFilters() {
+            const lathSelect = document.getElementById('reportLathType');
+            populateDropdown(lathSelect, lathData, 'Name');
+
+            // NEW: Populate Secondary Lath Dropdown
+            const lathSelect2 = document.getElementById('reportLathType2');
+            // Add a specific "None" option first
+            lathSelect2.innerHTML = `<option value="">-- None (Use Primary) --</option>`;
+            lathData.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = item.Name;
+                lathSelect2.appendChild(option);
+            });
+
+            const endlockSelect = document.getElementById('reportEndlockType');
+            populateDropdown(endlockSelect, endlockData, 'Description');
+            const bottomLathSelect = document.getElementById('reportBottomLathType');
+            populateDropdown(bottomLathSelect, bottomLathData, 'Bottom lath name');
+            let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
+            if (motorData.length > 0) {
+                const firstMotor = motorData[0];
+                manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
+                voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
+                mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
+                usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
+            }
+            const setupFilterGroup = (containerId, key, data, className) => {
+                const container = document.getElementById(containerId); container.innerHTML = '';
+                if (key) {
+                    const uniqueValues = [...new Set(data.map(item => item[key]).filter(val => val))];
+                    uniqueValues.sort().forEach(value => {
+                        const controlItem = document.createElement('div'); controlItem.className = 'admin-control-item';
+                        controlItem.innerHTML = `<label><input type="checkbox" class="${className}" value="${value}" checked> ${value}</label>`;
+                        container.appendChild(controlItem);
+                    });
+                } else { container.innerHTML = `<p><em>Column not found in data.</em></p>`; }
+            };
+            setupFilterGroup('report-motor-filter-container', manufacturerKey, motorData, 'report-motor-checkbox');
+            setupFilterGroup('report-motor-voltage-filter-container', voltageKey, motorData, 'report-voltage-checkbox');
+            setupFilterGroup('report-motor-mounting-filter-container', mountingKey, motorData, 'report-mounting-checkbox');
+            setupFilterGroup('report-motor-usage-filter-container', usageKey, motorData, 'report-usage-checkbox');
+
+            document.getElementById('reportMotorSelectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportMotorDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportVoltageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportVoltageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportMountingSelectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportMountingDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = false));
+            document.getElementById('reportUsageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-usage-checkbox').forEach(cb => cb.checked = true));
+            document.getElementById('reportUsageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-usage-checkbox').forEach(cb => cb.checked = false));
+            
+            const genBtn = document.getElementById('generateCsvButton');
+            const newBtn = genBtn.cloneNode(true);
+            genBtn.parentNode.replaceChild(newBtn, genBtn);
+            newBtn.addEventListener('click', generateCsvReport);
+        }
+
+        function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
+            if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
+            
+            const axleRadius = 60; // Standard assumption for reporting if no specific axle selected yet
+            const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
+            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+            const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
+            
+            let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
+            
+            const widthM = width_mm / 1000;
+            let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
+            const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            
+            // --- UPDATED ENDLOCK WEIGHT CALCULATION ---
+            let totalEndlockWeight = 0;
+            let bufferEndlockWeight = 0; // For torque calculation later
+
+            const lathName = (lath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+
+            if (isWindLath) {
+                // LOGIC MIRROR: If Wind Lath, switch to Cast + Wind locks regardless of dropdown selection
+                
+                // 1. Find Cast Endlock (Looking for "75mm cast" in global endlockData)
+                const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
+                let castWeightG = 0;
+                if (castEndlockObj) {
+                    const wKey = Object.keys(castEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    castWeightG = wKey ? parseFloat(castEndlockObj[wKey]) : 0;
+                }
+
+                // 2. Find Wind Endlock (Looking for "75mm wind" in global endlockData)
+                const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                let windWeightG = 0;
+                if (windEndlockObj) {
+                    const wKey = Object.keys(windEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    windWeightG = wKey ? parseFloat(windEndlockObj[wKey]) : 0;
+                }
+
+                // 3. Apply the specific Wind Loop Formula
+                for (let i = 1; i <= numLaths; i++) {
+                    // Cast lock on every Odd lath (1, 3, 5...)
+                    if (i % 2 !== 0 && castWeightG > 0) { 
+                        totalEndlockWeight += 2 * (castWeightG / 1000); 
+                    }
+                    
+                    // Wind lock on specific positions (2, 4, 6, 8, then every 8th)
+                    const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
+                    if (isWindLathPosition && windWeightG > 0) { 
+                        totalEndlockWeight += 2 * (windWeightG / 1000); 
+                    }
+                }
+
+                // Calculate buffer for Torque (Mirroring main logic: usually 4 cast locks)
+                if (castWeightG > 0) { bufferEndlockWeight = 4 * (castWeightG / 1000); }
+
+            } else {
+                // STANDARD LOGIC: Use the selected endlock (e.g., Plastic)
+                let endlockWeightG = 0;
+                if (endlock) {
+                    const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
+                    endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
+                    
+                    if (endlockWeightG > 0 && numLaths > 0) {
+                        const numEndlockPairs = Math.ceil(numLaths / 2); 
+                        totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
+                    }
+                }
+                
+                // Calculate buffer for Torque
+                if (endlockWeightG > 0) { bufferEndlockWeight = 4 * (endlockWeightG / 1000); }
+            }
+            // ------------------------------------------
+
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
+            
+            let torqueWeight = totalWeight;
+            if (numLaths >= 3) {
+                const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
+                torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
+            }
+            
+            const travelHeight = height_mm - bottomLathHeight;
+            return { totalWeight, torqueWeight, travelHeight };
+        }
+
+        function findBestAxleHeadless(totalWeightKgs, totalLength, lath) {
+             if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
+            
+            // MODIFICATION: Removed minAxleDiameter logic here as well
+            /*
+            let minAxleDiameter = 0;
+            if (lath) {
+                const minAxleKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'min axle diameter');
+                minAxleDiameter = minAxleKey ? (parseFloat(lath[minAxleKey]) || 0) : 0;
+            }
+            */
+
+            const axlesForShape = axleData.filter(axle => {
+                const isCircular = (axle.Shape || 'circular').toLowerCase().trim() === 'circular';
+                // MODIFICATION: Removed '&& dia >= minAxleDiameter'
+                return isCircular;
+            });
+
+            if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
+
+            let bestAxle = null;
+            let bestDeflection = 0;
+            
+            for (const axle of axlesForShape) {
+                const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
+                if (perf.ratio >= 400 && perf.deflection <= 25) { 
+                    bestAxle = axle; 
+                    bestDeflection = perf.deflection;
+                    break; 
+                }
+            }
+            
+            if (bestAxle) { 
+                return { name: bestAxle.Name, deflection: bestDeflection, axleObj: bestAxle }; 
+            } else { 
+                let bestFailAxle = axlesForShape[0];
+                let minDeflection = Infinity;
+
+                axlesForShape.forEach(axle => {
+                     const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength);
+                     if(perf.deflection < minDeflection) {
+                         minDeflection = perf.deflection;
+                         bestFailAxle = axle;
+                     }
+                });
+                return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
+            }
+        }
+        
+        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent) {
+            // Simulate the lift just like getTorqueProfile to account for diameter increase
+            if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
+            
+            const lathThickness = parseFloat(lath['Thickness']) || 0;
+            const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+            const bottomLathWeight = (width_mm / 1000) * (parseFloat(bottomLath['BLath height']) || 0); // Using BLath height here as a proxy for weight if 'weight' field is missing or separate, check standard logic
+            const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            const lathsWeight = torqueWeight - bottomLathWeightActual;
+
+            let heightLifted = 0;
+            let currentRollDiameter = effectiveStartDiameter;
+            let maxTorqueFound = 0;
+
+            // Iterate through the lift
+            while (heightLifted < travelHeight) {
+                const percentLifted = heightLifted / travelHeight;
+                // Remaining weight decreases as curtain lifts
+                const remainingLathWeight = lathsWeight * (1 - percentLifted);
+                const remainingTotalWeight = remainingLathWeight + bottomLathWeightActual;
+                
+                const force = remainingTotalWeight * 9.81;
+                // Radius increases as curtain rolls up
+                const radiusM = (currentRollDiameter / 2) / 1000;
+                
+                const currentTorque = force * radiusM;
+                if (currentTorque > maxTorqueFound) {
+                    maxTorqueFound = currentTorque;
+                }
+
+                // Advance simulation by one wrap
+                const circumference = Math.PI * currentRollDiameter;
+                heightLifted += circumference / 2; // Matches getTorqueProfile logic step
+                currentRollDiameter += lathThickness;
+            }
+
+            const frictionMultiplier = 1 + (friction_percent || 0) / 100;
+            return maxTorqueFound * frictionMultiplier;
+        }
+
+        async function generateCsvReport() {
+            const statusDiv = document.getElementById('csv-generation-status');
+            statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            const minWidth = parseInt(document.getElementById('reportMinWidth').value);
+            const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
+            const minHeight = parseInt(document.getElementById('reportMinHeight').value);
+            const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
+            const interval = parseInt(document.getElementById('reportInterval').value);
+            
+            // Inputs
+            const lathIndex1 = document.getElementById('reportLathType').value;
+            const lathIndex2 = document.getElementById('reportLathType2').value;
+            const rawLimit = document.getElementById('reportLathLimit').value;
+            const switchLimit = rawLimit ? parseInt(rawLimit) : Infinity; 
+
+            const endlockIndex = document.getElementById('reportEndlockType').value;
+            const bottomLathIndex = document.getElementById('reportBottomLathType').value;
+
+            if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
+                statusDiv.textContent = 'Error: Please select Primary Lath, Endlock, and Bottom Lath types.'; statusDiv.style.color = 'red'; return;
+            }
+
+            const primaryLath = lathData[lathIndex1];
+            const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
+            const selectedEndlock = endlockData[endlockIndex];
+            const selectedBottomLath = bottomLathData[bottomLathIndex];
+
+            const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
+            const selectedManufacturers = getSelectedValues('report-motor-checkbox');
+            const selectedVoltages = getSelectedValues('report-voltage-checkbox');
+            const selectedMountings = getSelectedValues('report-mounting-checkbox');
+            const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
+            
+            if (selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0 || selectedUsageTypes.length === 0) {
+                statusDiv.textContent = 'Error: Please select at least one option from each motor filter category (including Usage Type).'; statusDiv.style.color = 'red'; return;
+            }
+            
+            let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
+            if (motorData.length > 0) {
+                const firstMotor = motorData[0];
+                manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
+                voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
+                mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
+                usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
+            }
+            
+            const calculationCache = {};
+            const defaultAdditionalLength = 100;
+            let calculationCount = 0;
+            
+            statusDiv.textContent = `Step 1 of 2: Calculating configuration...`;
+            
+            for (let width = minWidth; width <= maxWidth; width += interval) {
+                calculationCache[width] = {};
+                
+                const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
+
+                for (let height = minHeight; height <= maxHeight; height += interval) {
+                    calculationCount++;
+                    if (calculationCount % 50 === 0) { statusDiv.textContent = `Step 1 of 2: Calculating... (${calculationCount} sizes processed)`; await new Promise(resolve => setTimeout(resolve, 0)); }
+                    
+                    const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
+                    const totalLength = width + defaultAdditionalLength;
+                    
+                    const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, currentLath);
+                    
+                    const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
+                    const requiredTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
+                    
+                    const result = {
+                        'Lath Type Used': currentLath.Name, 
+                        'Total Weight (kg)': props.totalWeight.toFixed(2),
+                        'Required Axle Name': axleResult.name,
+                        'Axle Deflection (mm)': axleResult.deflection.toFixed(2), 
+                        'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
+                    };
+
+                    // Iterate Usage Types first
+                    for (const usage of selectedUsageTypes) {
+                        for (const man of selectedManufacturers) {
+                            for (const vol of selectedVoltages) {
+                                for (const mou of selectedMountings) {
+                                    const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
+                                    const scenarioKey = `Motor: ${scenarioName}`;
+                                    const suitableMotors = motorData.filter(m => 
+                                            m[usageKey] == usage &&
+                                            m[manufacturerKey] == man &&
+                                            String(m[voltageKey]) == String(vol) &&
+                                            m[mountingKey] == mou &&
+                                            requiredTorque > 0 && 
+                                            requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
+                                            requiredTorque <= parseFloat(m['Torque (Nm) max'])
+                                        ).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                    
+                                    if (suitableMotors.length > 0) {
+                                        const selectedMotor = suitableMotors[0];
+                                        result[scenarioKey] = selectedMotor.Name;
+                                        let effectiveDiameter = 0;
+                                        if(axleResult.axleObj) { effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); }
+                                        const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(currentLath['Thickness']));
+                                        const rpm = parseFloat(selectedMotor['RPM']) || 0;
+                                        const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
+                                        const timeKey = `Opening Time (sec): ${scenarioName}`;
+                                        result[timeKey] = timeSeconds > 0 ? timeSeconds.toFixed(1) : 'N/A';
+                                    } else {
+                                        result[scenarioKey] = 'null';
+                                        const timeKey = `Opening Time (sec): ${scenarioName}`;
+                                        result[timeKey] = 'N/A';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    calculationCache[width][height] = result;
+                }
+            }
+            statusDiv.textContent = 'Step 2 of 2: Assembling CSV file...';
+            await new Promise(resolve => setTimeout(resolve, 0));
+            const csvData = [];
+            const widthHeaders = ['Height \\ Width'];
+            for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
+            
+            const firstEntry = calculationCache[minWidth][minHeight];
+            const tableTypes = Object.keys(firstEntry);
+            
+            tableTypes.sort((a, b) => {
+                if (a === 'Lath Type Used') return -1;
+                if (b === 'Lath Type Used') return 1;
+                return a.localeCompare(b);
+            });
+
+            let headerInfo = `Primary Lath: ${primaryLath.Name}`;
+            if (lathIndex2 !== "" && rawLimit) {
+                headerInfo += ` | Secondary Lath (>${rawLimit}mm): ${secondaryLath.Name}`;
+            }
+            headerInfo += ` | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`;
+
+            for (const tableType of tableTypes) {
+                csvData.push([headerInfo]);
+                csvData.push([`Data: ${tableType}`]);
+                csvData.push(widthHeaders);
+                for (let height = minHeight; height <= maxHeight; height += interval) {
+                    const row = [height];
+                    for (let width = minWidth; width <= maxWidth; width += interval) {
+                        const value = calculationCache[width]?.[height]?.[tableType] || 'N/A'; row.push(value);
+                    }
+                    csvData.push(row);
+                }
+                csvData.push([]); csvData.push([]);
+            }
+            downloadCsv(csvData);
+            statusDiv.textContent = 'Report generation complete. Download has started.'; statusDiv.style.color = 'green';
+        }
+
+        function downloadCsv(data) {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            data.forEach(function(rowArray) {
+                let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
+                csvContent += row + "\r\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "shutter_calculator_report.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
     </script>
 </body>
 </html>
