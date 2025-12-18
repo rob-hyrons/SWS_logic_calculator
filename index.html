@@ -904,12 +904,18 @@
         function handleShapeChange() {
             const selectedShape = document.querySelector('input[name="axleShape"]:checked').value;
             const collarGroup = dom['collar-size-group'];
-            if (selectedShape === 'octagonal') {
-                collarGroup.style.display = 'block';
-            } else {
-                collarGroup.style.display = 'none';
-                dom.collarSize.value = 0; 
-            }
+            
+            // MODIFICATION: Always show collar group for both Circular and Octagonal
+            collarGroup.style.display = 'block';
+            
+            // Original logic was:
+            // if (selectedShape === 'octagonal') {
+            //     collarGroup.style.display = 'block';
+            // } else {
+            //     collarGroup.style.display = 'none';
+            //     dom.collarSize.value = 0; 
+            // }
+
             userSelectedAxleIndex = null;
             updateAllCalculations();
         }
@@ -1316,22 +1322,17 @@
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
             }
 
-            // Filter axles by shape AND min axle diameter if present in lath data
-            const currentLath = lathData[dom.lathType.value];
-            let minAxleDiameter = 0;
-            if (currentLath) {
-                const minAxleKey = Object.keys(currentLath).find(k => k.toLowerCase().trim() === 'min axle diameter');
-                minAxleDiameter = minAxleKey ? (parseFloat(currentLath[minAxleKey]) || 0) : 0;
-            }
+            // MODIFICATION: Removed the minAxleDiameter Logic
+            // We no longer filter by 'min axle diameter' to allow 4" axles on 95mm laths
 
             const axlesForShape = axleData.map((axle, index) => ({ ...axle, originalIndex: index })).filter(axle => {
                 const axleShapeInSheet = (axle.Shape || 'circular').toLowerCase().trim();
-                const axleDia = parseFloat(axle['Diameter']) || 0;
-                return axleShapeInSheet === selectedShape && axleDia >= minAxleDiameter;
+                // MODIFICATION: Removed '&& axleDia >= minAxleDiameter'
+                return axleShapeInSheet === selectedShape; 
             });
 
             if (axlesForShape.length === 0) {
-                dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available (Min Dia: ${minAxleDiameter}mm) --</option>`;
+                dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available --</option>`;
                 ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
                 dom['axle-material-grade'].textContent = 'N/A'; drawAxleCrossSection(null);
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
@@ -1350,7 +1351,7 @@
             if (recommendedAxleOriginalIndex === -1) { recommendedAxleOriginalIndex = axlesForShape.length > 0 ? axlesForShape[0].originalIndex : -1; }
             let finalSelectedOriginalIndex = userSelectedAxleIndex !== null ? userSelectedAxleIndex : recommendedAxleOriginalIndex;
             
-            // Verify user selection fits shape and size constraints
+            // Verify user selection fits shape constraints
             const isUserSelectionValid = axlesForShape.some(axle => axle.originalIndex == finalSelectedOriginalIndex);
             if (userSelectedAxleIndex !== null && !isUserSelectionValid) { 
                 // If filtered out, revert to recommended
@@ -2902,17 +2903,19 @@
         function findBestAxleHeadless(totalWeightKgs, totalLength, lath) {
              if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
             
-            // Filter for Circular shape AND Min Axle Diameter
+            // MODIFICATION: Removed minAxleDiameter logic here as well
+            /*
             let minAxleDiameter = 0;
             if (lath) {
                 const minAxleKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'min axle diameter');
                 minAxleDiameter = minAxleKey ? (parseFloat(lath[minAxleKey]) || 0) : 0;
             }
+            */
 
             const axlesForShape = axleData.filter(axle => {
                 const isCircular = (axle.Shape || 'circular').toLowerCase().trim() === 'circular';
-                const dia = parseFloat(axle['Diameter']) || 0;
-                return isCircular && dia >= minAxleDiameter;
+                // MODIFICATION: Removed '&& dia >= minAxleDiameter'
+                return isCircular;
             });
 
             if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
