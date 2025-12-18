@@ -907,14 +907,6 @@
             
             // MODIFICATION: Always show collar group for both Circular and Octagonal
             collarGroup.style.display = 'block';
-            
-            // Original logic was:
-            // if (selectedShape === 'octagonal') {
-            //     collarGroup.style.display = 'block';
-            // } else {
-            //     collarGroup.style.display = 'none';
-            //     dom.collarSize.value = 0; 
-            // }
 
             userSelectedAxleIndex = null;
             updateAllCalculations();
@@ -2491,50 +2483,6 @@
             if(graphic) container.appendChild(graphic);
         }
 
-        function drawTopDownWidthGraphic(calculatedWidths, guide) {
-            const container = dom['width-graphic-container']; container.innerHTML = '';
-            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            if (!guide || !overallWidth || overallWidth <= 0) { return; }
-            const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
-            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
-            const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-            const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
-            const svgNS = "http://www.w3.org/2000/svg"; const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 600; const svgHeight = 180; 
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker'); marker.setAttribute('id', 'dim-arrow-width-graphic'); marker.setAttribute('viewBox', '0 0 10 10'); marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path'); arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
-            const padding = { x: 50, y: 30 }; const graphicWidth = svgWidth - 2 * padding.x; const scale = graphicWidth / overallWidth;
-            const curtainHeight = 20; const guideDepth = 30; const graphicTopY = padding.y;
-            const scaledGuideWidth = guideWidth * scale; const scaledCurtainWidth = curtainWidth * scale; const scaledClearOpening = clearOpening * scale; const scaledPenetration = guidePenetration * scale;
-            const overallStartX = padding.x;
-            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
-            const leftGuideX = overallStartX; const leftGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
-            const leftGuidePath = document.createElementNS(svgNS, 'path'); leftGuidePath.setAttribute('d', `M ${leftGuideX + scaledGuideWidth},${leftGuideY} L ${leftGuideX},${leftGuideY} L ${leftGuideX},${leftGuideY + guideDepth} L ${leftGuideX + scaledGuideWidth},${leftGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(leftGuidePath);
-            const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth; const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
-            const rightGuidePath = document.createElementNS(svgNS, 'path'); rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(rightGuidePath);
-            const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
-            const curtain = document.createElementNS(svgNS, 'rect'); curtain.setAttribute('x', curtainX); curtain.setAttribute('y', graphicTopY); curtain.setAttribute('width', scaledCurtainWidth); curtain.setAttribute('height', curtainHeight); curtain.setAttribute('class', 'shutter-bottomlath-graphic'); svg.appendChild(curtain);
-            const endCapWidth = 5; const leftEndCap = document.createElementNS(svgNS, 'rect'); leftEndCap.setAttribute('x', curtainX); leftEndCap.setAttribute('y', graphicTopY); leftEndCap.setAttribute('width', endCapWidth); leftEndCap.setAttribute('height', curtainHeight); leftEndCap.setAttribute('fill', 'black'); svg.appendChild(leftEndCap);
-            const rightEndCap = document.createElementNS(svgNS, 'rect'); rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth); rightEndCap.setAttribute('y', graphicTopY); rightEndCap.setAttribute('width', endCapWidth); rightEndCap.setAttribute('height', curtainHeight); rightEndCap.setAttribute('fill', 'black'); svg.appendChild(rightEndCap);
-            const drawDim = (yOffset, startX, endX, label, value) => {
-                const lineY = graphicTopY + guideDepth + yOffset; const tickHeight = 8; const textGap = 5;
-                const line = document.createElementNS(svgNS, 'line'); line.setAttribute('x1', startX); line.setAttribute('y1', lineY); line.setAttribute('x2', endX); line.setAttribute('y2', lineY); line.setAttribute('class', 'dimension-line'); line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); svg.appendChild(line);
-                const tick1 = document.createElementNS(svgNS, 'line'); tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY); tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight); tick1.setAttribute('class', 'dimension-tick'); svg.appendChild(tick1);
-                const tick2 = document.createElementNS(svgNS, 'line'); tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY); tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight); tick2.setAttribute('class', 'dimension-tick'); svg.appendChild(tick2);
-                const labelText = document.createElementNS(svgNS, 'text'); labelText.textContent = label; labelText.setAttribute('class', 'width-graphic-label'); labelText.setAttribute('x', startX + (endX - startX) / 2); labelText.setAttribute('y', lineY - textGap); svg.appendChild(labelText);
-                const valueText = document.createElementNS(svgNS, 'text'); valueText.textContent = `(${value.toFixed(0)} mm)`; valueText.setAttribute('class', 'width-graphic-value'); valueText.setAttribute('x', startX + (endX - startX) / 2); valueText.setAttribute('y', lineY + textGap + 10); svg.appendChild(valueText);
-            };
-            const clearOpeningStartX = overallStartX + scaledGuideWidth; const clearOpeningEndX = clearOpeningStartX + scaledClearOpening;
-            drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
-            const curtainEndX = curtainX + scaledCurtainWidth;
-            drawDim(65, curtainX, curtainEndX, 'Curtain width', curtainWidth);
-            const overallEndX = overallStartX + graphicWidth;
-            drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
-            container.appendChild(svg);
-        }
-
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
             if (!realWidth || !lath || !bottomLath || !axle) { return null; }
@@ -3005,6 +2953,7 @@
             const lathIndex2 = document.getElementById('reportLathType2').value;
             const rawLimit = document.getElementById('reportLathLimit').value;
             const switchLimit = rawLimit ? parseInt(rawLimit) : Infinity; 
+            const collarSize = parseFloat(dom.collarSize.value) || 0; // Get current collar size for headless calc
 
             const endlockIndex = document.getElementById('reportEndlockType').value;
             const bottomLathIndex = document.getElementById('reportBottomLathType').value;
@@ -3060,11 +3009,28 @@
                     const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
                     const requiredTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
                     
+                    // --- NEW CALCULATION: Effective Coil Diameter (including Deflection) ---
+                    let effectiveDiaString = 'N/A';
+                    if (axleResult.axleObj) {
+                        const axleDia = getEffectiveCoilDiameter(axleResult.axleObj);
+                        const startDia = Math.max(axleDia, collarSize);
+                        const thickness = parseFloat(currentLath['Thickness']);
+                        // Calculate total rotations required to lift the curtain
+                        const rotations = calculateTotalRevolutions(props.travelHeight, startDia, thickness);
+                        // Final coil diameter without deflection
+                        const finalCoilDia = startDia + (2 * rotations * thickness);
+                        // Add deflection
+                        const effectiveDia = finalCoilDia + axleResult.deflection;
+                        effectiveDiaString = effectiveDia.toFixed(1);
+                    }
+                    // ---------------------------------------------------------------------
+
                     const result = {
                         'Lath Type Used': currentLath.Name, 
                         'Total Weight (kg)': props.totalWeight.toFixed(2),
                         'Required Axle Name': axleResult.name,
                         'Axle Deflection (mm)': axleResult.deflection.toFixed(2), 
+                        'Effective Coil Diameter (mm)': effectiveDiaString, // Added here
                         'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
                     };
 
