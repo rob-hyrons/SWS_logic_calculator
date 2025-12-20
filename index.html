@@ -2741,7 +2741,7 @@
                 if(tabButton) { tabButton.style.display = 'none'; }
             });
             initializeAdminControls(); 
-            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20gfa.xlsx';
+            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculations%20Data.xlsx';
             const statusDiv = document.getElementById('import-status');
             statusDiv.textContent = 'Loading data from repository...'; statusDiv.style.color = '#555';
             fetch(excelFileUrl).then(response => {
