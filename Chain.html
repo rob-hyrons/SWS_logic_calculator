@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain Tension Calculator (Specific Dimensions)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 30px;}
+        
+        h1 { width: 100%; text-align: center; color: #2c3e50; margin-top: 0; }
+        
+        /* Left Column: Controls */
+        .controls { flex: 1; min-width: 320px; }
+        
+        /* Right Column: Visualization */
+        .visualization { flex: 1.5; min-width: 320px; display: flex; flex-direction: column; align-items: center; }
+        
+        .section { margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 5px solid #007bff; }
+        .section h3 { margin-top: 0; color: #007bff; font-size: 1.1em; margin-bottom: 15px; }
+        
+        .input-group { margin-bottom: 12px; }
+        .row-group { display: flex; gap: 10px; }
+        .row-group .input-group { flex: 1; }
+
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        select { background-color: #fff; cursor: pointer; border-color: #aaa; }
+        
+        /* Read-only inputs */
+        .readonly { background-color: #e9ecef; color: #666; pointer-events: none; }
+        
+        .note { font-size: 0.8em; color: #666; margin-top: 2px; }
+
+        .results-box { background-color: #eef2f5; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #ddd; }
+        .result-row:last-child { border-bottom: none; border: none; padding-bottom: 0; }
+        .result-value { font-weight: bold; font-size: 1.1em; }
+
+        .status-safe { color: #28a745; font-weight: bold; }
+        .status-danger { color: #dc3545; font-weight: bold; }
+
+        /* Canvas Styling */
+        canvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: inset 0 0 20px #f0f0f0;
+        }
+
+        /* Highlights */
+        #presetSelector { border: 2px solid #007bff; background-color: #eaf4ff; color: #0056b3; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Chain Tension Calculator</h1>
+
+    <!-- LEFT SIDE: INPUTS -->
+    <div class="controls">
+        
+        <!-- Quick Select -->
+        <div class="section" style="border-left-color: #6610f2;">
+            <h3>1. Chain & Gear Selection</h3>
+            <div class="input-group">
+                <label>Select Chain Size</label>
+                <select id="presetSelector" onchange="handleChainChange()">
+                    <option value="half" selected>1/2 inch (Standard)</option>
+                    <option value="five_eighths">5/8 inch (Heavy)</option>
+                    <option value="three_quarters">3/4 inch (Extra Heavy)</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div class="note">Sets Pitch, Break Strain & specific Sprocket sizes.</div>
+            </div>
+
+            <div class="row-group">
+                <div class="input-group">
+                    <label>Sprocket (Input)</label>
+                    <select id="sprocketTeeth" onchange="updateAll()">
+                        <!-- JS Populates -->
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Plate Wheel (Output)</label>
+                    <select id="plateTeeth" onchange="handlePlateChange()">
+                        <!-- JS Populates -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Machine Setup -->
+        <div class="section">
+            <h3>2. Dimensions & Specs</h3>
+            <div class="input-group">
+                <label>Plate Wheel Diameter (mm)</label>
+                <!-- Readonly by default as it's calculated from teeth, unless custom -->
+                <input type="number" id="plateDia" class="readonly" value="194">
+                <div class="note">Calculated from Teeth & Pitch</div>
+            </div>
+            <div class="input-group">
+                <label>Max Breaking Strain (Newtons)</label>
+                <input type="number" id="chainBreak" value="18000">
+            </div>
+            <div class="input-group">
+                <label>Barrel Diameter (mm)</label>
+                <input type="number" id="barrelDia" value="127" oninput="updateAll()">
+            </div>
+            <div class="input-group">
+                <label>Safety Factor</label>
+                <input type="number" id="safetyFactor" value="5" oninput="updateAll()">
+                <div class="note">Standard Lifting = 5:1</div>
+            </div>
+        </div>
+
+        <!-- The Load -->
+        <div class="section" style="border-left-color: #dc3545;">
+            <h3>3. Input Load Weight</h3>
+            <div class="input-group">
+                <label>Weight to Lift (kg)</label>
+                <input type="number" id="inputWeight" value="150" oninput="updateAll()">
+            </div>
+        </div>
+
+        <!-- Results Text -->
+        <div class="results-box">
+            <div class="result-row">
+                <span>Gear Ratio:</span>
+                <span class="result-value" id="resRatio" style="color:#007bff">0.0 : 1</span>
+            </div>
+            <div class="result-row">
+                <span>Force on Chain:</span>
+                <span class="result-value" id="resForceN">0 N</span>
+            </div>
+            <div class="result-row">
+                <span>Safety Factor:</span>
+                <span class="result-value" id="resSafety">0.0 : 1</span>
+            </div>
+            <div class="result-row">
+                <span>Status:</span>
+                <span class="result-value" id="resStatus">Checking...</span>
+            </div>
+            <div class="result-row" style="margin-top:10px; color:#555">
+                 <span>Max Safe Load (kg):</span>
+                 <span class="result-value" id="resMaxLoad">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: CANVAS -->
+    <div class="visualization">
+        <h3>System Visualization</h3>
+        <canvas id="sysDiagram" width="500" height="450"></canvas>
+        <p class="note" style="text-align:center;">Dimensions in mm.</p>
+    </div>
+</div>
+
+<script>
+    // --- DATA CONFIGURATION ---
+    // Defined precise Sprocket PCDs as requested
+    const chainConfig = {
+        "half": {
+            pitch: 12.7,
+            strain: 18000,
+            sprocketData: {
+                15: 61,
+                19: 77,
+                30: 121
+            },
+            plateOptions: [48, 57]
+        },
+        "five_eighths": {
+            pitch: 15.875,
+            strain: 22400,
+            sprocketData: {
+                12: 61,
+                18: 91
+            },
+            plateOptions: [57]
+        },
+        "three_quarters": {
+            pitch: 19.05,
+            strain: 29000,
+            // Fallback generic data for 3/4 if exact not provided
+            sprocketData: { 12: 74, 15: 92, 18: 110 }, 
+            plateOptions: [57]
+        },
+        "custom": {
+            pitch: 12.7,
+            strain: 10000,
+            sprocketData: {}, 
+            plateOptions: []
+        }
+    };
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+        document.getElementById('presetSelector').value = 'half';
+        handleChainChange();
+    }
+
+    // --- LOGIC ---
+
+    function handleChainChange() {
+        const type = document.getElementById('presetSelector').value;
+        const config = chainConfig[type];
+        
+        const sprSel = document.getElementById('sprocketTeeth');
+        const pltSel = document.getElementById('plateTeeth');
+        const breakIn = document.getElementById('chainBreak');
+        const plateDiaIn = document.getElementById('plateDia');
+
+        if (type === 'custom') {
+            breakIn.readOnly = false;
+            breakIn.classList.remove('readonly');
+            plateDiaIn.readOnly = false;
+            plateDiaIn.classList.remove('readonly');
+            sprSel.innerHTML = "<option value='0'>Custom</option>";
+            pltSel.innerHTML = "<option value='0'>Custom</option>";
+        } else {
+            breakIn.value = config.strain;
+            breakIn.readOnly = true;
+            breakIn.classList.add('readonly');
+            plateDiaIn.readOnly = true;
+            plateDiaIn.classList.add('readonly');
+
+            // Populate Sprockets from the keys of sprocketData object
+            populateSelect(sprSel, Object.keys(config.sprocketData));
+            // Populate Plates from array
+            populateSelect(pltSel, config.plateOptions);
+
+            handlePlateChange();
+        }
+    }
+
+    function populateSelect(element, options) {
+        element.innerHTML = "";
+        // Sort numerically
+        options.sort((a, b) => a - b);
+        
+        options.forEach(opt => {
+            const el = document.createElement("option");
+            el.value = opt;
+            el.innerText = opt + " Teeth";
+            element.appendChild(el);
+        });
+        // Select smallest default
+        if (options.length > 0) element.selectedIndex = 0;
+    }
+
+    function handlePlateChange() {
+        const type = document.getElementById('presetSelector').value;
+        if (type === 'custom') {
+            updateAll();
+            return;
+        }
+
+        const teeth = parseInt(document.getElementById('plateTeeth').value);
+        const pitch = chainConfig[type].pitch;
+        
+        // Plate Dia Calculation (Standard Pitch Circle approximation)
+        const diameter = (teeth * pitch) / Math.PI;
+        
+        document.getElementById('plateDia').value = diameter.toFixed(1);
+        updateAll();
+    }
+
+    function calculateValues() {
+        const type = document.getElementById('presetSelector').value;
+        const barrelDia = parseFloat(document.getElementById('barrelDia').value) || 0;
+        const plateDia = parseFloat(document.getElementById('plateDia').value) || 0;
+        const breakStrainN = parseFloat(document.getElementById('chainBreak').value) || 0;
+        const safetyFactor = parseFloat(document.getElementById('safetyFactor').value) || 1;
+        const weightKg = parseFloat(document.getElementById('inputWeight').value) || 0;
+        
+        const sprTeeth = parseInt(document.getElementById('sprocketTeeth').value) || 0;
+        const pltTeeth = parseInt(document.getElementById('plateTeeth').value) || 0;
+
+        // Determine Sprocket Diameter
+        let sprocketDia = 50; // default fallback
+        if (type !== 'custom' && chainConfig[type].sprocketData[sprTeeth]) {
+            sprocketDia = chainConfig[type].sprocketData[sprTeeth];
+        } else if (sprTeeth > 0) {
+            // Approx for custom
+            sprocketDia = (sprTeeth * 12.7) / Math.PI;
+        }
+
+        // Ratio
+        const ratio = (plateDia > 0) ? barrelDia / plateDia : 0;
+        
+        // Forces
+        const forceOnChainKg = weightKg * ratio;
+        const forceOnChainN = forceOnChainKg * 9.81;
+
+        // Safety
+        let currentSF = 0;
+        if (forceOnChainN > 0) currentSF = breakStrainN / forceOnChainN;
+        else if (weightKg === 0) currentSF = 999;
+
+        // Max Load
+        const maxTensionN = breakStrainN / safetyFactor;
+        const maxTensionKg = maxTensionN / 9.81;
+        const maxLoad = (ratio > 0) ? maxTensionKg / ratio : 0;
+
+        // Gear Ratio
+        const gearRatio = (sprTeeth > 0) ? (pltTeeth / sprTeeth) : 0;
+
+        return {
+            barrelDia, plateDia, sprocketDia, weightKg,
+            forceOnChainN, currentSF, safetyFactor, maxLoad,
+            sprTeeth, pltTeeth, gearRatio
+        };
+    }
+
+    function updateAll() {
+        const data = calculateValues();
+        
+        // UI Text
+        document.getElementById('resForceN').innerText = data.forceOnChainN.toFixed(0) + " N";
+        document.getElementById('resSafety').innerText = (data.currentSF > 100 ? ">100" : data.currentSF.toFixed(1)) + " : 1";
+        document.getElementById('resMaxLoad').innerText = Math.floor(data.maxLoad) + " kg";
+        
+        const ratioText = (data.gearRatio > 0) ? data.gearRatio.toFixed(2) + " : 1" : "N/A";
+        document.getElementById('resRatio').innerText = ratioText;
+
+        const statusEl = document.getElementById('resStatus');
+        if (data.currentSF >= data.safetyFactor) {
+            statusEl.innerText = "SAFE";
+            statusEl.className = "result-value status-safe";
+        } else {
+            statusEl.innerText = "UNSAFE";
+            statusEl.className = "result-value status-danger";
+        }
+
+        drawDiagram(data);
+    }
+
+    // --- DRAWING ---
+
+    function drawDiagram(data) {
+        const canvas = document.getElementById('sysDiagram');
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Clear Canvas
+        ctx.clearRect(0, 0, w, h);
+
+        const centerX = 300;
+        const centerY = 180;
+        
+        // Dynamic Scaling
+        // We need to fit a Plate Wheel (approx 200-400mm) and a Sprocket (60-120mm) + space
+        // Let's assume max height to fit is 400mm.
+        // Scale so 400mm = 200px (0.5 scale). 
+        // Or if plate is small (194mm), scale it up a bit more.
+        const scale = 0.55; 
+        
+        const plateRad = (data.plateDia / 2) * scale;
+        const barrelRad = (data.barrelDia / 2) * scale;
+        const sprocketRad = (data.sprocketDia / 2) * scale;
+        
+        // Position Sprocket to left, leaving gap
+        const sprocketX = centerX - plateRad - sprocketRad - 60; // 60px gap
+        const sprocketY = centerY;
+
+        // --- 1. Draw Chain ---
+        ctx.beginPath();
+        ctx.setLineDash([8, 4]);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#555';
+        // Top Chain
+        ctx.moveTo(sprocketX, sprocketY - sprocketRad);
+        ctx.lineTo(centerX, centerY - plateRad);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.setLineDash([]); // Solid (Tension Side)
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#222';
+        ctx.moveTo(sprocketX, sprocketY + sprocketRad);
+        ctx.lineTo(centerX, centerY + plateRad);
+        ctx.stroke();
+
+        // --- 2. Draw Sprocket ---
+        drawGearShape(ctx, sprocketX, sprocketY, sprocketRad, data.sprTeeth, '#7f8c8d', '#2c3e50');
+        // Sprocket Text (Inside)
+        ctx.fillStyle = 'white';
+        ctx.font = "bold 11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(`${data.sprTeeth}T`, sprocketX, sprocketY + 4);
+        
+        // Sprocket Dimension (Below)
+        drawDimensionLine(ctx, sprocketX - sprocketRad, sprocketY + sprocketRad + 25, 
+                               sprocketX + sprocketRad, sprocketY + sprocketRad + 25, 
+                               `Ø${Math.round(data.sprocketDia)}`);
+
+        // --- 3. Draw Plate Wheel ---
+        drawGearShape(ctx, centerX, centerY, plateRad, data.pltTeeth, '#95a5a6', '#2c3e50');
+        
+        // Plate Text (To the RIGHT of the wheel)
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = "bold 16px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText(`${data.pltTeeth} Teeth`, centerX + plateRad + 15, centerY + 5);
+        
+        // Plate Dimension (Below)
+        drawDimensionLine(ctx, centerX - plateRad, centerY + plateRad + 45, 
+                               centerX + plateRad, centerY + plateRad + 45, 
+                               `Plate Ø${Math.round(data.plateDia)}`);
+
+        // --- 4. Draw Barrel ---
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, barrelRad, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(52, 152, 219, 0.8)'; 
+        ctx.fill();
+        ctx.strokeStyle = '#2980b9';
+        ctx.stroke();
+
+        // Barrel Dimension (Above Center)
+        // Draw line extending out from barrel edges
+        const dimY = centerY - barrelRad - 20;
+        drawDimensionLine(ctx, centerX - barrelRad, dimY, 
+                               centerX + barrelRad, dimY, 
+                               `Barrel Ø${Math.round(data.barrelDia)}`);
+        // Draw little connector lines
+        ctx.beginPath();
+        ctx.setLineDash([2,2]);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle='#999';
+        ctx.moveTo(centerX - barrelRad, centerY);
+        ctx.lineTo(centerX - barrelRad, dimY);
+        ctx.moveTo(centerX + barrelRad, centerY);
+        ctx.lineTo(centerX + barrelRad, dimY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // --- 5. Draw Load ---
+        const ropeX = centerX + barrelRad;
+        const ropeTopY = centerY;
+        const ropeBottomY = centerY + 120;
+
+        ctx.beginPath();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#d35400';
+        ctx.moveTo(ropeX, ropeTopY);
+        ctx.lineTo(ropeX, ropeBottomY);
+        ctx.stroke();
+
+        // Box
+        const boxSize = 40;
+        ctx.fillStyle = '#c0392b'; 
+        ctx.fillRect(ropeX - boxSize/2, ropeBottomY, boxSize, boxSize);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(ropeX - boxSize/2, ropeBottomY, boxSize, boxSize);
+
+        // Load Text
+        ctx.fillStyle = 'white';
+        ctx.font = "bold 11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(data.weightKg + "kg", ropeX, ropeBottomY + 25);
+    }
+
+    // Helper to draw a circle with "Teeth" dashed stroke
+    function drawGearShape(ctx, x, y, radius, teeth, fillColor, strokeColor) {
+        if(radius < 5) radius = 5; // safety
+        
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = strokeColor;
+        
+        const circumference = 2 * Math.PI * radius;
+        // visual approximation of teeth
+        const dashLen = circumference / (teeth * 2);
+        
+        ctx.setLineDash([dashLen, dashLen]);
+        ctx.stroke();
+        ctx.setLineDash([]); 
+        
+        // Axle
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+    }
+
+    // Helper for Dimensions
+    function drawDimensionLine(ctx, x1, y1, x2, y2, text) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        
+        // Main line
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        
+        // Arrowheads
+        drawArrowHead(ctx, x2, y2, x1, y1); // Left/Top
+        drawArrowHead(ctx, x1, y1, x2, y2); // Right/Bottom
+        
+        // Text background to clear line
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        
+        ctx.font = "12px Arial";
+        const textMetrics = ctx.measureText(text);
+        const tw = textMetrics.width;
+        
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(midX - tw/2 - 2, midY - 6, tw + 4, 12);
+        
+        ctx.fillStyle = '#000';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, midX, midY);
+    }
+
+    function drawArrowHead(ctx, fromX, fromY, toX, toY) {
+        const headlen = 8;
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+        ctx.beginPath();
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+    }
+
+</script>
+
+</body>
+</html>
