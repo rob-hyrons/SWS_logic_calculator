@@ -64,14 +64,17 @@
         .tab-button:nth-child(4) { background-color: #fce4ec; }
         .tab-button:nth-child(5) { background-color: #ede7f6; }
         .tab-button:nth-child(6) { background-color: #e0f7fa; }
-        .tab-button:nth-child(7) { background-color: #e9ecef; }
+        .tab-button:nth-child(7) { background-color: #fff8e1; } /* Chain Color */
+        .tab-button:nth-child(8) { background-color: #e9ecef; }
+        
         .tab-button.active:nth-child(1) { background-color: #cce5ff; }
         .tab-button.active:nth-child(2) { background-color: #d1e7dd; }
         .tab-button.active:nth-child(3) { background-color: #ffe5b4; }
         .tab-button.active:nth-child(4) { background-color: #f8d7da; }
         .tab-button.active:nth-child(5) { background-color: #dcd0ff; }
         .tab-button.active:nth-child(6) { background-color: #b2ebf2; }
-        .tab-button.active:nth-child(7) { background-color: #ced4da; }
+        .tab-button.active:nth-child(7) { background-color: #ffecb3; } /* Chain Active */
+        .tab-button.active:nth-child(8) { background-color: #ced4da; }
         
         .tab-pane { display: block; }
         .tab-pane:not(.active) { display: none; }
@@ -87,7 +90,7 @@
             border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08; font-weight: bold;
         }
         .graph-container { margin-top: 1.5em; width: 100%; }
-        #axle-cross-section-container, #endplate-graphic-container {
+        #axle-cross-section-container, #endplate-graphic-container, #chain-graphic-container {
             min-width: 450px; max-width: 550px; margin-left: auto; margin-right: auto;
         }
         .calculation-explainer {
@@ -120,6 +123,12 @@
         #shutter-graphic-container, #wicket-graphic-container, #width-graphic-container {
             margin-top: 1.5em; width: 100%; border: 1px solid #e9ecef; border-radius: 4px; background-color: #f8f9fa;
         }
+        /* Chain Graphic Styles */
+        .sprocket-wheel { fill: #e9ecef; stroke: #495057; stroke-width: 2; }
+        .sprocket-tooth { fill: #6c757d; }
+        .chain-path { fill: none; stroke: #343a40; stroke-width: 3; stroke-dasharray: 6,2; }
+        .chain-pitch-circle { fill: none; stroke: #d93025; stroke-width: 0.5; stroke-dasharray: 4,2; }
+
         .shutter-axle-graphic { fill: #6c757d; stroke: #495057; stroke-width: 0.5; }
         .shutter-lath-graphic { fill: #e9ecef; stroke: #adb5bd; stroke-width: 0.5; }
         .shutter-bottomlath-graphic { fill: #ced4da; stroke: #495057; stroke-width: 0.5; }
@@ -229,6 +238,7 @@
             <button class="tab-button" data-tab="endplate-content">Endplate</button>
             <button class="tab-button" data-tab="safety-brake-content">Safety Brake</button>
             <button class="tab-button" data-tab="wicket-content">Wicket Door</button>
+            <button class="tab-button" data-tab="chain-content">Chain</button>
             <button class="tab-button" data-tab="admin-content">Admin</button>
         </div>
         <div class="content-area">
@@ -586,6 +596,45 @@
                     <div id="wicket-torque-graph-container" class="graph-container" style="height: 280px;"></div>
                 </div>
 
+                <!-- Chain Drive Tab -->
+                <div id="chain-content" class="tab-pane">
+                    <h2>Chain Drive Calculation</h2>
+                    <div class="form-group" data-admin-label="Chain Type">
+                        <label for="chainType">Chain Size / Type</label>
+                        <select id="chainType" disabled>
+                             <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Motor Sprocket">
+                            <label for="motorTeeth">Motor Sprocket Teeth</label>
+                            <input type="number" id="motorTeeth" placeholder="e.g., 15" value="15">
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Plate Wheel">
+                            <label for="barrelTeeth">Barrel Plate Wheel Teeth</label>
+                            <input type="number" id="barrelTeeth" placeholder="e.g., 60" value="60">
+                        </div>
+                    </div>
+                    <div class="form-group" data-admin-label="Chain Pitch">
+                        <label for="chainPitch">Chain Pitch (mm)</label>
+                        <input type="number" id="chainPitch" value="12.7" placeholder="e.g., 12.7 for 08B/1/2 inch">
+                        <small style="font-size: 0.8em; color: #555;">Used for graphic sizing and diameter approximation.</small>
+                    </div>
+                    
+                    <div class="results" style="border-left-color: #ffc107;">
+                        <h3 style="color: #c79100;">Gear Ratio & Strain Analysis</h3>
+                        <p>Gear Ratio: <span id="chain-ratio">1 : 1.0</span></p>
+                        <p>Torque Required at Barrel: <span id="chain-torque-barrel">0.0</span> Nm</p>
+                        <p>Torque Required at Motor: <span id="chain-torque-motor">0.0</span> Nm</p>
+                        <hr>
+                        <p>Calculated Chain Tension: <span id="chain-tension">0.0</span> kgf</p>
+                        <p>Chain Breaking Strain: <span id="chain-breaking-load">N/A</span> kg</p>
+                        <p>Safety Factor: <span id="chain-safety-factor">N/A</span></p>
+                    </div>
+                    
+                    <div id="chain-graphic-container" class="graph-container" style="height: 300px; border: 1px solid #e9ecef; border-radius: 4px; background-color: white;"></div>
+                </div>
+
                 <!-- Admin Tab -->
                 <div id="admin-content" class="tab-pane">
                     <h2>Admin Controls</h2>
@@ -748,7 +797,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
@@ -778,14 +827,15 @@
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
          'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
          'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixity',
-         'reportLathType', 'reportLathLimit', 'reportLathType2'
+         'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainType', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
+         'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity'
+         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity', 'chainType', 'motorTeeth', 'barrelTeeth', 'chainPitch'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -934,7 +984,8 @@
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
                     'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
-                    'Guides': ['Name', 'Width', 'Penetration']
+                    'Guides': ['Name', 'Width', 'Penetration'],
+                    'Chain': ['Chain size', 'Chain Breaking Strain']
                 };
 
                 for (const sheetName in required) {
@@ -957,6 +1008,7 @@
                         case 'Wicket doors': wicketData = objectData; break;
                         case 'Endlock': endlockData = objectData; break;
                         case 'Guides': guideData = objectData; break;
+                        case 'Chain': chainData = objectData; break;
                     }
                 }
 
@@ -992,8 +1044,9 @@
                 populateMotorManufacturerFilter();
                 populateMotorUsageFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
+                populateDropdown(dom.chainType, chainData, 'Chain size');
 
-                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType', 'chainType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1007,7 +1060,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainData = [];
             }
         }
 
@@ -1301,8 +1354,196 @@
             const selectedGuide = guideData.length > 0 ? guideData[dom.guideType.value] : null;
             drawTopDownWidthGraphic(calculatedWidths, selectedGuide);
             updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
+            
+            // Chain Calculation
+            updateChainCalculations();
         }
         
+        function updateChainCalculations() {
+            // Get inputs
+            const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
+            const barrelTeeth = parseInt(dom.barrelTeeth.value) || 0;
+            const chainPitch = parseFloat(dom.chainPitch.value) || 0;
+            const chainIndex = dom.chainType.value;
+            
+            // Get base data from Motor tab calc
+            const maxTorqueRequired = parseFloat(dom['max-torque'].textContent) || 0;
+            
+            if (motorTeeth <= 0 || barrelTeeth <= 0 || maxTorqueRequired <= 0) {
+                 ['chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor'].forEach(id => dom[id].textContent = '0.0');
+                 dom['chain-safety-factor'].classList.remove('warning-text', 'option-pass');
+                 drawChainGraphic(0, 0, 0);
+                 return;
+            }
+
+            // Ratio
+            const ratio = barrelTeeth / motorTeeth;
+            dom['chain-ratio'].textContent = `1 : ${ratio.toFixed(2)}`;
+
+            // Torques
+            // Torque required at barrel is simply the calculated shutter torque (with friction included)
+            dom['chain-torque-barrel'].textContent = maxTorqueRequired.toFixed(1);
+            
+            // Torque required at motor is reduced by ratio
+            const motorTorque = maxTorqueRequired / ratio;
+            dom['chain-torque-motor'].textContent = motorTorque.toFixed(1);
+
+            // Chain Tension
+            // Approximation: Radius of Barrel Plate Wheel = (Pitch * Teeth) / (2 * PI)
+            // Pitch Diameter approx = Pitch * Teeth / PI (Roughly). 
+            // More accurate: Pitch Diameter = Pitch / sin(180/Teeth)
+            let plateRadiusM = 0;
+            if (chainPitch > 0) {
+                 const pitchDiameter = chainPitch / Math.sin(Math.PI / barrelTeeth);
+                 plateRadiusM = (pitchDiameter / 2) / 1000; 
+            }
+
+            let tensionKg = 0;
+            if (plateRadiusM > 0) {
+                // Tension (N) = Torque (Nm) / Radius (m)
+                const tensionN = maxTorqueRequired / plateRadiusM;
+                tensionKg = tensionN / 9.81;
+            }
+            dom['chain-tension'].textContent = tensionKg.toFixed(1);
+
+            // Breaking Strain check
+            let safetyFactor = 0;
+            if (chainIndex !== "" && chainData[chainIndex]) {
+                const chainRow = chainData[chainIndex];
+                const breakStrainKey = Object.keys(chainRow).find(k => k.toLowerCase().includes('breaking'));
+                const breakStrain = parseFloat(chainRow[breakStrainKey]) || 0;
+                dom['chain-breaking-load'].textContent = breakStrain > 0 ? breakStrain.toFixed(0) : 'N/A';
+                
+                if (breakStrain > 0 && tensionKg > 0) {
+                    safetyFactor = breakStrain / tensionKg;
+                    dom['chain-safety-factor'].textContent = safetyFactor.toFixed(2);
+                    if (safetyFactor < 2.0) { // Assuming 2.0 is a reasonable standard warning point for chains
+                         dom['chain-safety-factor'].classList.add('warning-text');
+                         dom['chain-safety-factor'].classList.remove('option-pass');
+                    } else {
+                         dom['chain-safety-factor'].classList.remove('warning-text');
+                         dom['chain-safety-factor'].classList.add('option-pass');
+                    }
+                } else {
+                    dom['chain-safety-factor'].textContent = 'N/A';
+                }
+            } else {
+                 dom['chain-breaking-load'].textContent = 'N/A';
+                 dom['chain-safety-factor'].textContent = 'N/A';
+            }
+
+            drawChainGraphic(motorTeeth, barrelTeeth, chainPitch);
+        }
+
+        function drawChainGraphic(motorTeeth, barrelTeeth, pitch) {
+             const container = dom['chain-graphic-container']; container.innerHTML = '';
+             if (!motorTeeth || !barrelTeeth || !pitch) return;
+
+             // Calculate Pitch Diameters
+             const pdMotor = pitch / Math.sin(Math.PI / motorTeeth);
+             const pdBarrel = pitch / Math.sin(Math.PI / barrelTeeth);
+             
+             // Setup SVG
+             const svgNS = "http://www.w3.org/2000/svg";
+             const svg = document.createElementNS(svgNS, "svg");
+             const width = 550; const height = 300;
+             svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+             
+             // Scale to fit
+             const maxDia = Math.max(pdMotor, pdBarrel);
+             const padding = 40;
+             const availableHeight = height - (2 * padding);
+             // Assume some center distance relative to sizes
+             const centerDist = maxDia * 1.5 + 100; 
+             
+             // Scale calculation: Fit width
+             const totalGraphicWidth = centerDist + (pdMotor/2) + (pdBarrel/2);
+             const scale = Math.min((width - 2*padding) / totalGraphicWidth, (height - 2*padding) / maxDia);
+             
+             const r1 = (pdMotor / 2) * scale;
+             const r2 = (pdBarrel / 2) * scale;
+             const d = centerDist * scale;
+             
+             const c1x = padding + r1; const c1y = height / 2;
+             const c2x = c1x + d; const c2y = height / 2;
+
+             // Draw Pitch Circles
+             const circle1 = document.createElementNS(svgNS, 'circle');
+             circle1.setAttribute('cx', c1x); circle1.setAttribute('cy', c1y); circle1.setAttribute('r', r1); circle1.setAttribute('class', 'chain-pitch-circle'); svg.appendChild(circle1);
+
+             const circle2 = document.createElementNS(svgNS, 'circle');
+             circle2.setAttribute('cx', c2x); circle2.setAttribute('cy', c2y); circle2.setAttribute('r', r2); circle2.setAttribute('class', 'chain-pitch-circle'); svg.appendChild(circle2);
+             
+             // Draw Sprocket Bodies (Slightly smaller than pitch circle)
+             const body1 = document.createElementNS(svgNS, 'circle'); body1.setAttribute('cx', c1x); body1.setAttribute('cy', c1y); body1.setAttribute('r', r1 * 0.85); body1.setAttribute('class', 'sprocket-wheel'); svg.appendChild(body1);
+             const body2 = document.createElementNS(svgNS, 'circle'); body2.setAttribute('cx', c2x); body2.setAttribute('cy', c2y); body2.setAttribute('r', r2 * 0.85); body2.setAttribute('class', 'sprocket-wheel'); svg.appendChild(body2);
+
+             // Draw Teeth (Simple representation)
+             const drawTeeth = (cx, cy, r, count) => {
+                 for(let i=0; i<count; i++) {
+                     const angle = (i / count) * 2 * Math.PI;
+                     const toothW = (r * 0.4) / (count / 10); // Arbitrary sizing logic
+                     const tx = cx + Math.cos(angle) * r;
+                     const ty = cy + Math.sin(angle) * r;
+                     const tooth = document.createElementNS(svgNS, 'circle');
+                     tooth.setAttribute('cx', tx); tooth.setAttribute('cy', ty);
+                     tooth.setAttribute('r', Math.max(2, 4 * scale)); 
+                     tooth.setAttribute('class', 'sprocket-tooth');
+                     svg.appendChild(tooth);
+                 }
+             };
+             drawTeeth(c1x, c1y, r1, motorTeeth);
+             drawTeeth(c2x, c2y, r2, barrelTeeth);
+
+             // Draw Chain Path (Tangent lines + Arcs)
+             // Angle of tangent points
+             if (r2 !== r1) {
+                 const angleOffset = Math.acos((r2 - r1) / d);
+                 // Top Tangent
+                 const t1x = c1x + r1 * Math.cos(-Math.PI/2 + (Math.PI/2 - angleOffset));
+                 const t1y = c1y + r1 * Math.sin(-Math.PI/2 + (Math.PI/2 - angleOffset)); // Simplified, calculating visual tangents
+                 
+                 // For simplified visualization, we draw a path around
+                 const path = document.createElementNS(svgNS, 'path');
+                 // Create a capsule shape essentially
+                 const tanAngle = Math.asin((r2-r1)/d);
+                 
+                 const x1_top = c1x + r1 * Math.sin(tanAngle);
+                 const y1_top = c1y - r1 * Math.cos(tanAngle);
+                 const x2_top = c2x + r2 * Math.sin(tanAngle);
+                 const y2_top = c2y - r2 * Math.cos(tanAngle);
+                 
+                 const x1_bot = c1x + r1 * Math.sin(-tanAngle); // Mirror
+                 const y1_bot = c1y + r1 * Math.cos(tanAngle);
+                 const x2_bot = c2x + r2 * Math.sin(-tanAngle);
+                 const y2_bot = c2y + r2 * Math.cos(tanAngle);
+                 
+                 // Using simple rounded rect logic approx or explicit path
+                 const pathD = `M ${x1_top},${y1_top} L ${x2_top},${y2_top} A ${r2},${r2} 0 1 1 ${x2_bot},${y2_bot} L ${x1_bot},${y1_bot} A ${r1},${r1} 0 1 1 ${x1_top},${y1_top}`;
+                 
+                 path.setAttribute('d', pathD);
+                 path.setAttribute('class', 'chain-path');
+                 svg.appendChild(path);
+             } else {
+                 // Equal size, simpler box with rounded ends
+                 const path = document.createElementNS(svgNS, 'path');
+                 path.setAttribute('d', `M ${c1x},${c1y-r1} L ${c2x},${c2y-r2} A ${r2},${r2} 0 0 1 ${c2x},${c2y+r2} L ${c1x},${c1y+r1} A ${r1},${r1} 0 0 1 ${c1x},${c1y-r1}`);
+                 path.setAttribute('class', 'chain-path');
+                 svg.appendChild(path);
+             }
+             
+             // Labels
+             const text1 = document.createElementNS(svgNS, 'text');
+             text1.setAttribute('x', c1x); text1.setAttribute('y', c1y + r1 + 30); text1.setAttribute('class', 'graph-text'); text1.textContent = "Motor";
+             svg.appendChild(text1);
+             
+             const text2 = document.createElementNS(svgNS, 'text');
+             text2.setAttribute('x', c2x); text2.setAttribute('y', c2y + r2 + 30); text2.setAttribute('class', 'graph-text'); text2.textContent = "Barrel";
+             svg.appendChild(text2);
+
+             container.appendChild(svg);
+        }
+
         function findAndSetBestAxle(totalWeightKgs, curtainWidth) {
             const width = curtainWidth || 0;
             const additionalLength = parseFloat(dom.additionalLength.value) || 0;
@@ -2737,6 +2978,8 @@
                 if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
                     const plate = currentFilteredEndplates[selectedIndex]; drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths); calculateEndplateForces(plate);
                 } else { drawEndplateGraphic(null, 0, null, null, 0); calculateEndplateForces(null); }
+            } else if (targetTabId === 'chain-content') {
+                updateChainCalculations();
             }
         };
         
@@ -2745,7 +2988,7 @@
 
     <script>
         window.addEventListener('load', () => {
-            ['endplate-content', 'safety-brake-content', 'wicket-content'].forEach(tabId => {
+            ['endplate-content', 'safety-brake-content', 'wicket-content', 'chain-content'].forEach(tabId => {
                 const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
                 if(tabButton) { tabButton.style.display = 'none'; }
             });
@@ -3126,8 +3369,7 @@
             downloadCsv(csvData);
             statusDiv.textContent = 'Report generation complete. Download has started.'; statusDiv.style.color = 'green';
         }
-
-        function downloadCsv(data) {
+function downloadCsv(data) {
             let csvContent = "data:text/csv;charset=utf-8,";
             data.forEach(function(rowArray) {
                 let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
@@ -3137,7 +3379,9 @@
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
             link.setAttribute("download", "shutter_calculator_report.csv");
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
