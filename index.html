@@ -994,7 +994,7 @@
                     'Wicket doors': ['Name', 'Height', 'Width'],
                     'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
                     'Guides': ['Name', 'Width', 'Penetration'],
-                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain', 'Sprocket diameter', 'Platewheel Diameter']
+                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter']
                 };
 
                 for (const sheetName in required) {
@@ -2075,21 +2075,30 @@
 
             // Chain Drive Logic Update
             if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
-                const motorName = selectedMotor['Name'];
-                // Look for motor description in Chaindrive sheet
+                // 1. Get raw motor name
+                let motorNameClean = selectedMotor['Name'];
+                
+                // 2. Remove parens and text inside them (e.g. "Ranger 70 (70-70Nm)" -> "Ranger 70")
+                motorNameClean = motorNameClean.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+
+                // 3. Find match in Chaindrive sheet
                 const chainSpecs = chainDriveData.find(row => {
-                    const desc = row['Motor Description'];
-                    return desc && desc.trim().toLowerCase() === motorName.trim().toLowerCase();
+                    const rowDesc = row['Motor Description'];
+                    if (!rowDesc) return false;
+                    const descClean = rowDesc.toString().trim().toLowerCase();
+                    
+                    // Fuzzy match: If one contains the other
+                    return descClean.includes(motorNameClean) || motorNameClean.includes(descClean);
                 });
 
                 if (chainSpecs) {
                     dom.motorTeeth.value = chainSpecs['Sprocket teeth'] || "";
-                    dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; // Column name is "Plate wheel"
+                    dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; 
                     dom.sprocketDiameter.value = chainSpecs['Sprocket diameter'] || "";
                     dom.plateWheelDiameter.value = chainSpecs['Platewheel Diameter'] || "";
                     dom.chainSizeDisplay.value = chainSpecs['Chain size'] || "Unknown";
                     // Store breaking strain for calculation
-                    dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain']) || 0;
+                    dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain in newtons']) || 0;
                 } else {
                     resetChainInfo();
                     dom.chainSizeDisplay.value = "Specs not found in Chaindrive sheet";
@@ -3295,8 +3304,7 @@
             if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
                 statusDiv.textContent = 'Error: Please select Primary Lath, Endlock, and Bottom Lath types.'; statusDiv.style.color = 'red'; return;
             }
-
-            const primaryLath = lathData[lathIndex1];
+const primaryLath = lathData[lathIndex1];
             const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
             const selectedEndlock = endlockData[endlockIndex];
             const selectedBottomLath = bottomLathData[bottomLathIndex];
