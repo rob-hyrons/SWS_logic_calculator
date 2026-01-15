@@ -31,7 +31,7 @@
         .form-row { display: flex; gap: 1.5em; }
         .form-col { flex: 1; }
         label { display: block; margin-bottom: 0.5em; font-weight: 600; }
-        input[type="number"], input[type="file"], select, input[type="checkbox"] {
+        input[type="number"], input[type="file"], select, input[type="checkbox"], input[type="text"] {
             width: 100%; padding: 0.8em; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
         }
         input[type="checkbox"] { width: auto; }
@@ -600,19 +600,27 @@
                 <div id="chain-content" class="tab-pane">
                     <h2>Chain Drive Calculation</h2>
                     <div class="form-group" data-admin-label="Chain Type">
-                        <label for="chainType">Chain Size / Type</label>
-                        <select id="chainType" disabled>
-                             <option value="">-- Waiting for file import --</option>
-                        </select>
+                        <label>Chain Size / Type</label>
+                        <input type="text" id="chainSizeDisplay" readonly placeholder="Auto-selected based on motor" style="background-color: #e9ecef;">
                     </div>
                     <div class="form-row">
                         <div class="form-group form-col" data-admin-label="Motor Sprocket">
                             <label for="motorTeeth">Motor Sprocket Teeth</label>
-                            <input type="number" id="motorTeeth" placeholder="e.g., 15" value="15">
+                            <input type="number" id="motorTeeth" placeholder="-" readonly style="background-color: #e9ecef;">
                         </div>
                         <div class="form-group form-col" data-admin-label="Plate Wheel">
                             <label for="barrelTeeth">Barrel Plate Wheel Teeth</label>
-                            <input type="number" id="barrelTeeth" placeholder="e.g., 60" value="60">
+                            <input type="number" id="barrelTeeth" placeholder="-" readonly style="background-color: #e9ecef;">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Sprocket Diameter">
+                            <label>Sprocket Diameter (mm)</label>
+                            <input type="number" id="sprocketDiameter" placeholder="-" readonly style="background-color: #e9ecef;">
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Plate Wheel Diameter">
+                            <label>Plate Wheel Diameter (mm)</label>
+                            <input type="number" id="plateWheelDiameter" placeholder="-" readonly style="background-color: #e9ecef;">
                         </div>
                     </div>
                     <div class="form-group" data-admin-label="Chain Pitch">
@@ -627,9 +635,9 @@
                         <p>Torque Required at Barrel: <span id="chain-torque-barrel">0.0</span> Nm</p>
                         <p>Torque Required at Motor: <span id="chain-torque-motor">0.0</span> Nm</p>
                         <hr>
-                        <p>Calculated Chain Tension: <span id="chain-tension">0.0</span> kgf</p>
-                        <p>Chain Breaking Strain: <span id="chain-breaking-load">N/A</span> kg</p>
-                        <p>Safety Factor: <span id="chain-safety-factor">N/A</span></p>
+                        <p>Calculated Chain Tension: <span id="chain-tension-n">0.0</span> N (<span id="chain-tension">0.0</span> kgf)</p>
+                        <p>Chain Breaking Strain: <span id="chain-breaking-load-n">0.0</span> N</p>
+                        <p>Safety Factor (Target > 6.0): <span id="chain-safety-factor">N/A</span></p>
                     </div>
                     
                     <div id="chain-graphic-container" class="graph-container" style="height: 300px; border: 1px solid #e9ecef; border-radius: 4px; background-color: white;"></div>
@@ -797,7 +805,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
@@ -827,15 +835,16 @@
          'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
          'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
          'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixity',
-         'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainType', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
-         'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container'
+         'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
+         'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
+         'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity', 'chainType', 'motorTeeth', 'barrelTeeth', 'chainPitch'
+         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity', 'chainPitch'
         ].forEach(id => {
             if (dom[id]) dom[id].addEventListener('input', () => {
                 userSelectedAxleIndex = null; 
@@ -985,7 +994,7 @@
                     'Wicket doors': ['Name', 'Height', 'Width'],
                     'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
                     'Guides': ['Name', 'Width', 'Penetration'],
-                    'Chain': ['Chain size', 'Chain Breaking Strain']
+                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain', 'Sprocket diameter', 'Platewheel Diameter']
                 };
 
                 for (const sheetName in required) {
@@ -1008,7 +1017,7 @@
                         case 'Wicket doors': wicketData = objectData; break;
                         case 'Endlock': endlockData = objectData; break;
                         case 'Guides': guideData = objectData; break;
-                        case 'Chain': chainData = objectData; break;
+                        case 'Chaindrive': chainDriveData = objectData; break;
                     }
                 }
 
@@ -1044,9 +1053,8 @@
                 populateMotorManufacturerFilter();
                 populateMotorUsageFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
-                populateDropdown(dom.chainType, chainData, 'Chain size');
 
-                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType', 'chainType'].forEach(id => {
+                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1060,7 +1068,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = [];
             }
         }
 
@@ -1364,13 +1372,19 @@
             const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
             const barrelTeeth = parseInt(dom.barrelTeeth.value) || 0;
             const chainPitch = parseFloat(dom.chainPitch.value) || 0;
-            const chainIndex = dom.chainType.value;
             
             // Get base data from Motor tab calc
             const maxTorqueRequired = parseFloat(dom['max-torque'].textContent) || 0;
             
+            // Get Plate Wheel Diameter
+            // The prompt says "Platewheel Diameter" column from Chaindrive sheet. 
+            // This is auto-populated into dom.plateWheelDiameter by updateSelectedMotorInfo
+            const plateWheelDia = parseFloat(dom.plateWheelDiameter.value) || 0;
+
             if (motorTeeth <= 0 || barrelTeeth <= 0 || maxTorqueRequired <= 0) {
-                 ['chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor'].forEach(id => dom[id].textContent = '0.0');
+                 ['chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-tension-n', 'chain-breaking-load-n'].forEach(id => { 
+                     const el = dom[id]; if(el) el.textContent = '0.0'; 
+                 });
                  dom['chain-safety-factor'].classList.remove('warning-text', 'option-pass');
                  drawChainGraphic(0, 0, 0);
                  return;
@@ -1381,55 +1395,54 @@
             dom['chain-ratio'].textContent = `1 : ${ratio.toFixed(2)}`;
 
             // Torques
-            // Torque required at barrel is simply the calculated shutter torque (with friction included)
             dom['chain-torque-barrel'].textContent = maxTorqueRequired.toFixed(1);
             
             // Torque required at motor is reduced by ratio
             const motorTorque = maxTorqueRequired / ratio;
             dom['chain-torque-motor'].textContent = motorTorque.toFixed(1);
 
-            // Chain Tension
-            // Approximation: Radius of Barrel Plate Wheel = (Pitch * Teeth) / (2 * PI)
-            // Pitch Diameter approx = Pitch * Teeth / PI (Roughly). 
-            // More accurate: Pitch Diameter = Pitch / sin(180/Teeth)
-            let plateRadiusM = 0;
-            if (chainPitch > 0) {
-                 const pitchDiameter = chainPitch / Math.sin(Math.PI / barrelTeeth);
-                 plateRadiusM = (pitchDiameter / 2) / 1000; 
+            // Chain Tension Calculation based on prompt instructions:
+            // "using the weight of the Curtain... calculate the strain"
+            // Strain (Tension) = Torque at Barrel / (Plate Wheel Radius)
+            // Plate Wheel Radius = Plate Wheel Diameter / 2 (in meters)
+            
+            let tensionN = 0;
+            if (plateWheelDia > 0) {
+                const radiusM = (plateWheelDia / 2) / 1000;
+                tensionN = maxTorqueRequired / radiusM;
             }
+            
+            const tensionKg = tensionN / 9.81;
 
-            let tensionKg = 0;
-            if (plateRadiusM > 0) {
-                // Tension (N) = Torque (Nm) / Radius (m)
-                const tensionN = maxTorqueRequired / plateRadiusM;
-                tensionKg = tensionN / 9.81;
-            }
+            dom['chain-tension-n'].textContent = tensionN.toFixed(1);
             dom['chain-tension'].textContent = tensionKg.toFixed(1);
 
             // Breaking Strain check
             let safetyFactor = 0;
-            if (chainIndex !== "" && chainData[chainIndex]) {
-                const chainRow = chainData[chainIndex];
-                const breakStrainKey = Object.keys(chainRow).find(k => k.toLowerCase().includes('breaking'));
-                const breakStrain = parseFloat(chainRow[breakStrainKey]) || 0;
-                dom['chain-breaking-load'].textContent = breakStrain > 0 ? breakStrain.toFixed(0) : 'N/A';
+            // The breaking strain is populated in updateSelectedMotorInfo into a data attribute or global
+            // Let's assume we store it on the dom element for simplicity or check the global currentChainDriveData
+            let breakStrainN = 0;
+            if (dom.chainSizeDisplay.dataset.breakingStrain) {
+                breakStrainN = parseFloat(dom.chainSizeDisplay.dataset.breakingStrain);
+            }
+
+            dom['chain-breaking-load-n'].textContent = breakStrainN > 0 ? breakStrainN.toFixed(0) : 'N/A';
+            
+            if (breakStrainN > 0 && tensionN > 0) {
+                safetyFactor = breakStrainN / tensionN;
+                dom['chain-safety-factor'].textContent = safetyFactor.toFixed(2);
                 
-                if (breakStrain > 0 && tensionKg > 0) {
-                    safetyFactor = breakStrain / tensionKg;
-                    dom['chain-safety-factor'].textContent = safetyFactor.toFixed(2);
-                    if (safetyFactor < 2.0) { // Assuming 2.0 is a reasonable standard warning point for chains
-                         dom['chain-safety-factor'].classList.add('warning-text');
-                         dom['chain-safety-factor'].classList.remove('option-pass');
-                    } else {
-                         dom['chain-safety-factor'].classList.remove('warning-text');
-                         dom['chain-safety-factor'].classList.add('option-pass');
-                    }
+                // Prompt asks to ensure safety factor ratio is > 6:1
+                if (safetyFactor < 6.0) { 
+                     dom['chain-safety-factor'].classList.add('warning-text');
+                     dom['chain-safety-factor'].classList.remove('option-pass');
+                     dom['chain-safety-factor'].textContent += " (FAIL < 6:1)";
                 } else {
-                    dom['chain-safety-factor'].textContent = 'N/A';
+                     dom['chain-safety-factor'].classList.remove('warning-text');
+                     dom['chain-safety-factor'].classList.add('option-pass');
                 }
             } else {
-                 dom['chain-breaking-load'].textContent = 'N/A';
-                 dom['chain-safety-factor'].textContent = 'N/A';
+                dom['chain-safety-factor'].textContent = 'N/A';
             }
 
             drawChainGraphic(motorTeeth, barrelTeeth, chainPitch);
@@ -2005,10 +2018,25 @@
 
         function updateSelectedMotorInfo() {
             const selectedMotorIndex = dom.motorSelector.value;
+            
+            // Default: Reset chain info if not chain drive or no motor
+            const resetChainInfo = () => {
+                 dom.motorTeeth.value = "";
+                 dom.barrelTeeth.value = "";
+                 dom.sprocketDiameter.value = "";
+                 dom.plateWheelDiameter.value = "";
+                 dom.chainSizeDisplay.value = "";
+                 dom.chainSizeDisplay.dataset.breakingStrain = 0;
+            };
+
             if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
                  ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour','opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
-                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); return;
+                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); 
+                 resetChainInfo();
+                 updateChainCalculations();
+                 return;
             }
+
             const selectedMotor = currentFilteredMotors[selectedMotorIndex];
             const motorTorqueMin = parseFloat(selectedMotor['Torque (Nm) min']);
             const motorTorqueMax = parseFloat(selectedMotor['Torque (Nm) max']);
@@ -2044,6 +2072,34 @@
             } else {
                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
             }
+
+            // Chain Drive Logic Update
+            if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
+                const motorName = selectedMotor['Name'];
+                // Look for motor description in Chaindrive sheet
+                const chainSpecs = chainDriveData.find(row => {
+                    const desc = row['Motor Description'];
+                    return desc && desc.trim().toLowerCase() === motorName.trim().toLowerCase();
+                });
+
+                if (chainSpecs) {
+                    dom.motorTeeth.value = chainSpecs['Sprocket teeth'] || "";
+                    dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; // Column name is "Plate wheel"
+                    dom.sprocketDiameter.value = chainSpecs['Sprocket diameter'] || "";
+                    dom.plateWheelDiameter.value = chainSpecs['Platewheel Diameter'] || "";
+                    dom.chainSizeDisplay.value = chainSpecs['Chain size'] || "Unknown";
+                    // Store breaking strain for calculation
+                    dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain']) || 0;
+                } else {
+                    resetChainInfo();
+                    dom.chainSizeDisplay.value = "Specs not found in Chaindrive sheet";
+                }
+            } else {
+                resetChainInfo();
+            }
+            
+            // Trigger chain calculations regardless
+            updateChainCalculations();
         }
         
         function updateSelectedWicketInfo() {
@@ -3369,7 +3425,8 @@
             downloadCsv(csvData);
             statusDiv.textContent = 'Report generation complete. Download has started.'; statusDiv.style.color = 'green';
         }
-function downloadCsv(data) {
+
+        function downloadCsv(data) {
             let csvContent = "data:text/csv;charset=utf-8,";
             data.forEach(function(rowArray) {
                 let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
