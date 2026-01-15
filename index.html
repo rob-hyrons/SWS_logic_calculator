@@ -454,6 +454,12 @@
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
+                    <div class="form-group" data-admin-label="Manual Override">
+                        <label for="motorManualOverrideFilter">Manual Override</label>
+                        <select id="motorManualOverrideFilter" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
                     <div class="form-group" data-admin-label="Lath Friction Allowance">
                         <label for="friction">Lath Friction Allowance (%)</label>
                         <input type="number" id="friction" value="10" title="Automatically updated from Lath data. Can be overridden.">
@@ -818,7 +824,7 @@
         ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
-         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
+         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'motor-driveshaft-dia', 'motor-cycles-per-hour',
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
@@ -842,7 +848,7 @@
         
         const tabButtons = document.querySelectorAll('.tab-button');
         
-        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
+        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
          'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
          'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity', 'chainPitch'
         ].forEach(id => {
@@ -988,7 +994,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1052,9 +1058,10 @@
                 populateMotorVoltageFilter();
                 populateMotorManufacturerFilter();
                 populateMotorUsageFilter();
+                populateMotorManualOverrideFilter();
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
 
-                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
+                ['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
 
@@ -1247,6 +1254,24 @@
                 option.value = type; option.textContent = type; select.appendChild(option);
             });
             dom.motorUsageFilter.parentElement.style.display = 'block';
+        }
+
+        function populateMotorManualOverrideFilter() {
+            let moKey = '';
+            if (motorData.length > 0) {
+                moKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manual override');
+            }
+            if (!moKey) { dom.motorManualOverrideFilter.parentElement.style.display = 'none'; return; }
+            const moValues = [...new Set(motorData.map(motor => motor[moKey]).filter(v => v))];
+            const select = dom.motorManualOverrideFilter;
+            select.innerHTML = '<option value="">-- All --</option>';
+            moValues.sort().forEach(val => {
+                const option = document.createElement('option');
+                option.value = val;
+                option.textContent = val;
+                select.appendChild(option);
+            });
+            dom.motorManualOverrideFilter.parentElement.style.display = 'block';
         }
 
         function getLathWithCustomWeight() {
@@ -1945,19 +1970,22 @@
             const selectedVoltage = dom.motorVoltageFilter.value;
             const selectedManufacturer = dom.motorManufacturerFilter.value;
             const selectedUsage = dom.motorUsageFilter.value;
+            const selectedMO = dom.motorManualOverrideFilter.value;
 
-            let voltageKey = '', manufacturerKey = '', usageKey = '';
+            let voltageKey = '', manufacturerKey = '', usageKey = '', moKey = '';
             if (motorData.length > 0) {
                 voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
                 manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
                 usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
+                moKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manual override');
             }
             currentFilteredMotors = motorData.filter(motor => {
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
                 const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
                 const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
                 const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
-                return mountMatch && voltageMatch && manufacturerMatch && usageMatch;
+                const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
+                return mountMatch && voltageMatch && manufacturerMatch && usageMatch && moMatch;
             });
             
             const select = dom.motorSelector; select.innerHTML = ''; select.disabled = false;
@@ -3304,7 +3332,8 @@
             if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
                 statusDiv.textContent = 'Error: Please select Primary Lath, Endlock, and Bottom Lath types.'; statusDiv.style.color = 'red'; return;
             }
-const primaryLath = lathData[lathIndex1];
+
+            const primaryLath = lathData[lathIndex1];
             const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
             const selectedEndlock = endlockData[endlockIndex];
             const selectedBottomLath = bottomLathData[bottomLathIndex];
@@ -3438,16 +3467,16 @@ const primaryLath = lathData[lathIndex1];
             let csvContent = "data:text/csv;charset=utf-8,";
             data.forEach(function(rowArray) {
                 let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
-                csvContent += row + "\r\n";
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "shutter_calculator_report.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+				csvContent += row + "\r\n";
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "shutter_calculator_report.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
     </script>
 </body>
 </html>
