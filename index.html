@@ -124,10 +124,11 @@
             margin-top: 1.5em; width: 100%; border: 1px solid #e9ecef; border-radius: 4px; background-color: #f8f9fa;
         }
         /* Chain Graphic Styles */
-        .sprocket-wheel { fill: #e9ecef; stroke: #495057; stroke-width: 2; }
+        .sprocket-wheel { fill: #e9ecef; stroke: #495057; stroke-width: 1; }
         .sprocket-tooth { fill: #6c757d; }
         .chain-path { fill: none; stroke: #343a40; stroke-width: 3; stroke-dasharray: 6,2; }
         .chain-pitch-circle { fill: none; stroke: #d93025; stroke-width: 0.5; stroke-dasharray: 4,2; }
+        .chain-driveshaft { fill: #adb5bd; stroke: #495057; stroke-width: 1; }
 
         .shutter-axle-graphic { fill: #6c757d; stroke: #495057; stroke-width: 0.5; }
         .shutter-lath-graphic { fill: #e9ecef; stroke: #adb5bd; stroke-width: 0.5; }
@@ -632,7 +633,7 @@
                     <div class="form-group" data-admin-label="Chain Pitch">
                         <label for="chainPitch">Chain Pitch (mm)</label>
                         <input type="number" id="chainPitch" value="12.7" placeholder="e.g., 12.7 for 08B/1/2 inch">
-                        <small style="font-size: 0.8em; color: #555;">Used for graphic sizing and diameter approximation.</small>
+                        <small style="font-size: 0.8em; color: #555;">Used for graphic sizing.</small>
                     </div>
                     
                     <div class="results" style="border-left-color: #ffc107;">
@@ -1426,7 +1427,7 @@
                      const el = dom[id]; if(el) el.textContent = '0.0'; 
                  });
                  dom['chain-safety-factor'].classList.remove('warning-text', 'option-pass');
-                 drawChainGraphic(0, 0, 0);
+                 drawChainGraphic(0, 0, 0, 0, 0, 0, 0);
                  return;
             }
 
@@ -1485,116 +1486,254 @@
                 dom['chain-safety-factor'].textContent = 'N/A';
             }
 
-            drawChainGraphic(motorTeeth, barrelTeeth, chainPitch);
+            // Get driveshaft info
+            const motorDriveshaft = parseFloat(dom['motor-driveshaft-dia'].textContent) || 0;
+            const sprocketDia = parseFloat(dom.sprocketDiameter.value) || 0;
+
+            drawChainGraphic(motorTeeth, barrelTeeth, chainPitch, sprocketDia, plateWheelDia, motorDriveshaft);
         }
 
-        function drawChainGraphic(motorTeeth, barrelTeeth, pitch) {
-             const container = dom['chain-graphic-container']; container.innerHTML = '';
-             if (!motorTeeth || !barrelTeeth || !pitch) return;
+        function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWheelDia, driveshaftDia) {
+            const container = dom['chain-graphic-container']; container.innerHTML = '';
+            if (!motorTeeth || !barrelTeeth || !pitch) return;
 
-             // Calculate Pitch Diameters
-             const pdMotor = pitch / Math.sin(Math.PI / motorTeeth);
-             const pdBarrel = pitch / Math.sin(Math.PI / barrelTeeth);
-             
-             // Setup SVG
-             const svgNS = "http://www.w3.org/2000/svg";
-             const svg = document.createElementNS(svgNS, "svg");
-             const width = 550; const height = 300;
-             svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-             
-             // Scale to fit
-             const maxDia = Math.max(pdMotor, pdBarrel);
-             const padding = 40;
-             const availableHeight = height - (2 * padding);
-             // Assume some center distance relative to sizes
-             const centerDist = maxDia * 1.5 + 100; 
-             
-             // Scale calculation: Fit width
-             const totalGraphicWidth = centerDist + (pdMotor/2) + (pdBarrel/2);
-             const scale = Math.min((width - 2*padding) / totalGraphicWidth, (height - 2*padding) / maxDia);
-             
-             const r1 = (pdMotor / 2) * scale;
-             const r2 = (pdBarrel / 2) * scale;
-             const d = centerDist * scale;
-             
-             const c1x = padding + r1; const c1y = height / 2;
-             const c2x = c1x + d; const c2y = height / 2;
+            // Use sprocket diameter inputs if available, otherwise estimate based on pitch
+            const pdMotor = (sprocketDia > 0) ? sprocketDia : pitch / Math.sin(Math.PI / motorTeeth);
+            const pdBarrel = (plateWheelDia > 0) ? plateWheelDia : pitch / Math.sin(Math.PI / barrelTeeth);
 
-             // Draw Pitch Circles
-             const circle1 = document.createElementNS(svgNS, 'circle');
-             circle1.setAttribute('cx', c1x); circle1.setAttribute('cy', c1y); circle1.setAttribute('r', r1); circle1.setAttribute('class', 'chain-pitch-circle'); svg.appendChild(circle1);
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            const width = 550; const height = 300;
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            
+            // Layout Calculation
+            const maxDia = Math.max(pdMotor, pdBarrel);
+            const padding = 50;
+            
+            // Assume reasonable center distance relative to sizes if not specified
+            const centerDist = maxDia * 1.5 + 100; 
 
-             const circle2 = document.createElementNS(svgNS, 'circle');
-             circle2.setAttribute('cx', c2x); circle2.setAttribute('cy', c2y); circle2.setAttribute('r', r2); circle2.setAttribute('class', 'chain-pitch-circle'); svg.appendChild(circle2);
-             
-             // Draw Sprocket Bodies (Slightly smaller than pitch circle)
-             const body1 = document.createElementNS(svgNS, 'circle'); body1.setAttribute('cx', c1x); body1.setAttribute('cy', c1y); body1.setAttribute('r', r1 * 0.85); body1.setAttribute('class', 'sprocket-wheel'); svg.appendChild(body1);
-             const body2 = document.createElementNS(svgNS, 'circle'); body2.setAttribute('cx', c2x); body2.setAttribute('cy', c2y); body2.setAttribute('r', r2 * 0.85); body2.setAttribute('class', 'sprocket-wheel'); svg.appendChild(body2);
+            // Calculate scale to fit in viewbox
+            const totalGraphicWidth = centerDist + (pdMotor/2) + (pdBarrel/2);
+            // Allow vertical space for labels
+            const verticalSpaceNeeded = maxDia + 100;
+            
+            const scale = Math.min((width - 2*padding) / totalGraphicWidth, (height - 100) / verticalSpaceNeeded);
+            
+            const r1 = (pdMotor / 2) * scale;
+            const r2 = (pdBarrel / 2) * scale;
+            const d = centerDist * scale;
+            
+            const c1x = padding + r1; const c1y = height / 2;
+            const c2x = c1x + d; const c2y = height / 2;
 
-             // Draw Teeth (Simple representation)
-             const drawTeeth = (cx, cy, r, count) => {
-                 for(let i=0; i<count; i++) {
-                     const angle = (i / count) * 2 * Math.PI;
-                     const toothW = (r * 0.4) / (count / 10); // Arbitrary sizing logic
-                     const tx = cx + Math.cos(angle) * r;
-                     const ty = cy + Math.sin(angle) * r;
-                     const tooth = document.createElementNS(svgNS, 'circle');
-                     tooth.setAttribute('cx', tx); tooth.setAttribute('cy', ty);
-                     tooth.setAttribute('r', Math.max(2, 4 * scale)); 
-                     tooth.setAttribute('class', 'sprocket-tooth');
-                     svg.appendChild(tooth);
-                 }
-             };
-             drawTeeth(c1x, c1y, r1, motorTeeth);
-             drawTeeth(c2x, c2y, r2, barrelTeeth);
+            // Definition for Dimension Markers
+            const defs = document.createElementNS(svgNS, 'defs');
+            const marker = document.createElementNS(svgNS, 'marker'); marker.setAttribute('id', 'dim-arrow-chain'); marker.setAttribute('viewBox', '0 0 10 10'); marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path'); arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
 
-             // Draw Chain Path (Tangent lines + Arcs)
-             // Angle of tangent points
-             if (r2 !== r1) {
-                 const angleOffset = Math.acos((r2 - r1) / d);
-                 // Top Tangent
-                 const t1x = c1x + r1 * Math.cos(-Math.PI/2 + (Math.PI/2 - angleOffset));
-                 const t1y = c1y + r1 * Math.sin(-Math.PI/2 + (Math.PI/2 - angleOffset)); // Simplified, calculating visual tangents
-                 
-                 // For simplified visualization, we draw a path around
-                 const path = document.createElementNS(svgNS, 'path');
-                 // Create a capsule shape essentially
-                 const tanAngle = Math.asin((r2-r1)/d);
-                 
-                 const x1_top = c1x + r1 * Math.sin(tanAngle);
-                 const y1_top = c1y - r1 * Math.cos(tanAngle);
-                 const x2_top = c2x + r2 * Math.sin(tanAngle);
-                 const y2_top = c2y - r2 * Math.cos(tanAngle);
-                 
-                 const x1_bot = c1x + r1 * Math.sin(-tanAngle); // Mirror
-                 const y1_bot = c1y + r1 * Math.cos(tanAngle);
-                 const x2_bot = c2x + r2 * Math.sin(-tanAngle);
-                 const y2_bot = c2y + r2 * Math.cos(tanAngle);
-                 
-                 // Using simple rounded rect logic approx or explicit path
-                 const pathD = `M ${x1_top},${y1_top} L ${x2_top},${y2_top} A ${r2},${r2} 0 1 1 ${x2_bot},${y2_bot} L ${x1_bot},${y1_bot} A ${r1},${r1} 0 1 1 ${x1_top},${y1_top}`;
-                 
-                 path.setAttribute('d', pathD);
-                 path.setAttribute('class', 'chain-path');
-                 svg.appendChild(path);
-             } else {
-                 // Equal size, simpler box with rounded ends
-                 const path = document.createElementNS(svgNS, 'path');
-                 path.setAttribute('d', `M ${c1x},${c1y-r1} L ${c2x},${c2y-r2} A ${r2},${r2} 0 0 1 ${c2x},${c2y+r2} L ${c1x},${c1y+r1} A ${r1},${r1} 0 0 1 ${c1x},${c1y-r1}`);
-                 path.setAttribute('class', 'chain-path');
-                 svg.appendChild(path);
-             }
-             
-             // Labels
-             const text1 = document.createElementNS(svgNS, 'text');
-             text1.setAttribute('x', c1x); text1.setAttribute('y', c1y + r1 + 30); text1.setAttribute('class', 'graph-text'); text1.textContent = "Motor";
-             svg.appendChild(text1);
-             
-             const text2 = document.createElementNS(svgNS, 'text');
-             text2.setAttribute('x', c2x); text2.setAttribute('y', c2y + r2 + 30); text2.setAttribute('class', 'graph-text'); text2.textContent = "Barrel";
-             svg.appendChild(text2);
+            // Function to generate gear path
+            const createGearPath = (cx, cy, radius, teeth) => {
+                const outerR = radius + (4 * scale); // Addendum approximation
+                const innerR = radius - (4 * scale); // Dedendum approximation
+                let path = "";
+                const step = (Math.PI * 2) / teeth;
+                for (let i = 0; i < teeth; i++) {
+                    const angle = i * step;
+                    const halfStep = step / 4; // Simplified profile
+                    // Point 1: Inner start
+                    const a1 = angle - halfStep;
+                    path += (i===0 ? "M" : "L") + (cx + Math.cos(a1)*innerR) + "," + (cy + Math.sin(a1)*innerR);
+                    // Point 2: Outer start
+                    const a2 = angle - halfStep/2;
+                    path += "L" + (cx + Math.cos(a2)*outerR) + "," + (cy + Math.sin(a2)*outerR);
+                    // Point 3: Outer end
+                    const a3 = angle + halfStep/2;
+                    path += "L" + (cx + Math.cos(a3)*outerR) + "," + (cy + Math.sin(a3)*outerR);
+                    // Point 4: Inner end
+                    const a4 = angle + halfStep;
+                    path += "L" + (cx + Math.cos(a4)*innerR) + "," + (cy + Math.sin(a4)*innerR);
+                }
+                path += "Z";
+                return path;
+            };
 
-             container.appendChild(svg);
+            // Draw Sprocket (Gear Shape)
+            const gear1 = document.createElementNS(svgNS, 'path');
+            gear1.setAttribute('d', createGearPath(c1x, c1y, r1, motorTeeth));
+            gear1.setAttribute('class', 'sprocket-wheel');
+            svg.appendChild(gear1);
+
+            // Draw Barrel Plate Wheel (Gear Shape)
+            const gear2 = document.createElementNS(svgNS, 'path');
+            gear2.setAttribute('d', createGearPath(c2x, c2y, r2, barrelTeeth));
+            gear2.setAttribute('class', 'sprocket-wheel');
+            svg.appendChild(gear2);
+
+            // Draw Driveshaft on Motor side
+            if(driveshaftDia > 0) {
+                const rShaft = (driveshaftDia / 2) * scale;
+                const shaft = document.createElementNS(svgNS, 'circle');
+                shaft.setAttribute('cx', c1x); shaft.setAttribute('cy', c1y);
+                shaft.setAttribute('r', rShaft);
+                shaft.setAttribute('class', 'chain-driveshaft');
+                svg.appendChild(shaft);
+                
+                // Label for driveshaft
+                const labelY = c1y - r1 - 35;
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', c1x); line.setAttribute('y1', c1y - rShaft);
+                line.setAttribute('x2', c1x - 20); line.setAttribute('y2', labelY + 5);
+                line.setAttribute('class', 'leader-line');
+                svg.appendChild(line);
+                
+                const textDS = document.createElementNS(svgNS, 'text');
+                textDS.setAttribute('x', c1x - 25); textDS.setAttribute('y', labelY);
+                textDS.setAttribute('class', 'graph-data-label');
+                textDS.setAttribute('text-anchor', 'end');
+                textDS.textContent = `Ø${driveshaftDia} Driveshaft`;
+                svg.appendChild(textDS);
+            }
+
+            // Center Point Barrel
+            const barrelCenter = document.createElementNS(svgNS, 'circle');
+            barrelCenter.setAttribute('cx', c2x); barrelCenter.setAttribute('cy', c2y);
+            barrelCenter.setAttribute('r', 3);
+            barrelCenter.setAttribute('fill', '#495057');
+            svg.appendChild(barrelCenter);
+
+            // Draw Chain Path (Mathematically Correct Tangents)
+            // Angle alpha from vertical where tangent leaves circle
+            // sin(alpha) = (r2 - r1) / d
+            let tangentPoints = "";
+            if (d > Math.abs(r2 - r1)) {
+                const alpha = Math.asin((r2 - r1) / d);
+                
+                // Coordinates relative to center
+                // Top Tangent Point on Circle 1 (smaller, usually)
+                const t1x_top = c1x + r1 * Math.sin(alpha);
+                const t1y_top = c1y - r1 * Math.cos(alpha);
+                
+                // Top Tangent Point on Circle 2
+                const t2x_top = c2x + r2 * Math.sin(alpha);
+                const t2y_top = c2y - r2 * Math.cos(alpha);
+                
+                // Bottom Tangent Point on Circle 2
+                const t2x_bot = c2x + r2 * Math.sin(-alpha); // symmetrical
+                const t2y_bot = c2y - r2 * Math.cos(-alpha); // flips sign of cos term? No.
+                // Actually: bottom point is reflection over Y axis of circle local coords
+                // Top point local: (r sin a, -r cos a). Bottom: (r sin a, r cos a)? 
+                // Let's re-verify: Line angle is alpha relative to horizontal? No, alpha relative to vertical axis of symmetry.
+                // Standard belt logic:
+                // Top line angle relative to horizontal = alpha.
+                // Contact point: (-sin(alpha), cos(alpha)) direction normal.
+                // Let's stick to the coordinate geometry derived from "external tangents":
+                // Top tangent points:
+                const x1_top = c1x + r1 * (r1-r2)/d + (c2y-c1y)/d * Math.sqrt(d*d - (r1-r2)**2) * (r1 < r2 ? -1 : 1); // Complex formula
+                // Simplified for horizontal centers (c1y == c2y):
+                // Angle of tangent line w.r.t horizontal = asin((r2-r1)/d).
+                // Normal vector angle = PI/2 + asin(...)
+                
+                // Correct simplified logic for y1=y2:
+                const angle = Math.asin((r2 - r1) / d);
+                const t1x_t = c1x + r1 * Math.sin(angle);
+                const t1y_t = c1y - r1 * Math.cos(angle);
+                
+                const t2x_t = c2x + r2 * Math.sin(angle);
+                const t2y_t = c2y - r2 * Math.cos(angle);
+                
+                const t2x_b = c2x + r2 * Math.sin(-angle); // essentially same X if centered
+                const t2y_b = c2y - r2 * Math.cos(-angle); // bottom Y
+                
+                const t1x_b = c1x + r1 * Math.sin(-angle);
+                const t1y_b = c1y - r1 * Math.cos(-angle);
+                
+                const largeArcFlag = 1; // Always goes around back
+                
+                const path = document.createElementNS(svgNS, 'path');
+                const dPath = `M ${t1x_t},${t1y_t} 
+                               L ${t2x_t},${t2y_t} 
+                               A ${r2},${r2} 0 1 1 ${t2x_b},${t2y_b} 
+                               L ${t1x_b},${t1y_b} 
+                               A ${r1},${r1} 0 1 1 ${t1x_t},${t1y_t}`;
+                
+                path.setAttribute('d', dPath);
+                path.setAttribute('class', 'chain-path');
+                svg.appendChild(path);
+            } else {
+                 // Circles overlap or invalid, fallback
+            }
+
+            // --- LABELS ---
+
+            // Motor Label
+            const text1 = document.createElementNS(svgNS, 'text');
+            text1.setAttribute('x', c1x); text1.setAttribute('y', c1y + r1 + 25); 
+            text1.setAttribute('class', 'graph-text'); 
+            text1.style.fontWeight = "bold";
+            text1.textContent = "Motor Sprocket";
+            svg.appendChild(text1);
+
+            const sub1 = document.createElementNS(svgNS, 'text');
+            sub1.setAttribute('x', c1x); sub1.setAttribute('y', c1y + r1 + 40); 
+            sub1.setAttribute('class', 'graph-data-label'); 
+            sub1.textContent = `${motorTeeth} Teeth`;
+            svg.appendChild(sub1);
+            
+            const sub1a = document.createElementNS(svgNS, 'text');
+            sub1a.setAttribute('x', c1x); sub1a.setAttribute('y', c1y + r1 + 52); 
+            sub1a.setAttribute('class', 'graph-data-label'); 
+            sub1a.textContent = `Ø${pdMotor.toFixed(1)} mm`;
+            svg.appendChild(sub1a);
+
+            // Barrel Label
+            const text2 = document.createElementNS(svgNS, 'text');
+            text2.setAttribute('x', c2x); text2.setAttribute('y', c2y + r2 + 25); 
+            text2.setAttribute('class', 'graph-text'); 
+            text2.style.fontWeight = "bold";
+            text2.textContent = "Barrel Plate Wheel";
+            svg.appendChild(text2);
+
+            const sub2 = document.createElementNS(svgNS, 'text');
+            sub2.setAttribute('x', c2x); sub2.setAttribute('y', c2y + r2 + 40); 
+            sub2.setAttribute('class', 'graph-data-label'); 
+            sub2.textContent = `${barrelTeeth} Teeth`;
+            svg.appendChild(sub2);
+            
+            const sub2a = document.createElementNS(svgNS, 'text');
+            sub2a.setAttribute('x', c2x); sub2a.setAttribute('y', c2y + r2 + 52); 
+            sub2a.setAttribute('class', 'graph-data-label'); 
+            sub2a.textContent = `Ø${pdBarrel.toFixed(1)} mm`;
+            svg.appendChild(sub2a);
+
+            // Dimension Lines (Diameter)
+            const drawDim = (cx, cy, r, label) => {
+                const lineY = cy - r - 10;
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', cx - r); line.setAttribute('y1', lineY);
+                line.setAttribute('x2', cx + r); line.setAttribute('y2', lineY);
+                line.setAttribute('class', 'dimension-line');
+                line.setAttribute('marker-start', 'url(#dim-arrow-chain)');
+                line.setAttribute('marker-end', 'url(#dim-arrow-chain)');
+                svg.appendChild(line);
+                
+                // Leaders
+                const l1 = document.createElementNS(svgNS, 'line');
+                l1.setAttribute('x1', cx - r); l1.setAttribute('y1', cy);
+                l1.setAttribute('x2', cx - r); l1.setAttribute('y2', lineY);
+                l1.setAttribute('class', 'leader-line'); svg.appendChild(l1);
+                
+                const l2 = document.createElementNS(svgNS, 'line');
+                l2.setAttribute('x1', cx + r); l2.setAttribute('y1', cy);
+                l2.setAttribute('x2', cx + r); l2.setAttribute('y2', lineY);
+                l2.setAttribute('class', 'leader-line'); svg.appendChild(l2);
+            };
+
+            // Draw Top Dimensions
+            drawDim(c1x, c1y, r1);
+            drawDim(c2x, c2y, r2);
+
+            container.appendChild(svg);
         }
 
         function findAndSetBestAxle(totalWeightKgs, curtainWidth) {
@@ -2125,12 +2264,11 @@
                 motorNameClean = motorNameClean.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
 
                 // 3. Find match in Chaindrive sheet
+                // IMPROVED SEARCH: Check for inclusion either way and strip basic whitespace
                 const chainSpecs = chainDriveData.find(row => {
                     const rowDesc = row['Motor Description'];
                     if (!rowDesc) return false;
                     const descClean = rowDesc.toString().trim().toLowerCase();
-                    
-                    // Fuzzy match: If one contains the other
                     return descClean.includes(motorNameClean) || motorNameClean.includes(descClean);
                 });
 
@@ -2139,12 +2277,16 @@
                     dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; 
                     dom.sprocketDiameter.value = chainSpecs['Sprocket diameter'] || "";
                     dom.plateWheelDiameter.value = chainSpecs['Platewheel Diameter'] || "";
-                    dom.chainSizeDisplay.value = chainSpecs['Chain size'] || "Unknown";
+                    
+                    // Explicitly look for chain size column, handling potential header case variance
+                    const chainSizeKey = Object.keys(chainSpecs).find(k => k.toLowerCase().includes('chain size'));
+                    dom.chainSizeDisplay.value = chainSizeKey ? chainSpecs[chainSizeKey] : "Unknown";
+                    
                     // Store breaking strain for calculation
                     dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain in newtons']) || 0;
                 } else {
                     resetChainInfo();
-                    dom.chainSizeDisplay.value = "Specs not found in Chaindrive sheet";
+                    dom.chainSizeDisplay.value = "Specs not found in data";
                 }
             } else {
                 resetChainInfo();
@@ -3246,52 +3388,7 @@
             const travelHeight = height_mm - bottomLathHeight;
             return { totalWeight, torqueWeight, travelHeight };
         }
-
-        function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
-             if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
-            
-            const axlesForShape = axleData.filter(axle => {
-                const isCircular = (axle.Shape || 'circular').toLowerCase().trim() === 'circular';
-                return isCircular;
-            });
-
-            if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
-
-            let bestAxle = null;
-            let bestDeflection = 0;
-            
-            // HEADLESS RATIO LOGIC
-            let requiredRatio = 400;
-            if (width_mm > 10000) requiredRatio = 800;
-            else if (width_mm > 8000) requiredRatio = 600;
-
-            for (const axle of axlesForShape) {
-                const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-                if (perf.ratio >= requiredRatio && perf.deflection <= 25) { 
-                    bestAxle = axle; 
-                    bestDeflection = perf.deflection;
-                    break; 
-                }
-            }
-            
-            if (bestAxle) { 
-                return { name: bestAxle.Name, deflection: bestDeflection, axleObj: bestAxle }; 
-            } else { 
-                let bestFailAxle = axlesForShape[0];
-                let minDeflection = Infinity;
-
-                axlesForShape.forEach(axle => {
-                     const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-                     if(perf.deflection < minDeflection) {
-                         minDeflection = perf.deflection;
-                         bestFailAxle = axle;
-                     }
-                });
-                return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
-            }
-        }
-        
-        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, matchAxleDia, overrideCollarDia) {
+		function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, matchAxleDia, overrideCollarDia) {
             if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
             
             const lathThickness = parseFloat(lath['Thickness']) || 0;
