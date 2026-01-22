@@ -763,6 +763,21 @@
                             </div>
                         </div>
 
+                        <!-- NEW: Collar Override Section -->
+                        <h4>Optional: Axle Collar Specific Override</h4>
+                        <div class="form-row" style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #e9ecef;">
+                            <div class="form-group form-col">
+                                <label for="reportAxleMatch">Axle Diameter to Match (mm)</label>
+                                <input type="number" id="reportAxleMatch" placeholder="e.g. 101.6">
+                                <small style="color:#666;">Apply collar only to axles of this size.</small>
+                            </div>
+                            <div class="form-group form-col">
+                                <label for="reportCollarOverride">Collar Diameter (mm)</label>
+                                <input type="number" id="reportCollarOverride" placeholder="e.g. 120">
+                                <small style="color:#666;">Used for Torque calculation instead of Axle Dia.</small>
+                            </div>
+                        </div>
+
                         <h4>3. Select Motor Usage Types</h4>
                         <div class="admin-button-group">
                             <button id="reportUsageSelectAll">Select All</button>
@@ -3276,11 +3291,26 @@
             }
         }
         
-        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent) {
+        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, matchAxleDia, overrideCollarDia) {
             if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
             
             const lathThickness = parseFloat(lath['Thickness']) || 0;
-            const effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+            
+            // Default start diameter based on Axle Object
+            let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+
+            // --- NEW COLLAR OVERRIDE LOGIC ---
+            // If the user entered valid override numbers
+            if (matchAxleDia > 0 && overrideCollarDia > 0) {
+                const currentAxleDia = parseFloat(axle['Diameter']) || 0;
+                // Check if current axle matches the target (allowing 0.5mm tolerance for float diffs)
+                if (Math.abs(currentAxleDia - matchAxleDia) < 0.5) {
+                    // Apply the larger of the two (Collar or Axle)
+                    effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
+                }
+            }
+            // ---------------------------------
+
             const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
             const lathsWeight = torqueWeight - bottomLathWeightActual;
 
@@ -3321,6 +3351,11 @@
             const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
             const interval = parseInt(document.getElementById('reportInterval').value);
             
+            // --- NEW INPUTS CAPTURE ---
+            const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
+            const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
+            // --------------------------
+
             const lathIndex1 = document.getElementById('reportLathType').value;
             const lathIndex2 = document.getElementById('reportLathType2').value;
             const rawLimit = document.getElementById('reportLathLimit').value;
@@ -3377,7 +3412,20 @@
                     const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, currentLath, width);
                     
                     const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
-                    const requiredTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction);
+                    
+                    // --- UPDATED CALL: Pass new override variables ---
+                    const requiredTorque = calculateTorqueHeadless(
+                        props.torqueWeight, 
+                        currentLath, 
+                        props.travelHeight, 
+                        axleResult.axleObj, 
+                        width, 
+                        selectedBottomLath, 
+                        defaultFriction,
+                        reportAxleMatch,      // Passed here
+                        reportCollarOverride  // Passed here
+                    );
+                    // -----------------------------------------------
                     
                     const result = {
                         'Lath Type Used': currentLath.Name, 
@@ -3407,7 +3455,15 @@
                                         const selectedMotor = suitableMotors[0];
                                         result[scenarioKey] = selectedMotor.Name;
                                         let effectiveDiameter = 0;
-                                        if(axleResult.axleObj) { effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); }
+                                        if(axleResult.axleObj) { 
+                                            // Also apply collar logic for Rotation calculation (Opening time)
+                                            effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); 
+                                            if (reportAxleMatch > 0 && reportCollarOverride > 0) {
+                                                if (Math.abs((parseFloat(axleResult.axleObj.Diameter)||0) - reportAxleMatch) < 0.5) {
+                                                    effectiveDiameter = Math.max(effectiveDiameter, reportCollarOverride);
+                                                }
+                                            }
+                                        }
                                         const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(currentLath['Thickness']));
                                         const rpm = parseFloat(selectedMotor['RPM']) || 0;
                                         const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
@@ -3442,9 +3498,15 @@
 
             let headerInfo = `Primary Lath: ${primaryLath.Name}`;
             if (lathIndex2 !== "" && rawLimit) {
-                headerInfo += ` | Secondary Lath (>${rawLimit}mm): ${secondaryLath.Name}`;
+                headerInfo += ` | Secondary Lath (>${rawLimit}
+				mm): ${secondaryLath.Name}`;
             }
             headerInfo += ` | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`;
+            
+            // Add override info to header
+            if (reportAxleMatch > 0 && reportCollarOverride > 0) {
+                headerInfo += ` | Collar Override: ${reportCollarOverride}mm collar on ${reportAxleMatch}mm axles`;
+            }
 
             for (const tableType of tableTypes) {
                 csvData.push([headerInfo]);
