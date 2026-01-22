@@ -3303,8 +3303,8 @@
             // If the user entered valid override numbers
             if (matchAxleDia > 0 && overrideCollarDia > 0) {
                 const currentAxleDia = parseFloat(axle['Diameter']) || 0;
-                // Check if current axle matches the target (allowing 0.5mm tolerance for float diffs)
-                if (Math.abs(currentAxleDia - matchAxleDia) < 0.5) {
+                // Check if current axle matches the target (allowing 2.0mm tolerance for float diffs)
+                if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
                     // Apply the larger of the two (Collar or Axle)
                     effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
                 }
@@ -3459,7 +3459,8 @@
                                             // Also apply collar logic for Rotation calculation (Opening time)
                                             effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); 
                                             if (reportAxleMatch > 0 && reportCollarOverride > 0) {
-                                                if (Math.abs((parseFloat(axleResult.axleObj.Diameter)||0) - reportAxleMatch) < 0.5) {
+                                                // Using 2.0mm tolerance here as well to match inputs like "101" to "101.6"
+                                                if (Math.abs((parseFloat(axleResult.axleObj.Diameter)||0) - reportAxleMatch) < 2.0) {
                                                     effectiveDiameter = Math.max(effectiveDiameter, reportCollarOverride);
                                                 }
                                             }
@@ -3498,8 +3499,7 @@
 
             let headerInfo = `Primary Lath: ${primaryLath.Name}`;
             if (lathIndex2 !== "" && rawLimit) {
-                headerInfo += ` | Secondary Lath (>${rawLimit}
-				mm): ${secondaryLath.Name}`;
+                headerInfo += ` | Secondary Lath (>${rawLimit}mm): ${secondaryLath.Name}`;
             }
             headerInfo += ` | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`;
             
