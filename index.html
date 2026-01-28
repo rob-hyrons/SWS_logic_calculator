@@ -2384,7 +2384,8 @@
                 remainingTotalWeight -= reduction;
                 remainingTotalWeight = Math.max(0, remainingTotalWeight);
                 const force = remainingTotalWeight * 9.81; 
-                const radiusM = (currentRollDiameter / 2) / 1000;
+                // CORRECTION: Use effective radius (radius + half thickness)
+                const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
                 profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
                 const circumference = Math.PI * currentRollDiameter; 
                 heightLifted += circumference / 2; 
@@ -2418,7 +2419,8 @@
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
                 const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
                 const force = remainingTotalWeight * 9.81; 
-                const radiusM = (currentRollDiameter / 2) / 1000;
+                // CORRECTION: Use effective radius (radius + half thickness)
+                const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
                 profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
                 const circumference = Math.PI * currentRollDiameter; 
                 heightLifted += circumference / 2; 
@@ -3454,7 +3456,10 @@ return svg;
             const remainingTotalWeight = remainingLathWeight + bottomLathWeightActual;
             
             const force = remainingTotalWeight * 9.81;
-            const radiusM = (currentRollDiameter / 2) / 1000;
+            
+            // CORRECTION: Use effective radius (radius + half thickness)
+            const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
+			const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
             
             const currentTorque = force * radiusM;
             if (currentTorque > maxTorqueFound) {
