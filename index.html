@@ -372,6 +372,7 @@
                         <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
                         <p>Total Curtain Area (Material): <span id="curtain-area">0.00</span> m²</p>
 						<p>Curtain Area to Lift (Coverage): <span id="lifted-curtain-area">0.00</span> m²</p>
+                        <p>Total Applied Friction: <span id="total-applied-friction">0</span> %</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
                         <p>Total Number of Laths: <span id="lath-count">0</span></p>
@@ -463,7 +464,7 @@
                         </select>
                     </div>
                     <div class="form-group" data-admin-label="Lath Friction Allowance">
-                        <label for="friction">Lath Friction Allowance (%)</label>
+                        <label for="friction">Lath Baseline Friction Allowance (%)</label>
                         <input type="number" id="friction" value="10" title="Automatically updated from Lath data. Can be overridden.">
                     </div>
                     <div id="torque-graph-container" class="graph-container" style="height: 280px;"></div>
@@ -536,10 +537,10 @@
 
                 <!-- Safety Brake Tab -->
                 <div id="safety-brake-content" class="tab-pane">
-                    <h2>Safety Brake Force Analysis</h2>
+                    <h2>Safety Brake Selection</h2>
                     
                     <div class="form-group" data-admin-label="Safety Brake Selector">
-                        <label for="safetyBrakeSelector">Available Safety Brakes (Auto-Selected)</label>
+                        <label for="safetyBrakeSelector">Available Safety Brakes (Auto-Selected based on Operating Torque)</label>
                         <select id="safetyBrakeSelector" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
@@ -550,34 +551,16 @@
                     </div>
 
                     <div class="results" style="border-left-color: #d93025;">
-                        <h3 style="color: #d93025;">Worst-Case Impact</h3>
+                        <h3 style="color: #d93025;">Selected Brake</h3>
                         <p>Selected Safety Brake: <span id="safety-brake-name">N/A</span></p>
-                        <p>Brake Max Torque Capacity: <span id="safety-brake-capacity">N/A</span> Nm</p>
-                        <p>Driveshaft Diameter: <span id="safety-brake-driveshaft">N/A</span> mm</p>
-                        <p>Worst-Case Activation Height (from floor): <span id="sb-activation-height">0.00</span> m</p>
-                        <p>Impact Torque on Axle (inc. 20% factor): <span id="safety-brake-torque">0.00</span> Nm</p>
-                        <p>Linear Impact Force: <span id="safety-brake-force-kn">0.00</span> kN</p>
-                        <p>Equivalent Linear Force: <span id="safety-brake-force-kg">0.00</span> kgf</p>
+                        <p>Brake Operating Torque Rating: <span id="safety-brake-capacity">N/A</span> Nm</p>
+                        <p>Required Motor Torque (Max): <span id="safety-brake-motor-torque">N/A</span> Nm</p>
+                        <p>Brake Shaft Diameter: <span id="safety-brake-driveshaft">N/A</span> mm</p>
                     </div>
 
                     <div class="calculation-explainer">
-                        <h4>Calculation Explained</h4>
-                        This calculates the shock load if the shutter free-falls from a worst-case height of <strong>1000mm</strong> from the floor. The fall distance before brake engagement is assumed to be <strong>1/8th of the coil's circumference</strong> at that height. A <strong>20% safety factor</strong> is applied to the calculated torque before selecting a brake.
-                        <br><br>
-                        <strong>Principle:</strong> Potential Energy (from fall) = Work Done (by brake)
-                        <br>
-                        <code>Force = (Mass × g × Fall Distance) / Stop Distance</code>
-                        <br>
-                        <code>Torque = Force × Axle Radius</code>
-                        <br><br>
-                        <strong>Values Used:</strong>
-                        <ul>
-                            <li>Mass at worst-case height: <span id="sb-mass">0.00</span> kg</li>
-                            <li>Fall Distance: <span id="sb-fall-dist">0.000</span> m</li>
-                            <li>Gravity (g): <span>9.81</span> m/s²</li>
-                            <li>Stop Distance: <span id="sb-stop-dist">0.010</span> m</li>
-                        </ul>
-                        <span id="sb-activation-height-explainer" style="display: none;"></span>
+                        <h4>Selection Logic Explained</h4>
+                        This safety brake is selected by comparing the <strong>Max Motor Torque</strong> against the <strong>Operating Torque (Nm)</strong> column in the SafetyB data sheet. The first available brake with an Operating Torque greater than the motor torque is selected.
                     </div>
                 </div>
                 
@@ -844,8 +827,8 @@
          'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
          'motor-driveshaft-dia', 'motor-cycles-per-hour',
          'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
-         'safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'safety-brake-name', 'sb-mass', 'sb-fall-dist', 'sb-stop-dist',
-         'sb-activation-height', 'sb-activation-height-explainer', 'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
+         'safety-brake-torque', 'safety-brake-name', 'safety-brake-motor-torque',
+         'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
          'curtain-height-extended', 'curtain-height-compressed', 'endplateSelector', 'matSteel', 'matAluminium', 'endplate-name', 'endplate-size',
          'endplate-material', 'max-coil-diameter', 'prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height',
          'width-warning', 'curtain-area', 'lifted-curtain-area', 'printButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
@@ -860,7 +843,7 @@
          'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixity',
          'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
          'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
-         'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n'
+         'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -881,16 +864,6 @@
                     if (selectedLath) {
                         if (selectedLath['Friction %'] !== undefined) {
                             dom.friction.value = selectedLath['Friction %'];
-                        }
-                        const lathName = (selectedLath['Name'] || '').toLowerCase();
-                        if (lathName.includes('wind')) {
-                           const endlockSelect = dom.endlockType;
-                           for (let i = 0; i < endlockSelect.options.length; i++) {
-                               if (endlockSelect.options[i].text.toLowerCase().includes('75mm cast')) {
-                                   endlockSelect.value = endlockSelect.options[i].value;
-                                   break;
-                               }
-                           }
                         }
                     }
                 }
@@ -1012,7 +985,7 @@
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                     'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override'],
-                    'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
+                    'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Operating Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
                     'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
@@ -1381,7 +1354,7 @@
             } else { widthWarningDiv.style.display = 'none'; }
             
             if (axleData.length === 0 || safetyBrakeData.length === 0) {
-                drawDeflectionGraphic(0, 0); drawAxleCrossSection(null); calculateSafetyBrakeForce(); drawShutterGraphic(); return;
+                drawDeflectionGraphic(0, 0); drawAxleCrossSection(null); calculateSafetyBrakeSelection(); drawShutterGraphic(); return;
             };
             
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
@@ -1396,7 +1369,7 @@
             const { deflection, totalLength } = findAndSetBestAxle(totalWeight, curtainWidth);
             drawDeflectionGraphic(totalLength, deflection);
             calculateMotorRecommendation(torqueWeight, effectiveLath, bestAxle, travelHeight, curtainWidth);
-            calculateSafetyBrakeForce(totalWeight, effectiveLath, bestAxle, travelHeight, fullCurtainLength);
+            calculateSafetyBrakeSelection();
             
             const selectedEndplateIndex = dom.endplateSelector.value;
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
@@ -1414,13 +1387,7 @@
             const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
             const barrelTeeth = parseInt(dom.barrelTeeth.value) || 0;
             const chainPitch = parseFloat(dom.chainPitch.value) || 0;
-            
-            // Get base data from Motor tab calc
             const maxTorqueRequired = parseFloat(dom['max-torque'].textContent) || 0;
-            
-            // Get Plate Wheel Diameter
-            // The prompt says "Platewheel Diameter" column from Chaindrive sheet. 
-            // This is auto-populated into dom.plateWheelDiameter by updateSelectedMotorInfo
             const plateWheelDia = parseFloat(dom.plateWheelDiameter.value) || 0;
 
             if (motorTeeth <= 0 || barrelTeeth <= 0 || maxTorqueRequired <= 0) {
@@ -1432,22 +1399,12 @@
                  return;
             }
 
-            // Ratio
             const ratio = barrelTeeth / motorTeeth;
             dom['chain-ratio'].textContent = `1 : ${ratio.toFixed(2)}`;
-
-            // Torques
             dom['chain-torque-barrel'].textContent = maxTorqueRequired.toFixed(1);
-            
-            // Torque required at motor is reduced by ratio
             const motorTorque = maxTorqueRequired / ratio;
             dom['chain-torque-motor'].textContent = motorTorque.toFixed(1);
 
-            // Chain Tension Calculation based on prompt instructions:
-            // "using the weight of the Curtain... calculate the strain"
-            // Strain (Tension) = Torque at Barrel / (Plate Wheel Radius)
-            // Plate Wheel Radius = Plate Wheel Diameter / 2 (in meters)
-            
             let tensionN = 0;
             if (plateWheelDia > 0) {
                 const radiusM = (plateWheelDia / 2) / 1000;
@@ -1459,10 +1416,7 @@
             dom['chain-tension-n'].textContent = tensionN.toFixed(1);
             dom['chain-tension'].textContent = tensionKg.toFixed(1);
 
-            // Breaking Strain check
             let safetyFactor = 0;
-            // The breaking strain is populated in updateSelectedMotorInfo into a data attribute or global
-            // Let's assume we store it on the dom element for simplicity or check the global currentChainDriveData
             let breakStrainN = 0;
             if (dom.chainSizeDisplay.dataset.breakingStrain) {
                 breakStrainN = parseFloat(dom.chainSizeDisplay.dataset.breakingStrain);
@@ -1474,7 +1428,6 @@
                 safetyFactor = breakStrainN / tensionN;
                 dom['chain-safety-factor'].textContent = safetyFactor.toFixed(2);
                 
-                // Prompt asks to ensure safety factor ratio is > 6:1
                 if (safetyFactor < 6.0) { 
                      dom['chain-safety-factor'].classList.add('warning-text');
                      dom['chain-safety-factor'].classList.remove('option-pass');
@@ -1487,7 +1440,6 @@
                 dom['chain-safety-factor'].textContent = 'N/A';
             }
 
-            // Get driveshaft info
             const motorDriveshaft = parseFloat(dom['motor-driveshaft-dia'].textContent) || 0;
             const sprocketDia = parseFloat(dom.sprocketDiameter.value) || 0;
 
@@ -1498,7 +1450,6 @@
             const container = dom['chain-graphic-container']; container.innerHTML = '';
             if (!motorTeeth || !barrelTeeth || !pitch) return;
 
-            // Use sprocket diameter inputs if available, otherwise estimate based on pitch
             const pdMotor = (sprocketDia > 0) ? sprocketDia : pitch / Math.sin(Math.PI / motorTeeth);
             const pdBarrel = (plateWheelDia > 0) ? plateWheelDia : pitch / Math.sin(Math.PI / barrelTeeth);
 
@@ -1507,51 +1458,36 @@
             const width = 550; const height = 300;
             svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
             
-            // Layout Calculation
             const maxDia = Math.max(pdMotor, pdBarrel);
             const padding = 50;
-            
-            // Assume reasonable center distance relative to sizes if not specified
             const centerDist = maxDia * 1.5 + 100; 
-
-            // Calculate scale to fit in viewbox
             const totalGraphicWidth = centerDist + (pdMotor/2) + (pdBarrel/2);
-            // Allow vertical space for labels
             const verticalSpaceNeeded = maxDia + 100;
-            
             const scale = Math.min((width - 2*padding) / totalGraphicWidth, (height - 100) / verticalSpaceNeeded);
-            
             const r1 = (pdMotor / 2) * scale;
             const r2 = (pdBarrel / 2) * scale;
             const d = centerDist * scale;
-            
             const c1x = padding + r1; const c1y = height / 2;
             const c2x = c1x + d; const c2y = height / 2;
 
-            // Definition for Dimension Markers
             const defs = document.createElementNS(svgNS, 'defs');
             const marker = document.createElementNS(svgNS, 'marker'); marker.setAttribute('id', 'dim-arrow-chain'); marker.setAttribute('viewBox', '0 0 10 10'); marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); marker.setAttribute('orient', 'auto-start-reverse');
             const arrowPath = document.createElementNS(svgNS, 'path'); arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
 
-            // Function to generate gear path
             const createGearPath = (cx, cy, radius, teeth) => {
-                const outerR = radius + (4 * scale); // Addendum approximation
-                const innerR = radius - (4 * scale); // Dedendum approximation
+                const outerR = radius + (4 * scale); 
+                const innerR = radius - (4 * scale); 
                 let path = "";
                 const step = (Math.PI * 2) / teeth;
                 for (let i = 0; i < teeth; i++) {
                     const angle = i * step;
-                    const halfStep = step / 4; // Simplified profile
-                    // Point 1: Inner start
+                    const halfStep = step / 4;
                     const a1 = angle - halfStep;
                     path += (i===0 ? "M" : "L") + (cx + Math.cos(a1)*innerR) + "," + (cy + Math.sin(a1)*innerR);
-                    // Point 2: Outer start
                     const a2 = angle - halfStep/2;
                     path += "L" + (cx + Math.cos(a2)*outerR) + "," + (cy + Math.sin(a2)*outerR);
-                    // Point 3: Outer end
                     const a3 = angle + halfStep/2;
                     path += "L" + (cx + Math.cos(a3)*outerR) + "," + (cy + Math.sin(a3)*outerR);
-                    // Point 4: Inner end
                     const a4 = angle + halfStep;
                     path += "L" + (cx + Math.cos(a4)*innerR) + "," + (cy + Math.sin(a4)*innerR);
                 }
@@ -1559,19 +1495,16 @@
                 return path;
             };
 
-            // Draw Sprocket (Gear Shape)
             const gear1 = document.createElementNS(svgNS, 'path');
             gear1.setAttribute('d', createGearPath(c1x, c1y, r1, motorTeeth));
             gear1.setAttribute('class', 'sprocket-wheel');
             svg.appendChild(gear1);
 
-            // Draw Barrel Plate Wheel (Gear Shape)
             const gear2 = document.createElementNS(svgNS, 'path');
             gear2.setAttribute('d', createGearPath(c2x, c2y, r2, barrelTeeth));
             gear2.setAttribute('class', 'sprocket-wheel');
             svg.appendChild(gear2);
 
-            // Draw Driveshaft on Motor side
             if(driveshaftDia > 0) {
                 const rShaft = (driveshaftDia / 2) * scale;
                 const shaft = document.createElementNS(svgNS, 'circle');
@@ -1580,7 +1513,6 @@
                 shaft.setAttribute('class', 'chain-driveshaft');
                 svg.appendChild(shaft);
                 
-                // Label for driveshaft
                 const labelY = c1y - r1 - 35;
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', c1x); line.setAttribute('y1', c1y - rShaft);
@@ -1596,53 +1528,30 @@
                 svg.appendChild(textDS);
             }
 
-            // Center Point Barrel
             const barrelCenter = document.createElementNS(svgNS, 'circle');
             barrelCenter.setAttribute('cx', c2x); barrelCenter.setAttribute('cy', c2y);
             barrelCenter.setAttribute('r', 3);
             barrelCenter.setAttribute('fill', '#495057');
             svg.appendChild(barrelCenter);
 
-            // Draw Continuous Chain Path around teeth
             if (d > Math.abs(r2 - r1)) {
-                // Correct geometric tangent calculation
                 const alpha = Math.asin((r2 - r1) / d);
-                
-                // Tangent points on circle 1 (small)
-                // Top: relative to center, x = +r1 sin(a), y = -r1 cos(a) (SVG Y is down)
                 const t1x_t = c1x + r1 * Math.sin(alpha);
                 const t1y_t = c1y - r1 * Math.cos(alpha);
-                
-                const t1x_b = c1x + r1 * Math.sin(alpha); // Symmetry in X offset logic
+                const t1x_b = c1x + r1 * Math.sin(alpha); 
                 const t1y_b = c1y + r1 * Math.cos(alpha);
-                
-                // Tangent points on circle 2 (large)
                 const t2x_t = c2x + r2 * Math.sin(alpha);
                 const t2y_t = c2y - r2 * Math.cos(alpha);
-                
                 const t2x_b = c2x + r2 * Math.sin(alpha);
                 const t2y_b = c2y + r2 * Math.cos(alpha);
                 
                 const path = document.createElementNS(svgNS, 'path');
-                // Path: Start at T1_Top -> Line to T2_Top -> Arc around T2 -> Line to T1_Bot -> Arc around T1
-                // Arc parameters: rx ry rotation large-arc-flag sweep-flag x y
-                // Sweep is 1 (clockwise).
-                // Large arc for R2 (if R2>R1) is >180, flag 1.
-                // Large arc for R1 is <180, flag 0. (Wait, inner wrap)
-                // Actually: wrapping around the outside.
-                // Circle 2 (Right): Arc from Top to Bottom (Clockwise). Angle is > 180. Flag 1.
-                // Circle 1 (Left): Arc from Bottom to Top (Clockwise). Angle is > 180? No.
-                // Total wrap = 360. Tangent angle alpha.
-                // Circle 2 wrap: 180 + 2*alpha. > 180.
-                // Circle 1 wrap: 180 - 2*alpha. < 180.
-                
                 const dPath = `M ${t1x_t},${t1y_t} 
                                L ${t2x_t},${t2y_t} 
                                A ${r2},${r2} 0 1 1 ${t2x_b},${t2y_b} 
                                L ${t1x_b},${t1y_b} 
                                A ${r1},${r1} 0 0 1 ${t1x_t},${t1y_t}`;
                 
-                // Draw outline (bg) to create separation or thickness
                 const chainBg = document.createElementNS(svgNS, 'path');
                 chainBg.setAttribute('d', dPath);
                 chainBg.setAttribute('class', 'chain-path-bg');
@@ -1653,9 +1562,6 @@
                 svg.appendChild(path);
             }
 
-            // --- LABELS ---
-
-            // Motor Label
             const text1 = document.createElementNS(svgNS, 'text');
             text1.setAttribute('x', c1x); text1.setAttribute('y', c1y + r1 + 25); 
             text1.setAttribute('class', 'graph-text'); 
@@ -1675,7 +1581,6 @@
             sub1a.textContent = `Ø${pdMotor.toFixed(1)} mm`;
             svg.appendChild(sub1a);
 
-            // Barrel Label
             const text2 = document.createElementNS(svgNS, 'text');
             text2.setAttribute('x', c2x); text2.setAttribute('y', c2y + r2 + 25); 
             text2.setAttribute('class', 'graph-text'); 
@@ -1695,7 +1600,6 @@
             sub2a.textContent = `Ø${pdBarrel.toFixed(1)} mm`;
             svg.appendChild(sub2a);
 
-            // Dimension Lines (Diameter)
             const drawDim = (cx, cy, r) => {
                 const lineY = cy - r - 10;
                 const line = document.createElementNS(svgNS, 'line');
@@ -1706,7 +1610,6 @@
                 line.setAttribute('marker-end', 'url(#dim-arrow-chain)');
                 svg.appendChild(line);
                 
-                // Leaders
                 const l1 = document.createElementNS(svgNS, 'line');
                 l1.setAttribute('x1', cx - r); l1.setAttribute('y1', cy);
                 l1.setAttribute('x2', cx - r); l1.setAttribute('y2', lineY);
@@ -1718,7 +1621,6 @@
                 l2.setAttribute('class', 'leader-line'); svg.appendChild(l2);
             };
 
-            // Draw Top Dimensions
             drawDim(c1x, c1y, r1);
             drawDim(c2x, c2y, r2);
 
@@ -1750,7 +1652,6 @@
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
             }
 
-            // NEW: Define Required Deflection Ratio based on Width
             let requiredRatio = 400;
             if (curtainWidth > 10000) requiredRatio = 800;
             else if (curtainWidth > 8000) requiredRatio = 600;
@@ -1760,7 +1661,7 @@
             axlesForShape.forEach(currentAxle => {
                 const perf = performDeflectionCalc(totalWeightKgs, currentAxle, totalLength, curtainWidth);
                 axlePerformances.push(perf);
-                const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 25;
+                const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
                 if (passesTest && recommendedAxleOriginalIndex === -1) {
                     recommendedAxleOriginalIndex = currentAxle.originalIndex;
                 }
@@ -1781,7 +1682,7 @@
                 let optionText = axle['Name'];
                 if (axle['Alternate name']) optionText += ` (${axle['Alternate name']})`;
                 option.textContent = optionText;
-                const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 25;
+                const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
                 option.classList.toggle('option-pass', passesTest);
                 option.classList.toggle('option-fail', !passesTest);
                 select.appendChild(option);
@@ -1801,15 +1702,15 @@
             dom['deflection-ratio'].textContent = (finalPerformance.ratio !== Infinity) ? `1 : ${Math.round(finalPerformance.ratio)} (Required 1:${requiredRatio})` : 'N/A';
             dom['axle-safety-factor'].textContent = isFinite(finalPerformance.safetyFactor) ? finalPerformance.safetyFactor.toFixed(2) : 'Very High';
 
-            if (finalPerformance.ratio < requiredRatio || finalPerformance.deflection > 25) {
+            if (finalPerformance.ratio < requiredRatio || finalPerformance.deflection > 17) {
                 dom['ratio-paragraph'].classList.add('warning-text');
                 dom['axle-safety-factor'].parentElement.classList.add('warning-text');
                 dom['recommendation-box'].style.display = 'block';
                 const nextBest = axlesForShape.find(axle => {
                     const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, curtainWidth);
-                    return perf.ratio >= requiredRatio && perf.deflection <= 25;
+                    return perf.ratio >= requiredRatio && perf.deflection <= 17;
                 });
-                if (nextBest) { dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle may fail. Consider using <strong>${nextBest['Name']}</strong>.`; } else { dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available ${selectedShape} axle passes the 1:${requiredRatio} deflection test for this width.`; }
+                if (nextBest) { dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle failed. Max allowable deflection is 17mm. Consider using <strong>${nextBest['Name']}</strong>.`; } else { dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available ${selectedShape} axle passes the 1:${requiredRatio} ratio and 17mm deflection limit.`; }
             } else {
                 dom['ratio-paragraph'].classList.remove('warning-text');
                 dom['axle-safety-factor'].parentElement.classList.remove('warning-text');
@@ -1850,7 +1751,6 @@
             }
             
             const totalForceW = (totalWeightKgs + axleWeight) * 9.81;
-            
             const fixityInput = document.getElementById('axleFixity');
             const fixityPercent = fixityInput ? (parseFloat(fixityInput.value) || 0) : 0;
             const safePercent = Math.max(0, Math.min(100, fixityPercent));
@@ -1862,7 +1762,6 @@
                 
             const ratio = (deflection > 0) ? totalLength / deflection : Infinity;
             
-            // NEW: Apply Width Scaling to Ratio Logic
             let requiredRatio = 400;
             if (curtainWidth > 10000) requiredRatio = 800;
             else if (curtainWidth > 8000) requiredRatio = 600;
@@ -1923,7 +1822,7 @@
         }
 
         function calculateMaxFloorToAxleHeight(endplateSize, lath, bottomLath, axle) {
-            if (!lath || !axle || !bottomLath || endplateSize || endplateSize <= 0) return 0;
+            if (!lath || !axle || !bottomLath || !endplateSize || endplateSize <= 0) return 0;
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(axle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
@@ -1993,11 +1892,9 @@
             const axleWeightKgs = parseFloat(dom['axle-weight'].textContent) || 0;
             const totalStaticWeightKgs = curtainWeightKgs + axleWeightKgs;
             const totalStaticWeightN = totalStaticWeightKgs * 9.81;
-            const safetyBrakeImpactN = (parseFloat(dom['safety-brake-force-kn'].textContent) || 0) * 1000;
             const offsetDistanceM = (parseFloat(selectedPlate.Size) / 2) / 1000;
             const staticWeightOnPlateN = totalStaticWeightN / 2;
-            const impactOnPlateN = safetyBrakeImpactN / 2;
-            const totalDownwardForceOnPlate = staticWeightOnPlateN + impactOnPlateN;
+            const totalDownwardForceOnPlate = staticWeightOnPlateN;
             const moment = staticWeightOnPlateN * offsetDistanceM;
             let pulloutForce = 0;
             if (fixingHoleSeparationM > 0) { pulloutForce = moment / fixingHoleSeparationM; }
@@ -2009,83 +1906,66 @@
             drawEndplateForceDiagram(finalDownwardForce, finalPulloutForce, offsetDistanceM, fixingHoleSeparation, parseFloat(selectedPlate.Size));
         }
 
-        function selectSafetyBrake(impactTorqueNm) {
-            if (safetyBrakeData.length === 0) return null;
-            const suitableBrakes = safetyBrakeData.map(b => ({ ...b, MaxTorque: parseFloat(b['Max Safety Torque (Nm)']) })).filter(b => b.MaxTorque >= impactTorqueNm).sort((a, b) => a.MaxTorque - b.MaxTorque);
-            return suitableBrakes.length > 0 ? suitableBrakes[0] : null;
-        }
+        function calculateSafetyBrakeSelection() {
+            const motorMaxTorqueText = dom['max-torque'].textContent;
+            const motorMaxTorque = parseFloat(motorMaxTorqueText) || 0;
+            
+            if (safetyBrakeData.length === 0 || motorMaxTorque === 0) {
+                dom['safety-brake-name'].textContent = 'N/A';
+                dom['safety-brake-motor-torque'].textContent = 'N/A';
+                dom['safety-brake-capacity'].textContent = 'N/A';
+                dom['safety-brake-driveshaft'].textContent = 'N/A';
+                return;
+            }
 
-        function populateSafetyBrakeDropdown(requiredTorque) {
-            const select = dom.safetyBrakeSelector;
-            select.innerHTML = ''; 
-            if (safetyBrakeData.length === 0) { select.innerHTML = '<option>-- No brake data --</option>'; return; }
-            safetyBrakeData.forEach((brake, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                const maxTorque = parseFloat(brake['Max Safety Torque (Nm)']);
-                option.textContent = `${brake.Name} (${maxTorque} Nm)`;
-                if (maxTorque >= requiredTorque) { option.classList.add('option-pass'); } else { option.classList.add('option-fail'); option.disabled = true; }
-                select.appendChild(option);
+            // Find first brake where Operating Torque >= Motor Torque
+            const suitableBrakes = safetyBrakeData.filter(brake => {
+                const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
+                const opTorque = parseFloat(brake[opTorqueKey]) || 0;
+                return opTorque >= motorMaxTorque;
+            }).sort((a,b) => {
+                const opTorqueKey = Object.keys(a).find(k => k.toLowerCase().includes('operating torque'));
+                return (parseFloat(a[opTorqueKey]) || 0) - (parseFloat(b[opTorqueKey]) || 0);
             });
-        }
-        
-        function calculateSafetyBrakeForce(totalWeight, lath, axle, travelHeight, fullCurtainLength) {
-            if (!axle || !lath || totalWeight <= 0 || !travelHeight || travelHeight <= 0) {
-                ['safety-brake-force-kn', 'safety-brake-force-kg', 'safety-brake-torque', 'sb-mass', 'sb-activation-height', 'sb-stop-dist', 'safety-brake-capacity'].forEach(id => dom[id].textContent = 'N/A');
-                dom['safety-brake-name'].textContent = 'N/A'; dom.safetyBrakeSelector.innerHTML = '<option>-- Run calculation first --</option>'; return;
-            }
-            let fallDistanceM = 0.1; 
-            if (lath && axle && fullCurtainLength > 1000) {
-                const collarSize = parseFloat(dom.collarSize.value) || 0;
-                const axleCoilDiameter = getEffectiveCoilDiameter(axle);
-                const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
-                const lathThickness = parseFloat(lath['Thickness']);
-                const rolledUpLength = fullCurtainLength - 1000;
-                const a = Math.PI * lathThickness;
-                const b = Math.PI * effectiveStartDiameter;
-                const c = -rolledUpLength;
-                const discriminant = (b * b) - (4 * a * c);
-                const revolutions = (discriminant < 0 || a === 0) ? 0 : (-b + Math.sqrt(discriminant)) / (2 * a);
-                const diameterAtHeight = effectiveStartDiameter + 2 * revolutions * lathThickness;
-                const circumference = Math.PI * diameterAtHeight;
-                const calculatedFallDistance = (circumference / 8) / 1000;
-                if (calculatedFallDistance > 0) fallDistanceM = calculatedFallDistance;
-            }
-            const activationHeightFromFloorM = 1.0; 
-            const heightLiftedM = (travelHeight / 1000) - activationHeightFromFloorM;
-            let percentLifted = (heightLiftedM > 0 && travelHeight > 0) ? heightLiftedM / (travelHeight / 1000) : 0;
-            percentLifted = Math.max(0, Math.min(1, percentLifted));
-            const fallingMass = totalWeight * (1 - percentLifted);
-            const axleRadiusM = (parseFloat(axle['Diameter']) || 0) / 2 / 1000;
-            const g = 9.81;
-            const preliminaryStopDistanceM = 0.010;
-            const potentialEnergy = fallingMass * g * fallDistanceM;
-            const impactForceN = (preliminaryStopDistanceM > 0) ? potentialEnergy / preliminaryStopDistanceM : 0;
-            const impactTorqueNm = impactForceN * axleRadiusM;
-            const requiredTorqueWithSafetyFactor = impactTorqueNm * 1.20;
 
-            populateSafetyBrakeDropdown(requiredTorqueWithSafetyFactor);
-            const recommendedBrake = selectSafetyBrake(requiredTorqueWithSafetyFactor);
-            let finalStopDistanceM = preliminaryStopDistanceM;
-            if (recommendedBrake) {
-                const stopDistKey = Object.keys(recommendedBrake).find(k => k.toLowerCase().trim() === 'stop distance');
-                if (stopDistKey && parseFloat(recommendedBrake[stopDistKey]) > 0) { finalStopDistanceM = parseFloat(recommendedBrake[stopDistKey]) / 1000; }
+            const select = dom.safetyBrakeSelector;
+            select.innerHTML = '';
+            
+            if (suitableBrakes.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = "-- No Suitable Safety Brake Found --";
+                select.appendChild(option);
+                dom['safety-brake-name'].textContent = 'NO SUITABLE BRAKE FOUND';
+                dom['safety-brake-name'].classList.add('warning-text');
+            } else {
+                suitableBrakes.forEach((brake, idx) => {
+                    const option = document.createElement('option');
+                    const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
+                    const opTorque = parseFloat(brake[opTorqueKey]) || 0;
+                    option.value = idx;
+                    option.textContent = `${brake.Name} (Op Torque: ${opTorque} Nm)`;
+                    select.appendChild(option);
+                });
+                
+                // Select first suitable
+                const selectedBrake = suitableBrakes[0];
+                dom['safety-brake-name'].textContent = selectedBrake.Name;
+                dom['safety-brake-name'].classList.remove('warning-text');
+                dom['safety-brake-motor-torque'].textContent = motorMaxTorque.toFixed(1);
+                
+                const opTorqueKey = Object.keys(selectedBrake).find(k => k.toLowerCase().includes('operating torque'));
+                dom['safety-brake-capacity'].textContent = parseFloat(selectedBrake[opTorqueKey]) || 0;
+                
+                const dsKey = Object.keys(selectedBrake).find(k => k.toLowerCase().includes('driveshaft diameter mm'));
+                dom['safety-brake-driveshaft'].textContent = selectedBrake[dsKey] || 'N/A';
+                
+                const brakeName = selectedBrake.Name;
+                const imageContainer = dom['safety-brake-image-container'];
+                const imageDisplay = dom['safetyBrakeImageDisplay'];
+                if (safetyBrakeImageMap.has(brakeName)) {
+                    imageDisplay.src = safetyBrakeImageMap.get(brakeName); imageContainer.style.display = 'block';
+                } else { imageContainer.style.display = 'none'; }
             }
-            const finalPotentialEnergy = fallingMass * g * fallDistanceM;
-            const finalImpactForceN = (finalStopDistanceM > 0) ? finalPotentialEnergy / finalStopDistanceM : 0;
-            const finalImpactTorqueNm = finalImpactForceN * axleRadiusM;
-            dom['sb-activation-height'].textContent = activationHeightFromFloorM.toFixed(2);
-            dom['safety-brake-torque'].textContent = (finalImpactTorqueNm * 1.20).toFixed(2);
-            dom['safety-brake-force-kn'].textContent = (finalImpactForceN / 1000).toFixed(2);
-            dom['safety-brake-force-kg'].textContent = (finalImpactForceN / g).toFixed(2);
-            dom['sb-mass'].textContent = fallingMass.toFixed(2);
-            dom['sb-fall-dist'].textContent = fallDistanceM.toFixed(3);
-            dom['sb-stop-dist'].textContent = finalStopDistanceM.toFixed(3); 
-            if (recommendedBrake) {
-                const originalIndex = safetyBrakeData.findIndex(b => b.Name === recommendedBrake.Name);
-                if (originalIndex > -1) dom.safetyBrakeSelector.value = originalIndex;
-            } else { dom.safetyBrakeSelector.value = ""; }
-            updateSelectedSafetyBrakeInfo();
         }
 
         function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight, curtainWidth) {
@@ -2095,14 +1975,40 @@
                 dom.motorSelector.innerHTML = '<option>-- First select a mounting type --</option>';
                 dom.motorSelector.disabled = true; updateSelectedMotorInfo(); return;
             }
+            
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(axle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
             calculatedRotations = calculateTotalRevolutions(travelHeight, effectiveStartDiameter, parseFloat(lath['Thickness']));
             dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
+            
             const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
             maxCoilDiameter = finalCoilDiameter;
-            const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
+
+            // FRICTION LOGIC
+            let baselineFriction = parseFloat(dom.friction.value) || 0;
+            let additionalFriction = 0;
+            
+            // 1. Check Barrel Height >= 7m
+            if (parseFloat(dom.height.value) >= 7000) {
+                additionalFriction += 5;
+            }
+
+            // 2. Check Motor Usage/Speed
+            const selectedMotorIndex = dom.motorSelector.value;
+            if (selectedMotorIndex !== "" && currentFilteredMotors[selectedMotorIndex]) {
+                const m = currentFilteredMotors[selectedMotorIndex];
+                const rpm = parseFloat(m['RPM']) || 0;
+                const usage = (m['Usage type'] || '').toLowerCase();
+                if (rpm > 12 || usage.includes('high')) {
+                    additionalFriction += 5;
+                }
+            }
+            
+            const totalAppliedFriction = baselineFriction + additionalFriction;
+            dom['total-applied-friction'].textContent = totalAppliedFriction;
+            const frictionMultiplier = 1 + (totalAppliedFriction / 100);
+
             lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
             drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
             const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
@@ -2163,34 +2069,11 @@
         }
         
         function updateSelectedSafetyBrakeInfo() {
-            const selectedIndex = dom.safetyBrakeSelector.value;
-            const imageContainer = dom['safety-brake-image-container'];
-            const imageDisplay = dom['safetyBrakeImageDisplay'];
-            if (selectedIndex !== "" && safetyBrakeData[selectedIndex]) {
-                const selectedBrake = safetyBrakeData[selectedIndex];
-                dom['safety-brake-name'].textContent = selectedBrake.Name;
-                dom['safety-brake-name'].classList.remove('warning-text');
-                const driveshaftKey = Object.keys(selectedBrake).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
-                dom['safety-brake-driveshaft'].textContent = driveshaftKey ? selectedBrake[driveshaftKey] : 'N/A';
-                const maxTorque = parseFloat(selectedBrake['Max Safety Torque (Nm)']);
-                dom['safety-brake-capacity'].textContent = isNaN(maxTorque) ? 'N/A' : maxTorque.toFixed(2);
-                const brakeName = selectedBrake.Name;
-                if (safetyBrakeImageMap.has(brakeName)) {
-                    imageDisplay.src = safetyBrakeImageMap.get(brakeName); imageContainer.style.display = 'block';
-                } else { imageContainer.style.display = 'none'; }
-            } else {
-                dom['safety-brake-name'].textContent = "No suitable safety brake found!";
-                dom['safety-brake-name'].classList.add('warning-text');
-                dom['safety-brake-driveshaft'].textContent = 'N/A';
-                dom['safety-brake-capacity'].textContent = 'N/A';
-                imageContainer.style.display = 'none';
-            }
+            calculateSafetyBrakeSelection();
         }
 
         function updateSelectedMotorInfo() {
             const selectedMotorIndex = dom.motorSelector.value;
-            
-            // Default: Reset chain info if not chain drive or no motor
             const resetChainInfo = () => {
                  dom.motorTeeth.value = "";
                  dom.barrelTeeth.value = "";
@@ -2214,7 +2097,6 @@
             const motorRPM = parseFloat(selectedMotor['RPM']);
             const motorWattage = parseFloat(selectedMotor['Wattage']);
             
-            // Pull new technical specs
             const dsKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
             const cyclesKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'cycles per hour');
 
@@ -2244,16 +2126,10 @@
                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
             }
 
-            // Chain Drive Logic Update
             if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
-                // 1. Get raw motor name
                 let motorNameClean = selectedMotor['Name'];
-                
-                // 2. Remove parens and text inside them (e.g. "Ranger 70 (70-70Nm)" -> "Ranger 70")
                 motorNameClean = motorNameClean.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
 
-                // 3. Find match in Chaindrive sheet
-                // IMPROVED SEARCH: Check for inclusion either way and strip basic whitespace
                 const chainSpecs = chainDriveData.find(row => {
                     const rowDesc = row['Motor Description'];
                     if (!rowDesc) return false;
@@ -2266,12 +2142,8 @@
                     dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; 
                     dom.sprocketDiameter.value = chainSpecs['Sprocket diameter'] || "";
                     dom.plateWheelDiameter.value = chainSpecs['Platewheel Diameter'] || "";
-                    
-                    // Explicitly look for chain size column, handling potential header case variance
                     const chainSizeKey = Object.keys(chainSpecs).find(k => k.toLowerCase().includes('chain size'));
                     dom.chainSizeDisplay.value = chainSizeKey ? chainSpecs[chainSizeKey] : "Unknown";
-                    
-                    // Store breaking strain for calculation
                     dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain in newtons']) || 0;
                 } else {
                     resetChainInfo();
@@ -2280,8 +2152,6 @@
             } else {
                 resetChainInfo();
             }
-            
-            // Trigger chain calculations regardless
             updateChainCalculations();
         }
         
@@ -2343,7 +2213,11 @@
             const axleCoilDiameter = getEffectiveCoilDiameter(selectedAxle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
             const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth);
-            const frictionMultiplier = 1 + (parseFloat(dom.friction.value) || 0) / 100;
+            
+            // Apply Dynamic Friction to Wicket Graph
+            const frictionText = dom['total-applied-friction'].textContent;
+            const frictionMultiplier = 1 + (parseFloat(frictionText) || 0) / 100;
+            
             const adjustedProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
             const requiredTorque = adjustedProfile.length > 0 ? Math.max(...adjustedProfile.map(p => p.torque)) : 0;
             dom['wicket-max-torque'].textContent = requiredTorque.toFixed(1);
@@ -2384,7 +2258,6 @@
                 remainingTotalWeight -= reduction;
                 remainingTotalWeight = Math.max(0, remainingTotalWeight);
                 const force = remainingTotalWeight * 9.81; 
-                // CORRECTION: Use effective radius (radius + half thickness)
                 const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
                 profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
                 const circumference = Math.PI * currentRollDiameter; 
@@ -2412,6 +2285,7 @@
             if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             const widthM = (curtainWidth || 0) / 1000;
+            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
             const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
             const lathsWeight = totalWeightKgs - bottomLathWeight;
             while (heightLifted < travelHeight) {
@@ -2419,7 +2293,6 @@
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
                 const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
                 const force = remainingTotalWeight * 9.81; 
-                // CORRECTION: Use effective radius (radius + half thickness)
                 const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
                 profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
                 const circumference = Math.PI * currentRollDiameter; 
@@ -2751,7 +2624,7 @@
             const padding = 30, beamY = svgHeight / 2 + 10;
             const maxVisualDeflection = svgHeight * 0.3;
             const numericDeflection = parseFloat(deflection) || 0;
-            const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 25));
+            const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 17));
             const startX = padding, endX = svgWidth - padding;
             const refPath = document.createElementNS(svgNS, 'path');
             refPath.setAttribute('d', `M ${startX} ${beamY} H ${endX}`); refPath.setAttribute('class', 'beam-path');
@@ -2760,14 +2633,13 @@
             const controlX = svgWidth / 2, controlY = beamY + visualDeflection;
             deflectedPath.setAttribute('d', `M ${startX},${beamY} Q ${controlX},${controlY} ${endX},${beamY}`); deflectedPath.setAttribute('class', 'deflected-path');
             
-            // Apply Dynamic Ratio Warning
             let curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
             let requiredRatio = 400;
             if (curtainWidth > 10000) requiredRatio = 800;
             else if (curtainWidth > 8000) requiredRatio = 600;
 
             const ratio = (numericDeflection > 0) ? length / numericDeflection : Infinity;
-            if (isWarning || numericDeflection > 25 || ratio < requiredRatio) { deflectedPath.classList.add('warning'); }
+            if (isWarning || numericDeflection > 17 || ratio < requiredRatio) { deflectedPath.classList.add('warning'); }
             svg.appendChild(deflectedPath);
             const supportSize = 10;
             const leftSupport = document.createElementNS(svgNS, 'path');
@@ -3220,6 +3092,8 @@ return svg;
             } else { drawEndplateGraphic(null, 0, null, null, 0); calculateEndplateForces(null); }
         } else if (targetTabId === 'chain-content') {
             updateChainCalculations();
+        } else if (targetTabId === 'safety-brake-content') {
+            calculateSafetyBrakeSelection();
         }
     };
     
@@ -3228,10 +3102,7 @@ return svg;
 
 <script>
     window.addEventListener('load', () => {
-        ['endplate-content', 'safety-brake-content', 'wicket-content', 'chain-content'].forEach(tabId => {
-            const tabButton = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
-            if(tabButton) { tabButton.style.display = 'none'; }
-        });
+        // TAB VISIBILITY: Tabs are visible by default unless admin hides them manually.
         initializeAdminControls(); 
         const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
         const statusDiv = document.getElementById('import-status');
@@ -3250,7 +3121,6 @@ return svg;
         const lathSelect = document.getElementById('reportLathType');
         populateDropdown(lathSelect, lathData, 'Name');
 
-        // NEW: Populate Secondary Lath Dropdown
         const lathSelect2 = document.getElementById('reportLathType2');
         lathSelect2.innerHTML = `<option value="">-- None (Use Primary) --</option>`;
         lathData.forEach((item, index) => {
@@ -3340,66 +3210,48 @@ return svg;
             }
 
             for (let i = 1; i <= numLaths; i++) {
-                if (i % 2 !== 0 && castWeightG > 0) { 
-                    totalEndlockWeight += 2 * (castWeightG / 1000); 
-                }
-                
+                if (i % 2 !== 0 && castWeightG > 0) { totalEndlockWeight += 2 * (castWeightG / 1000); }
                 const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
-                if (isWindLathPosition && windWeightG > 0) { 
-                    totalEndlockWeight += 2 * (windWeightG / 1000); 
-                }
+                if (isWindLathPosition && windWeightG > 0) { totalEndlockWeight += 2 * (windWeightG / 1000); }
             }
-
             if (castWeightG > 0) { bufferEndlockWeight = 4 * (castWeightG / 1000); }
-
         } else {
             let endlockWeightG = 0;
             if (endlock) {
                 const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
                 endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
-                
                 if (endlockWeightG > 0 && numLaths > 0) {
                     const numEndlockPairs = Math.ceil(numLaths / 2); 
                     totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
                 }
             }
-            
             if (endlockWeightG > 0) { bufferEndlockWeight = 4 * (endlockWeightG / 1000); }
         }
 
         const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
-        
         let torqueWeight = totalWeight;
         if (numLaths >= 3) {
             const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
             torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
         }
-        
         const travelHeight = height_mm - bottomLathHeight;
         return { totalWeight, torqueWeight, travelHeight };
     }
 
     function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
          if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
-        
-        const axlesForShape = axleData.filter(axle => {
-            const isCircular = (axle.Shape || 'circular').toLowerCase().trim() === 'circular';
-            return isCircular;
-        });
-
+        const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
         if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
 
         let bestAxle = null;
         let bestDeflection = 0;
-        
-        // HEADLESS RATIO LOGIC
         let requiredRatio = 400;
         if (width_mm > 10000) requiredRatio = 800;
         else if (width_mm > 8000) requiredRatio = 600;
 
         for (const axle of axlesForShape) {
             const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-            if (perf.ratio >= requiredRatio && perf.deflection <= 25) { 
+            if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
                 bestAxle = axle; 
                 bestDeflection = perf.deflection;
                 break; 
@@ -3411,7 +3263,6 @@ return svg;
         } else { 
             let bestFailAxle = axlesForShape[0];
             let minDeflection = Infinity;
-
             axlesForShape.forEach(axle => {
                  const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
                  if(perf.deflection < minDeflection) {
@@ -3423,55 +3274,41 @@ return svg;
         }
     }
     
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, friction_percent, matchAxleDia, overrideCollarDia) {
+    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
-        
         const lathThickness = parseFloat(lath['Thickness']) || 0;
-        
-        // Default start diameter based on Axle Object
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
 
-        // --- NEW COLLAR OVERRIDE LOGIC ---
-        // If the user entered valid override numbers
         if (matchAxleDia > 0 && overrideCollarDia > 0) {
             const currentAxleDia = parseFloat(axle['Diameter']) || 0;
-            // Check if current axle matches the target (allowing 2.0mm tolerance for float diffs)
             if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
-                // Apply the larger of the two (Collar or Axle)
                 effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
             }
         }
-        // ---------------------------------
 
         const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
         const lathsWeight = torqueWeight - bottomLathWeightActual;
-
         let heightLifted = 0;
         let currentRollDiameter = effectiveStartDiameter;
         let maxTorqueFound = 0;
 
         while (heightLifted < travelHeight) {
-            const percentLifted = heightLifted / travelHeight;
-            const remainingLathWeight = lathsWeight * (1 - percentLifted);
-            const remainingTotalWeight = remainingLathWeight + bottomLathWeightActual;
-            
-            const force = remainingTotalWeight * 9.81;
-            
-            // CORRECTION: Use effective radius (radius + half thickness)
+            const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
             const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
-            
-            const currentTorque = force * radiusM;
-            if (currentTorque > maxTorqueFound) {
-                maxTorqueFound = currentTorque;
-            }
-
-            const circumference = Math.PI * currentRollDiameter;
-            heightLifted += circumference / 2; 
+            maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
+            heightLifted += (Math.PI * currentRollDiameter) / 2; 
             currentRollDiameter += lathThickness;
         }
 
-        const frictionMultiplier = 1 + (friction_percent || 0) / 100;
-        return maxTorqueFound * frictionMultiplier;
+        let totalFriction = baseline_friction;
+        if (height_mm >= 7000) totalFriction += 5;
+        if (motorObj) {
+            const rpm = parseFloat(motorObj['RPM']) || 0;
+            const usage = (motorObj['Usage type'] || '').toLowerCase();
+            if (rpm > 12 || usage.includes('high')) totalFriction += 5;
+        }
+
+        return maxTorqueFound * (1 + totalFriction / 100);
     }
 
     async function generateCsvReport() {
@@ -3484,22 +3321,18 @@ return svg;
         const minHeight = parseInt(document.getElementById('reportMinHeight').value);
         const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
         const interval = parseInt(document.getElementById('reportInterval').value);
-        
-        // --- NEW INPUTS CAPTURE ---
         const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
         const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
-        // --------------------------
 
         const lathIndex1 = document.getElementById('reportLathType').value;
         const lathIndex2 = document.getElementById('reportLathType2').value;
-        const rawLimit = document.getElementById('reportLathLimit').value;
-        const switchLimit = rawLimit ? parseInt(rawLimit) : Infinity; 
+        const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
 
         const endlockIndex = document.getElementById('reportEndlockType').value;
         const bottomLathIndex = document.getElementById('reportBottomLathType').value;
 
         if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
-            statusDiv.textContent = 'Error: Please select Primary Lath, Endlock, and Bottom Lath types.'; statusDiv.style.color = 'red'; return;
+            statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
         }
 
         const primaryLath = lathData[lathIndex1];
@@ -3512,10 +3345,6 @@ return svg;
         const selectedVoltages = getSelectedValues('report-voltage-checkbox');
         const selectedMountings = getSelectedValues('report-mounting-checkbox');
         const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
-        
-        if (selectedManufacturers.length === 0 || selectedVoltages.length === 0 || selectedMountings.length === 0 || selectedUsageTypes.length === 0) {
-            statusDiv.textContent = 'Error: Please select at least one option from each motor filter category.'; statusDiv.style.color = 'red'; return;
-        }
         
         let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
         if (motorData.length > 0) {
@@ -3530,43 +3359,21 @@ return svg;
         const defaultAdditionalLength = 100;
         let calculationCount = 0;
         
-        statusDiv.textContent = `Step 1 of 2: Calculating configuration...`;
-        
         for (let width = minWidth; width <= maxWidth; width += interval) {
             calculationCache[width] = {};
             const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
 
             for (let height = minHeight; height <= maxHeight; height += interval) {
                 calculationCount++;
-                if (calculationCount % 50 === 0) { statusDiv.textContent = `Step 1 of 2: Calculating... (${calculationCount} sizes processed)`; await new Promise(resolve => setTimeout(resolve, 0)); }
-                
                 const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
-                const totalLength = width + defaultAdditionalLength;
-                
-                const axleResult = findBestAxleHeadless(props.totalWeight, totalLength, currentLath, width);
-                
+                const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
                 const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
-                
-                // --- UPDATED CALL: Pass new override variables ---
-                const requiredTorque = calculateTorqueHeadless(
-                    props.torqueWeight, 
-                    currentLath, 
-                    props.travelHeight, 
-                    axleResult.axleObj, 
-                    width, 
-                    selectedBottomLath, 
-                    defaultFriction,
-                    reportAxleMatch,      // Passed here
-                    reportCollarOverride  // Passed here
-                );
-                // -----------------------------------------------
                 
                 const result = {
                     'Lath Type Used': currentLath.Name, 
                     'Total Weight (kg)': props.totalWeight.toFixed(2),
                     'Required Axle Name': axleResult.name,
-                    'Axle Deflection (mm)': axleResult.deflection.toFixed(2), 
-                    'Max Required Torque (Nm)': requiredTorque > 0 ? requiredTorque.toFixed(1) : 'null'
+                    'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
                 };
 
                 for (const usage of selectedUsageTypes) {
@@ -3574,41 +3381,15 @@ return svg;
                         for (const vol of selectedVoltages) {
                             for (const mou of selectedMountings) {
                                 const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
-                                const scenarioKey = `Motor: ${scenarioName}`;
-                                const suitableMotors = motorData.filter(m => 
-                                        m[usageKey] == usage &&
-                                        m[manufacturerKey] == man &&
-                                        String(m[voltageKey]) == String(vol) &&
-                                        m[mountingKey] == mou &&
-                                        requiredTorque > 0 && 
-                                        requiredTorque >= parseFloat(m['Torque (Nm) min']) && 
-                                        requiredTorque <= parseFloat(m['Torque (Nm) max'])
-                                    ).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
                                 
-                                if (suitableMotors.length > 0) {
-                                    const selectedMotor = suitableMotors[0];
-                                    result[scenarioKey] = selectedMotor.Name;
-                                    let effectiveDiameter = 0;
-                                    if(axleResult.axleObj) { 
-                                        // Also apply collar logic for Rotation calculation (Opening time)
-                                        effectiveDiameter = getEffectiveCoilDiameter(axleResult.axleObj); 
-                                        if (reportAxleMatch > 0 && reportCollarOverride > 0) {
-                                            // Using 2.0mm tolerance here as well to match inputs like "101" to "101.6"
-                                            if (Math.abs((parseFloat(axleResult.axleObj.Diameter)||0) - reportAxleMatch) < 2.0) {
-                                                effectiveDiameter = Math.max(effectiveDiameter, reportCollarOverride);
-                                            }
-                                        }
-                                    }
-                                    const rotations = calculateTotalRevolutions(props.travelHeight, effectiveDiameter, parseFloat(currentLath['Thickness']));
-                                    const rpm = parseFloat(selectedMotor['RPM']) || 0;
-                                    const timeSeconds = (rpm > 0) ? (rotations / rpm) * 60 : 0;
-                                    const timeKey = `Opening Time (sec): ${scenarioName}`;
-                                    result[timeKey] = timeSeconds > 0 ? timeSeconds.toFixed(1) : 'N/A';
-                                } else {
-                                    result[scenarioKey] = 'null';
-                                    const timeKey = `Opening Time (sec): ${scenarioName}`;
-                                    result[timeKey] = 'N/A';
-                                }
+                                // Need to check a representative motor from this group to calc torque (due to RPM friction)
+                                const sampleMotor = motorData.find(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou);
+                                
+                                const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
+
+                                const suitableMotors = motorData.filter(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max'])).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                
+                                result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
                             }
                         }
                     }
@@ -3616,47 +3397,24 @@ return svg;
                 calculationCache[width][height] = result;
             }
         }
-        statusDiv.textContent = 'Step 2 of 2: Assembling CSV file...';
-        await new Promise(resolve => setTimeout(resolve, 0));
         const csvData = [];
         const widthHeaders = ['Height \\ Width'];
         for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
+        const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
         
-        const firstEntry = calculationCache[minWidth][minHeight];
-        const tableTypes = Object.keys(firstEntry);
-        
-        tableTypes.sort((a, b) => {
-            if (a === 'Lath Type Used') return -1;
-            if (b === 'Lath Type Used') return 1;
-            return a.localeCompare(b);
-        });
-
-        let headerInfo = `Primary Lath: ${primaryLath.Name}`;
-        if (lathIndex2 !== "" && rawLimit) {
-            headerInfo += ` | Secondary Lath (>${rawLimit}mm): ${secondaryLath.Name}`;
-        }
-        headerInfo += ` | Endlock: ${selectedEndlock['Description']} | Bottom Lath: ${selectedBottomLath['Bottom lath name']}`;
-        
-        // Add override info to header
-        if (reportAxleMatch > 0 && reportCollarOverride > 0) {
-            headerInfo += ` | Collar Override: ${reportCollarOverride}mm collar on ${reportAxleMatch}mm axles`;
-        }
-
         for (const tableType of tableTypes) {
-            csvData.push([headerInfo]);
             csvData.push([`Data: ${tableType}`]);
             csvData.push(widthHeaders);
             for (let height = minHeight; height <= maxHeight; height += interval) {
                 const row = [height];
                 for (let width = minWidth; width <= maxWidth; width += interval) {
-                    const value = calculationCache[width]?.[height]?.[tableType] || 'N/A'; row.push(value);
+                    row.push(calculationCache[width]?.[height]?.[tableType] || 'N/A');
                 }
                 csvData.push(row);
             }
-            csvData.push([]); csvData.push([]);
+            csvData.push([]);
         }
         downloadCsv(csvData);
-        statusDiv.textContent = 'Report generation complete. Download has started.'; statusDiv.style.color = 'green';
     }
 
     function downloadCsv(data) {
@@ -3664,15 +3422,14 @@ return svg;
         data.forEach(function(rowArray) {
             let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
 			csvContent += row + "\r\n";
-    });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "shutter_calculator_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "shutter_report.csv");
+        document.body.appendChild(link);
+        link.click();
+    }
 </script>
 </body>
 </html>
