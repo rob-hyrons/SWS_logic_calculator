@@ -702,7 +702,7 @@
                                 <label for="reportMinHeight">Min Height</label>
                                 <input type="number" id="reportMinHeight" value="1000">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" data-admin-label="Max Height Report">
                                 <label for="reportMaxHeight">Max Height</label>
                                 <input type="number" id="reportMaxHeight" value="10000">
                             </div>
@@ -1501,7 +1501,7 @@
             svg.appendChild(gear1);
 
             const gear2 = document.createElementNS(svgNS, 'path');
-            gear2.setAttribute('d', createGearPath(c2x, c2y, r2, barrelTeeth));
+            gear2.setAttribute('d', createGearPath(c2x, cy, r2, barrelTeeth));
             gear2.setAttribute('class', 'sprocket-wheel');
             svg.appendChild(gear2);
 
@@ -1985,21 +1985,22 @@
             const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
             maxCoilDiameter = finalCoilDiameter;
 
-            // FRICTION LOGIC
+            // FRICTION CALCULATION
             let baselineFriction = parseFloat(dom.friction.value) || 0;
             let additionalFriction = 0;
             
-            // 1. Check Barrel Height >= 7m
+            // 1. Height Logic: Add 5% if >= 7m
             if (parseFloat(dom.height.value) >= 7000) {
                 additionalFriction += 5;
             }
 
-            // 2. Check Motor Usage/Speed
+            // 2. Motor Logic: Add 5% if High Speed or High Usage
             const selectedMotorIndex = dom.motorSelector.value;
             if (selectedMotorIndex !== "" && currentFilteredMotors[selectedMotorIndex]) {
                 const m = currentFilteredMotors[selectedMotorIndex];
                 const rpm = parseFloat(m['RPM']) || 0;
                 const usage = (m['Usage type'] || '').toLowerCase();
+                // Applies to any height
                 if (rpm > 12 || usage.includes('high')) {
                     additionalFriction += 5;
                 }
@@ -2108,6 +2109,19 @@
 
             dom['motor-name-inputs'].textContent = selectedMotor['Name'];
             dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
+            
+            // Re-trigger calculation to update friction based on speed/usage
+            const calculatedWidths = getCalculatedWidths();
+            const effectiveLath = getLathWithCustomWeight();
+            const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+            const axleIndex = dom.axleType.value;
+            const selectedAxle = (axleIndex !== "" && axleData[axleIndex]) ? axleData[axleIndex] : null;
+            
+            if (effectiveLath && selectedAxle) {
+                const curtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, selectedAxle, calculatedWidths.curtainWidth);
+                calculateMotorRecommendation(curtainProps.torqueWeight, effectiveLath, selectedAxle, curtainProps.travelHeight, calculatedWidths.curtainWidth);
+            }
+
             let openingTimeSec = 0;
             if (motorRPM > 0 && calculatedRotations > 0) {
                 openingTimeSec = (calculatedRotations / motorRPM) * 60;
@@ -2214,7 +2228,7 @@
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
             const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth);
             
-            // Apply Dynamic Friction to Wicket Graph
+            // Friction logic for Wicket
             const frictionText = dom['total-applied-friction'].textContent;
             const frictionMultiplier = 1 + (parseFloat(frictionText) || 0) / 100;
             
@@ -2934,7 +2948,7 @@
             };
             const drawAnnotation = (startY, endY, label) => {
                 const lineX = basePadding.left - 55; const textX = lineX - 8;
-                const line = document.createElementNS(svgNS, 'line'); line.setAttribute('x1', lineX); line.setAttribute('y1', startY); line.setAttribute('x2', lineX); line.setAttribute('y2', endY); line.setAttribute('class', 'dimension-line'); line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`); line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`); svg.appendChild(line);
+                const line = document.createElementNS(svgNS, 'line'); line.setAttribute('x1', x1); line.setAttribute('y1', startY); line.setAttribute('x2', lineX); line.setAttribute('y2', endY); line.setAttribute('class', 'dimension-line'); line.setAttribute('marker-start', `url(#dim-arrow-${idSuffix})`); line.setAttribute('marker-end', `url(#dim-arrow-${idSuffix})`); svg.appendChild(line);
                 const text = document.createElementNS(svgNS, 'text'); text.setAttribute('x', textX); text.setAttribute('class', 'dimension-text'); text.setAttribute('text-anchor', 'end');
                 const charLimit = 14; const words = label.split(' '); let currentLine = '';
                 words.forEach(word => {
@@ -3102,7 +3116,7 @@ return svg;
 
 <script>
     window.addEventListener('load', () => {
-        // TAB VISIBILITY: Tabs are visible by default unless admin hides them manually.
+        // TABS: Safety Brake and Chain are visible by default
         initializeAdminControls(); 
         const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
         const statusDiv = document.getElementById('import-status');
@@ -3201,14 +3215,12 @@ return svg;
                 const wKey = Object.keys(castEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
                 castWeightG = wKey ? parseFloat(castEndlockObj[wKey]) : 0;
             }
-
             const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
             let windWeightG = 0;
             if (windEndlockObj) {
                 const wKey = Object.keys(windEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
                 windWeightG = wKey ? parseFloat(windEndlockObj[wKey]) : 0;
             }
-
             for (let i = 1; i <= numLaths; i++) {
                 if (i % 2 !== 0 && castWeightG > 0) { totalEndlockWeight += 2 * (castWeightG / 1000); }
                 const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
@@ -3251,6 +3263,7 @@ return svg;
 
         for (const axle of axlesForShape) {
             const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
+            // 17mm Rule enforced here
             if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
                 bestAxle = axle; 
                 bestDeflection = perf.deflection;
@@ -3357,14 +3370,12 @@ return svg;
         
         const calculationCache = {};
         const defaultAdditionalLength = 100;
-        let calculationCount = 0;
         
         for (let width = minWidth; width <= maxWidth; width += interval) {
             calculationCache[width] = {};
             const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
 
             for (let height = minHeight; height <= maxHeight; height += interval) {
-                calculationCount++;
                 const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
                 const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
                 const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
@@ -3382,7 +3393,6 @@ return svg;
                             for (const mou of selectedMountings) {
                                 const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
                                 
-                                // Need to check a representative motor from this group to calc torque (due to RPM friction)
                                 const sampleMotor = motorData.find(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou);
                                 
                                 const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
