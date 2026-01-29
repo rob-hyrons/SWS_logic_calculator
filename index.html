@@ -224,8 +224,8 @@
             .tab-pane > h2:first-of-type { margin-top: 0; }
             .results { border: 1px solid #ccc; border-left: none; page-break-inside: avoid; margin-top: 1em; padding: 1em; }
             .graph-container, #shutter-graphic-container, #wicket-graphic-container, #width-graphic-container { width: 100% !important; max-width: 450px; margin-left: auto; margin-right: auto; page-break-inside: avoid; }
-            #lath-image-container, #vision-lath-image-container, #safety-brake-image-container { page-break-inside: avoid; text-align: center; padding: 1em 0; }
-            #lath-image-container img, #vision-lath-image-container img, #safety-brake-image-container img { max-height: 80px; }
+            #lath-image-container, #vision-lath-image-container, #safety-brake-image-container, #motor-image-container { page-break-inside: avoid; text-align: center; padding: 1em 0; }
+            #lath-image-container img, #vision-lath-image-container img, #safety-brake-image-container img, #motor-image-container img { max-height: 80px; }
             svg { width: 100% !important; }
         }
     </style>
@@ -480,6 +480,9 @@
                             </select>
                         </div>
                         <h3>Selected Motor Details</h3>
+                        <div id="motor-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
+                            <img id="motorImageDisplay" src="" alt="Motor Image" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #ccc;">
+                        </div>
                         <p>Motor Name: <span id="motor-name">N/A</span></p>
                         <p id="motor-torque-line">Motor Torque Range: <span id="motor-torque">0</span> Nm</p>
                         <p>Motor Speed: <span id="motor-rpm">0</span> RPM</p>
@@ -814,6 +817,7 @@
         let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
+        let motorImageMap = new Map();
         let currentFilteredMotors = [], currentFilteredEndplates = [];
         let calculatedRotations = 0, maxCoilDiameter = 0;
         let lastTorqueProfile = [];
@@ -843,7 +847,8 @@
          'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixity',
          'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
          'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
-         'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction'
+         'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction',
+         'motor-image-container', 'motorImageDisplay'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -984,7 +989,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Operating Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1017,7 +1022,7 @@
                     }
                 }
 
-                lathImageMap.clear(); safetyBrakeImageMap.clear();
+                lathImageMap.clear(); safetyBrakeImageMap.clear(); motorImageMap.clear();
                 const exceljsWorkbook = new ExcelJS.Workbook();
                 await exceljsWorkbook.xlsx.load(fileData);
 
@@ -1027,6 +1032,9 @@
                 const safetyBrakeSheet = exceljsWorkbook.getWorksheet('SafetyB');
                 if (safetyBrakeSheet) await extractImagesFromSheet(exceljsWorkbook, safetyBrakeSheet, 'name', 'sb image', safetyBrakeImageMap);
                 
+                const motorSheet = exceljsWorkbook.getWorksheet('Motors');
+                if (motorSheet) await extractImagesFromSheet(exceljsWorkbook, motorSheet, 'name', 'motor image', motorImageMap);
+
                 populateDropdown(dom.lathType, lathData, 'Name');
                 populateDropdown(dom.guideType, guideData, 'Name');
                 const visionSelect = dom.visionLathType;
@@ -2086,6 +2094,10 @@
             if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
                  ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour','opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
                  dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); 
+                 
+                 dom['motor-image-container'].style.display = 'none';
+                 dom.motorImageDisplay.src = '';
+                 
                  resetChainInfo();
                  updateChainCalculations();
                  return;
@@ -2108,6 +2120,19 @@
 
             dom['motor-name-inputs'].textContent = selectedMotor['Name'];
             dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
+            
+            const motorName = selectedMotor['Name'];
+            const motorImgContainer = dom['motor-image-container'];
+            const motorImgDisplay = dom['motorImageDisplay'];
+
+            if (motorImageMap.has(motorName)) {
+                motorImgDisplay.src = motorImageMap.get(motorName);
+                motorImgContainer.style.display = 'block';
+            } else {
+                motorImgDisplay.src = '';
+                motorImgContainer.style.display = 'none';
+            }
+
             let openingTimeSec = 0;
             if (motorRPM > 0 && calculatedRotations > 0) {
                 openingTimeSec = (calculatedRotations / motorRPM) * 60;
