@@ -490,6 +490,8 @@
                         <p>Cycles Per Hour: <span id="motor-cycles-per-hour">N/A</span></p>
                         <p>Opening Time: <span id="opening-time">0</span> seconds</p>
                         <p>Power Consumed per Cycle: <span id="power-consumed">0.0000</span> kWh</p>
+                        <p>Motor Limit Turns: <span id="motor-limit-turns">N/A</span></p>
+                        <p id="motor-limit-warning" style="display:none; color: #d93025; font-weight: bold;">⚠️ Warning: Required revolutions exceed motor limit.</p>
                     </div>
                 </div>
                 
@@ -848,7 +850,7 @@
          'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
          'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
          'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction',
-         'motor-image-container', 'motorImageDisplay'
+         'motor-image-container', 'motorImageDisplay', 'motor-limit-turns', 'motor-limit-warning'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -989,7 +991,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image', 'Limit turn'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Operating Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -2003,14 +2005,25 @@
             }
 
             // 2. Check Motor Usage/Speed
+            let isHighSpeedContext = false;
             const selectedMotorIndex = dom.motorSelector.value;
+            // Check dropdown filter if no specific motor is selected to preemptively show high friction
+            const filterUsage = dom.motorUsageFilter.value.toLowerCase();
+            
             if (selectedMotorIndex !== "" && currentFilteredMotors[selectedMotorIndex]) {
                 const m = currentFilteredMotors[selectedMotorIndex];
                 const rpm = parseFloat(m['RPM']) || 0;
                 const usage = (m['Usage type'] || '').toLowerCase();
                 if (rpm > 12 || usage.includes('high')) {
-                    additionalFriction += 5;
+                    isHighSpeedContext = true;
                 }
+            } else if (filterUsage.includes('high') || filterUsage.includes('speed')) {
+                 // Fallback: Use filter if no specific motor is chosen
+                 isHighSpeedContext = true;
+            }
+            
+            if (isHighSpeedContext) {
+                additionalFriction += 5;
             }
             
             const totalAppliedFriction = baselineFriction + additionalFriction;
@@ -2098,6 +2111,9 @@
                  dom['motor-image-container'].style.display = 'none';
                  dom.motorImageDisplay.src = '';
                  
+                 dom['motor-limit-turns'].textContent = 'N/A';
+                 dom['motor-limit-warning'].style.display = 'none';
+
                  resetChainInfo();
                  updateChainCalculations();
                  return;
@@ -2149,6 +2165,27 @@
                 dom['motor-torque-line'].classList.add('warning-text'); dom['motor-torque-line-inputs'].classList.add('warning-text');
             } else {
                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
+            }
+            
+            // Limit Turn Logic
+            const limitTurnKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'limit turn');
+            const limitTurnVal = limitTurnKey ? parseFloat(selectedMotor[limitTurnKey]) : 0;
+            const limitTurnEl = dom['motor-limit-turns'];
+            const limitWarnEl = dom['motor-limit-warning'];
+
+            if (limitTurnVal > 0) {
+                limitTurnEl.textContent = limitTurnVal;
+                if (calculatedRotations > limitTurnVal) {
+                    limitWarnEl.style.display = 'block';
+                    limitTurnEl.classList.add('warning-text');
+                } else {
+                    limitWarnEl.style.display = 'none';
+                    limitTurnEl.classList.remove('warning-text');
+                }
+            } else {
+                limitTurnEl.textContent = 'N/A';
+                limitWarnEl.style.display = 'none';
+                limitTurnEl.classList.remove('warning-text');
             }
 
             if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
@@ -3298,8 +3335,7 @@ return svg;
             return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
         }
     }
-    
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+	function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
         const lathThickness = parseFloat(lath['Thickness']) || 0;
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
@@ -3327,6 +3363,8 @@ return svg;
 
         let totalFriction = baseline_friction;
         if (height_mm >= 7000) totalFriction += 5;
+        
+        // Report Logic: If we are testing a specific motor, apply friction based on its specs
         if (motorObj) {
             const rpm = parseFloat(motorObj['RPM']) || 0;
             const usage = (motorObj['Usage type'] || '').toLowerCase();
@@ -3440,6 +3478,7 @@ return svg;
             csvData.push([]);
         }
         downloadCsv(csvData);
+        statusDiv.textContent = 'Report generated and downloaded.'; statusDiv.style.color = 'green';
     }
 
     function downloadCsv(data) {
