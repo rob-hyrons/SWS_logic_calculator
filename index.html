@@ -471,7 +471,7 @@
                     <div class="results">
                         <h3>Torque Calculation</h3>
                         <p>Max Required Torque: <span id="max-torque">0.0</span> Nm</p>
-                        <p>Total Revolutions: <span id="total-revolutions">0.0</span></p>
+                        <p>Axle Revolutions: <span id="total-revolutions">0.0</span></p>
                         <hr>
                         <div class="form-group" data-admin-label="Motor Selector">
                             <label for="motorSelector">Select Motor</label>
@@ -487,9 +487,16 @@
                         <p id="motor-torque-line">Motor Torque Range: <span id="motor-torque">0</span> Nm</p>
                         <p>Motor Speed: <span id="motor-rpm">0</span> RPM</p>
                         <p>Driveshaft Diameter: <span id="motor-driveshaft-dia">N/A</span> mm</p>
-                        <p>Cycles Per Hour: <span id="motor-cycles-per-hour">N/A</span></p>
-                        <p>Opening Time: <span id="opening-time">0</span> seconds</p>
-                        <p>Power Consumed per Cycle: <span id="power-consumed">0.0000</span> kWh</p>
+                        <hr>
+                        <h4>Operating Limits</h4>
+                        <p>Limit Turns of Motor: <span id="motor-limit-turns">N/A</span></p>
+                        <p>Limit Turns Capacity Used: <span id="motor-limit-turns-percent">0</span>%</p>
+                        <p>Base Cycles Per Hour: <span id="motor-cycles-per-hour">N/A</span></p>
+                        <p>Adjusted Cycles Per Hour: <span id="adjusted-cycles-per-hour">N/A</span></p>
+                        <p id="cph-note" style="font-size: 0.85em; font-style: italic; color: #666; display: none;">* Cycles doubled: Axle turns are &le; 50% of motor's limit turns.</p>
+                        <p>Calculated Opening Time: <span id="opening-time">0</span> seconds</p>
+                        <p id="opening-time-note" style="font-size: 0.85em; font-style: italic; color: #666; display: none;">* Includes 3s buffer for high-speed motor start/stop.</p>
+                        <p>Estimated Power per Cycle: <span id="power-consumed">0.0000</span> kWh</p>
                     </div>
                 </div>
                 
@@ -829,8 +836,8 @@
          'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
          'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
          'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
-         'motor-driveshaft-dia', 'motor-cycles-per-hour',
-         'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
+         'motor-driveshaft-dia', 'motor-cycles-per-hour', 'motor-limit-turns', 'motor-limit-turns-percent', 'adjusted-cycles-per-hour', 'cph-note',
+         'opening-time', 'opening-time-note', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
          'safety-brake-torque', 'safety-brake-name', 'safety-brake-motor-torque',
          'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
          'curtain-height-extended', 'curtain-height-compressed', 'endplateSelector', 'matSteel', 'matAluminium', 'endplate-name', 'endplate-size',
@@ -989,7 +996,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image', 'Limit turn', 'Cycles per hour'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Operating Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1881,7 +1888,7 @@
             } else { dom['prev-endplate-name'].textContent = 'N/A'; dom['prev-endplate-height'].textContent = 'N/A'; }
             
             const nextPlate = selectedIndex < currentFilteredEndplates.length - 1 ? currentFilteredEndplates[selectedIndex + 1] : null;
-            if (nextPlate && selectedLath && selectedAxle && selectedBottomLath) {
+            if (nextPlate && selectedLath && axle && selectedBottomLath) {
                 dom['next-endplate-name'].textContent = `${nextPlate.Name} (${nextPlate.Size}mm)`;
                  const maxHeight = calculateMaxFloorToAxleHeight(nextPlate.Size, selectedLath, selectedBottomLath, selectedAxle);
                 dom['next-endplate-height'].textContent = maxHeight > 0 ? maxHeight.toFixed(0) : 'N/A';
@@ -2092,11 +2099,14 @@
             };
 
             if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
-                 ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour','opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
+                 ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour', 'adjusted-cycles-per-hour', 'motor-limit-turns', 'motor-limit-turns-percent', 'opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
                  dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); 
                  
                  dom['motor-image-container'].style.display = 'none';
                  dom.motorImageDisplay.src = '';
+                 
+                 dom['cph-note'].style.display = 'none';
+                 dom['opening-time-note'].style.display = 'none';
                  
                  resetChainInfo();
                  updateChainCalculations();
@@ -2108,15 +2118,45 @@
             const motorTorqueMax = parseFloat(selectedMotor['Torque (Nm) max']);
             const motorRPM = parseFloat(selectedMotor['RPM']);
             const motorWattage = parseFloat(selectedMotor['Wattage']);
+            const usageType = (selectedMotor['Usage type'] || "").toLowerCase();
             
             const dsKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
-            const cyclesKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'cycles per hour');
+            const cphKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'cycles per hour');
+            const limitTurnKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'limit turn');
 
             dom['motor-name'].textContent = selectedMotor['Name'];
             dom['motor-torque'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`; 
             dom['motor-rpm'].textContent = motorRPM;
             dom['motor-driveshaft-dia'].textContent = dsKey ? selectedMotor[dsKey] : 'N/A';
-            dom['motor-cycles-per-hour'].textContent = cyclesKey ? selectedMotor[cyclesKey] : 'N/A';
+            
+            // --- NEW: Limit Turns Calculation ---
+            const limitTurns = parseFloat(selectedMotor[limitTurnKey]) || 0;
+            dom['motor-limit-turns'].textContent = limitTurns > 0 ? limitTurns : 'N/A';
+            if (limitTurns > 0) {
+                const usedPercent = (calculatedRotations / limitTurns) * 100;
+                dom['motor-limit-turns-percent'].textContent = usedPercent.toFixed(1);
+                if (usedPercent > 100) {
+                    dom['motor-limit-turns-percent'].classList.add('warning-text');
+                } else {
+                    dom['motor-limit-turns-percent'].classList.remove('warning-text');
+                }
+            } else {
+                dom['motor-limit-turns-percent'].textContent = '0';
+            }
+
+            // --- NEW: Cycles Per Hour Adjustment ---
+            const baseCPH = parseFloat(selectedMotor[cphKey]) || 0;
+            dom['motor-cycles-per-hour'].textContent = baseCPH > 0 ? baseCPH : 'N/A';
+            
+            let finalCPH = baseCPH;
+            // logic: if turns <= 50% of limit turns, double CPH
+            if (limitTurns > 0 && baseCPH > 0 && calculatedRotations <= (limitTurns * 0.5)) {
+                finalCPH = baseCPH * 2;
+                dom['cph-note'].style.display = 'block';
+            } else {
+                dom['cph-note'].style.display = 'none';
+            }
+            dom['adjusted-cycles-per-hour'].textContent = finalCPH > 0 ? finalCPH : 'N/A';
 
             dom['motor-name-inputs'].textContent = selectedMotor['Name'];
             dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
@@ -2133,17 +2173,32 @@
                 motorImgContainer.style.display = 'none';
             }
 
+            // --- NEW: Opening Time with 3s High Speed Buffer ---
             let openingTimeSec = 0;
             if (motorRPM > 0 && calculatedRotations > 0) {
                 openingTimeSec = (calculatedRotations / motorRPM) * 60;
+                
+                // Add 3 seconds for high speed motors (soft start/stop)
+                if (usageType.includes("high")) {
+                    openingTimeSec += 3;
+                    dom['opening-time-note'].style.display = 'block';
+                } else {
+                    dom['opening-time-note'].style.display = 'none';
+                }
+                
                 dom['opening-time'].textContent = openingTimeSec.toFixed(1);
-            } else { dom['opening-time'].textContent = '0'; }
+            } else { 
+                dom['opening-time'].textContent = '0'; 
+                dom['opening-time-note'].style.display = 'none';
+            }
+            
             if (motorWattage > 0 && openingTimeSec > 0) {
                 const cycleTimeSec = openingTimeSec * 2;
                 const wattHours = (motorWattage * cycleTimeSec) / 3600;
                 const kiloWattHours = wattHours / 1000;
                 dom['power-consumed'].textContent = `${kiloWattHours.toFixed(4)} kWh`;
             } else { dom['power-consumed'].textContent = 'N/A'; }
+            
             const requiredTorque = parseFloat(dom['max-torque'].textContent);
             if (requiredTorque < motorTorqueMin || requiredTorque > motorTorqueMax) {
                 dom['motor-torque-line'].classList.add('warning-text'); dom['motor-torque-line-inputs'].classList.add('warning-text');
@@ -2584,7 +2639,7 @@
             dom['vision-area-m2'].textContent = totalActualVisionArea.toFixed(2);
             dom['vision-percentage'].textContent = overallVisionPercentage.toFixed(2);
             dom['vision-percentage-para'].style.display = 'block'; dom['vision-area-m2-para'].style.display = 'block';
-            const visionData = { visionLath, numLathsBelow, numLathsVision, numLathsAbove, actualVisionStartHeight, actualVisionPanelHeight };
+            const visionData = { visionLath, numBelow: numLathsBelow, numVision: numLathsVision, numAbove: numLathsAbove, actualVisionStartHeight, actualVisionPanelHeight };
             return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets };
         }
 
@@ -3087,374 +3142,225 @@
             if (bottomLathHeight > 0) {
                 drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
                 createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY); createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
-}
-return svg;
-}
+            }
+            return svg;
+        }
+
 		function switchTab(targetTabId) {
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        tabButtons.forEach(b => b.classList.remove('active'));
-        document.getElementById(targetTabId).classList.add('active');
-        document.querySelector(`.tab-button[data-tab="${targetTabId}"]`).classList.add('active');
-        if (targetTabId === 'axle-content') {
-            const length = parseFloat(dom['total-axle-length'].textContent) || 0;
-            const deflection = parseFloat(dom['axle-deflection'].textContent) || 0;
-            drawDeflectionGraphic(length, deflection);
-            const selectedAxleIndex = dom.axleType.value;
-            if(selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
-                const collarSize = parseFloat(dom.collarSize.value) || 0;
-                drawAxleCrossSection(axleData[selectedAxleIndex], collarSize);
-            } else { drawAxleCrossSection(null); }
-        } else if (targetTabId === 'motor-content') { drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
-        } else if(targetTabId === 'wicket-content') {
-             const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0; updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth);
-        } else if (targetTabId === 'endplate-content') {
-            const selectedIndex = parseInt(dom.endplateSelector.value, 10);
-            const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
-            const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
-            const numLaths = parseInt(dom['lath-count'].textContent) || 0;
-            if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
-                const plate = currentFilteredEndplates[selectedIndex]; drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths); calculateEndplateForces(plate);
-            } else { drawEndplateGraphic(null, 0, null, null, 0); calculateEndplateForces(null); }
-        } else if (targetTabId === 'chain-content') {
-            updateChainCalculations();
-        } else if (targetTabId === 'safety-brake-content') {
-            calculateSafetyBrakeSelection();
-        }
-    };
-    
-    updateAllCalculations();
-</script>
-
-<script>
-    window.addEventListener('load', () => {
-        // TAB VISIBILITY: Tabs are visible by default unless admin hides them manually.
-        initializeAdminControls(); 
-        const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
-        const statusDiv = document.getElementById('import-status');
-        statusDiv.textContent = 'Loading data from repository...'; statusDiv.style.color = '#555';
-        fetch(excelFileUrl).then(response => {
-            if (!response.ok) { throw new Error(`Network response was not ok: ${response.statusText}`); }
-            return response.arrayBuffer();
-        }).then(fileData => { processExcelFile(fileData); }).catch(error => {
-            statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.'; statusDiv.style.color = 'red'; console.error('There has been a problem with the fetch operation:', error);
-        });
-    });
-</script>
-
-<script>
-    function setupReportFilters() {
-        const lathSelect = document.getElementById('reportLathType');
-        populateDropdown(lathSelect, lathData, 'Name');
-
-        const lathSelect2 = document.getElementById('reportLathType2');
-        lathSelect2.innerHTML = `<option value="">-- None (Use Primary) --</option>`;
-        lathData.forEach((item, index) => {
-            const option = document.createElement('option');
-            option.value = index;
-            option.textContent = item.Name;
-            lathSelect2.appendChild(option);
-        });
-
-        const endlockSelect = document.getElementById('reportEndlockType');
-        populateDropdown(endlockSelect, endlockData, 'Description');
-        const bottomLathSelect = document.getElementById('reportBottomLathType');
-        populateDropdown(bottomLathSelect, bottomLathData, 'Bottom lath name');
-        let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
-        if (motorData.length > 0) {
-            const firstMotor = motorData[0];
-            manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
-            voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
-            mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
-            usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
-        }
-        const setupFilterGroup = (containerId, key, data, className) => {
-            const container = document.getElementById(containerId); container.innerHTML = '';
-            if (key) {
-                const uniqueValues = [...new Set(data.map(item => item[key]).filter(val => val))];
-                uniqueValues.sort().forEach(value => {
-                    const controlItem = document.createElement('div'); controlItem.className = 'admin-control-item';
-                    controlItem.innerHTML = `<label><input type="checkbox" class="${className}" value="${value}" checked> ${value}</label>`;
-                    container.appendChild(controlItem);
-                });
-            } else { container.innerHTML = `<p><em>Column not found in data.</em></p>`; }
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            tabButtons.forEach(b => b.classList.remove('active'));
+            document.getElementById(targetTabId).classList.add('active');
+            document.querySelector(`.tab-button[data-tab="${targetTabId}"]`).classList.add('active');
+            if (targetTabId === 'axle-content') {
+                const length = parseFloat(dom['total-axle-length'].textContent) || 0;
+                const deflection = parseFloat(dom['axle-deflection'].textContent) || 0;
+                drawDeflectionGraphic(length, deflection);
+                const selectedAxleIndex = dom.axleType.value;
+                if(selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
+                    const collarSize = parseFloat(dom.collarSize.value) || 0;
+                    drawAxleCrossSection(axleData[selectedAxleIndex], collarSize);
+                } else { drawAxleCrossSection(null); }
+            } else if (targetTabId === 'motor-content') { drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+            } else if(targetTabId === 'wicket-content') {
+                 const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0; updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth);
+            } else if (targetTabId === 'endplate-content') {
+                const selectedIndex = parseInt(dom.endplateSelector.value, 10);
+                const selectedLath = lathData.length > 0 ? lathData[dom.lathType.value] : null;
+                const selectedAxle = axleData.length > 0 ? axleData[dom.axleType.value] : null;
+                const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+                if (!isNaN(selectedIndex) && currentFilteredEndplates[selectedIndex]) {
+                    const plate = currentFilteredEndplates[selectedIndex]; drawEndplateGraphic(plate, maxCoilDiameter, selectedAxle, selectedLath, numLaths); calculateEndplateForces(plate);
+                } else { drawEndplateGraphic(null, 0, null, null, 0); calculateEndplateForces(null); }
+            } else if (targetTabId === 'chain-content') {
+                updateChainCalculations();
+            } else if (targetTabId === 'safety-brake-content') {
+                calculateSafetyBrakeSelection();
+            }
         };
-        setupFilterGroup('report-motor-filter-container', manufacturerKey, motorData, 'report-motor-checkbox');
-        setupFilterGroup('report-motor-voltage-filter-container', voltageKey, motorData, 'report-voltage-checkbox');
-        setupFilterGroup('report-motor-mounting-filter-container', mountingKey, motorData, 'report-mounting-checkbox');
-        setupFilterGroup('report-motor-usage-filter-container', usageKey, motorData, 'report-usage-checkbox');
-
-        document.getElementById('reportMotorSelectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = true));
-        document.getElementById('reportMotorDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-motor-checkbox').forEach(cb => cb.checked = false));
-        document.getElementById('reportVoltageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = true));
-        document.getElementById('reportVoltageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-voltage-checkbox').forEach(cb => cb.checked = false));
-        document.getElementById('reportMountingSelectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = true));
-        document.getElementById('reportMountingDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-mounting-checkbox').forEach(cb => cb.checked = false));
-        document.getElementById('reportUsageSelectAll').addEventListener('click', () => document.querySelectorAll('.report-usage-checkbox').forEach(cb => cb.checked = true));
-        document.getElementById('reportUsageDeselectAll').addEventListener('click', () => document.querySelectorAll('.report-usage-checkbox').forEach(cb => cb.checked = false));
-        
-        const genBtn = document.getElementById('generateCsvButton');
-        const newBtn = genBtn.cloneNode(true);
-        genBtn.parentNode.replaceChild(newBtn, genBtn);
-        newBtn.addEventListener('click', generateCsvReport);
-    }
-
-    function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
-        if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
-        
-        const axleRadius = 60; 
-        const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
-        const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
-        const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
-        
-        let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
-        
-        const widthM = width_mm / 1000;
-        let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
-        const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
-        const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-        
-        let totalEndlockWeight = 0;
-        let bufferEndlockWeight = 0; 
-
-        const lathName = (lath['Name'] || '').toLowerCase();
-        const isWindLath = lathName.includes('wind');
-
-        if (isWindLath) {
-            const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
-            let castWeightG = 0;
-            if (castEndlockObj) {
-                const wKey = Object.keys(castEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
-                castWeightG = wKey ? parseFloat(castEndlockObj[wKey]) : 0;
-            }
-
-            const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
-            let windWeightG = 0;
-            if (windEndlockObj) {
-                const wKey = Object.keys(windEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
-                windWeightG = wKey ? parseFloat(windEndlockObj[wKey]) : 0;
-            }
-
-            for (let i = 1; i <= numLaths; i++) {
-                if (i % 2 !== 0 && castWeightG > 0) { totalEndlockWeight += 2 * (castWeightG / 1000); }
-                const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
-                if (isWindLathPosition && windWeightG > 0) { totalEndlockWeight += 2 * (windWeightG / 1000); }
-            }
-            if (castWeightG > 0) { bufferEndlockWeight = 4 * (castWeightG / 1000); }
-        } else {
-            let endlockWeightG = 0;
-            if (endlock) {
-                const weightKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'weight in grams');
-                endlockWeightG = weightKey ? parseFloat(endlock[weightKey]) : 0;
-                if (endlockWeightG > 0 && numLaths > 0) {
-                    const numEndlockPairs = Math.ceil(numLaths / 2); 
-                    totalEndlockWeight = numEndlockPairs * 2 * (endlockWeightG / 1000);
-                }
-            }
-            if (endlockWeightG > 0) { bufferEndlockWeight = 4 * (endlockWeightG / 1000); }
-        }
-
-        const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
-        let torqueWeight = totalWeight;
-        if (numLaths >= 3) {
-            const bufferLathWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
-            torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
-        }
-        const travelHeight = height_mm - bottomLathHeight;
-        return { totalWeight, torqueWeight, travelHeight };
-    }
-
-    function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
-         if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
-        const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
-        if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
-
-        let bestAxle = null;
-        let bestDeflection = 0;
-        let requiredRatio = 400;
-        if (width_mm > 10000) requiredRatio = 800;
-        else if (width_mm > 8000) requiredRatio = 600;
-
-        for (const axle of axlesForShape) {
-            const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-            if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
-                bestAxle = axle; 
-                bestDeflection = perf.deflection;
-                break; 
-            }
-        }
-        
-        if (bestAxle) { 
-            return { name: bestAxle.Name, deflection: bestDeflection, axleObj: bestAxle }; 
-        } else { 
-            let bestFailAxle = axlesForShape[0];
-            let minDeflection = Infinity;
-            axlesForShape.forEach(axle => {
-                 const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-                 if(perf.deflection < minDeflection) {
-                     minDeflection = perf.deflection;
-                     bestFailAxle = axle;
-                 }
-            });
-            return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
-        }
-    }
     
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
-        if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
-        const lathThickness = parseFloat(lath['Thickness']) || 0;
-        let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+        updateAllCalculations();
+    </script>
 
-        if (matchAxleDia > 0 && overrideCollarDia > 0) {
-            const currentAxleDia = parseFloat(axle['Diameter']) || 0;
-            if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
-                effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
+    <script>
+        window.addEventListener('load', () => {
+            initializeAdminControls(); 
+            const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
+            const statusDiv = document.getElementById('import-status');
+            statusDiv.textContent = 'Loading data...'; statusDiv.style.color = '#555';
+            fetch(excelFileUrl).then(response => {
+                if (!response.ok) { throw new Error(`Network response was not ok: ${response.statusText}`); }
+                return response.arrayBuffer();
+            }).then(fileData => { processExcelFile(fileData); }).catch(error => {
+                statusDiv.textContent = 'Failed to fetch the Excel file.'; statusDiv.style.color = 'red'; console.error(error);
+            });
+        });
+    </script>
+
+    <script>
+        function setupReportFilters() {
+            const lathSelect = document.getElementById('reportLathType');
+            populateDropdown(lathSelect, lathData, 'Name');
+            const lathSelect2 = document.getElementById('reportLathType2');
+            lathSelect2.innerHTML = `<option value="">-- None (Use Primary) --</option>`;
+            lathData.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = item.Name;
+                lathSelect2.appendChild(option);
+            });
+            const endlockSelect = document.getElementById('reportEndlockType');
+            populateDropdown(endlockSelect, endlockData, 'Description');
+            const bottomLathSelect = document.getElementById('reportBottomLathType');
+            populateDropdown(bottomLathSelect, bottomLathData, 'Bottom lath name');
+            let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
+            if (motorData.length > 0) {
+                const firstMotor = motorData[0];
+                manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
+                voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
+                mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
+                usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
             }
+            const setupFilterGroup = (containerId, key, data, className) => {
+                const container = document.getElementById(containerId); container.innerHTML = '';
+                if (key) {
+                    const uniqueValues = [...new Set(data.map(item => item[key]).filter(val => val))];
+                    uniqueValues.sort().forEach(value => {
+                        const controlItem = document.createElement('div'); controlItem.className = 'admin-control-item';
+                        controlItem.innerHTML = `<label><input type="checkbox" class="${className}" value="${value}" checked> ${value}</label>`;
+                        container.appendChild(controlItem);
+                    });
+                } else { container.innerHTML = `<p><em>Column not found in data.</em></p>`; }
+            };
+            setupFilterGroup('report-motor-filter-container', manufacturerKey, motorData, 'report-motor-checkbox');
+            setupFilterGroup('report-motor-voltage-filter-container', voltageKey, motorData, 'report-voltage-checkbox');
+            setupFilterGroup('report-motor-mounting-filter-container', mountingKey, motorData, 'report-mounting-checkbox');
+            setupFilterGroup('report-motor-usage-filter-container', usageKey, motorData, 'report-usage-checkbox');
+            document.getElementById('generateCsvButton').addEventListener('click', generateCsvReport);
         }
 
-        const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-        const lathsWeight = torqueWeight - bottomLathWeightActual;
-        let heightLifted = 0;
-        let currentRollDiameter = effectiveStartDiameter;
-        let maxTorqueFound = 0;
-
-        while (heightLifted < travelHeight) {
-            const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
-            const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
-            maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
-            heightLifted += (Math.PI * currentRollDiameter) / 2; 
-            currentRollDiameter += lathThickness;
+        function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
+            if (!lath || !bottomLath || height_mm <= 0) return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 };
+            const axleRadius = 60; 
+            const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
+            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+            const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
+            let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
+            const widthM = width_mm / 1000;
+            let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+            const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
+            const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            let totalEndlockWeight = 0;
+            let bufferEndlockWeight = 0; 
+            const lathName = (lath['Name'] || '').toLowerCase();
+            const isWindLath = lathName.includes('wind');
+            if (isWindLath) {
+                const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
+                let castWeightG = castEndlockObj ? parseFloat(castEndlockObj['Weight in grams']) : 0;
+                const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+                let windWeightG = windEndlockObj ? parseFloat(windEndlockObj['Weight in grams']) : 0;
+                for (let i = 1; i <= numLaths; i++) {
+                    if (i % 2 !== 0) totalEndlockWeight += 2 * (castWeightG / 1000);
+                    if ((i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0)) totalEndlockWeight += 2 * (windWeightG / 1000);
+                }
+                bufferEndlockWeight = 4 * (castWeightG / 1000);
+            } else if (endlock) {
+                let endlockWeightG = parseFloat(endlock['Weight in grams']) || 0;
+                totalEndlockWeight = Math.ceil(numLaths / 2) * 2 * (endlockWeightG / 1000);
+                bufferEndlockWeight = 4 * (endlockWeightG / 1000);
+            }
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
+            let torqueWeight = totalWeight;
+            if (numLaths >= 3) {
+                torqueWeight = totalWeight - (3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2) - bufferEndlockWeight;
+            }
+            return { totalWeight, torqueWeight, travelHeight: height_mm - bottomLathHeight };
         }
 
-        let totalFriction = baseline_friction;
-        if (height_mm >= 7000) totalFriction += 5;
-        if (motorObj) {
-            const rpm = parseFloat(motorObj['RPM']) || 0;
-            const usage = (motorObj['Usage type'] || '').toLowerCase();
-            if (rpm > 12 || usage.includes('high')) totalFriction += 5;
-        }
-
-        return maxTorqueFound * (1 + totalFriction / 100);
-    }
-
-    async function generateCsvReport() {
-        const statusDiv = document.getElementById('csv-generation-status');
-        statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        const minWidth = parseInt(document.getElementById('reportMinWidth').value);
-        const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
-        const minHeight = parseInt(document.getElementById('reportMinHeight').value);
-        const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
-        const interval = parseInt(document.getElementById('reportInterval').value);
-        const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
-        const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
-
-        const lathIndex1 = document.getElementById('reportLathType').value;
-        const lathIndex2 = document.getElementById('reportLathType2').value;
-        const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
-
-        const endlockIndex = document.getElementById('reportEndlockType').value;
-        const bottomLathIndex = document.getElementById('reportBottomLathType').value;
-
-        if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
-            statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
-        }
-
-        const primaryLath = lathData[lathIndex1];
-        const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
-        const selectedEndlock = endlockData[endlockIndex];
-        const selectedBottomLath = bottomLathData[bottomLathIndex];
-
-        const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
-        const selectedManufacturers = getSelectedValues('report-motor-checkbox');
-        const selectedVoltages = getSelectedValues('report-voltage-checkbox');
-        const selectedMountings = getSelectedValues('report-mounting-checkbox');
-        const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
-        
-        let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
-        if (motorData.length > 0) {
-            const firstMotor = motorData[0];
-            manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
-            voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
-            mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
-            usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
+        function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
+            const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
+            let requiredRatio = width_mm > 10000 ? 800 : (width_mm > 8000 ? 600 : 400);
+            for (const axle of axlesForShape) {
+                const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
+                if (perf.ratio >= requiredRatio && perf.deflection <= 17) return { name: axle.Name, deflection: perf.deflection, axleObj: axle };
+            }
+            return { name: axlesForShape[0].Name, deflection: 0, axleObj: axlesForShape[0] };
         }
         
-        const calculationCache = {};
-        const defaultAdditionalLength = 100;
-        let calculationCount = 0;
-        
-        for (let width = minWidth; width <= maxWidth; width += interval) {
-            calculationCache[width] = {};
-            const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
+        function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+            if (!lath || !axle || !bottomLath || travelHeight <= 0) return 0;
+            const lathThickness = parseFloat(lath['Thickness']) || 0;
+            let currentRollDiameter = (matchAxleDia > 0 && overrideCollarDia > 0 && Math.abs((parseFloat(axle['Diameter'])||0) - matchAxleDia) < 2) ? Math.max(getEffectiveCoilDiameter(axle), overrideCollarDia) : getEffectiveCoilDiameter(axle);
+            const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+            const lathsWeight = torqueWeight - bottomLathWeightActual;
+            let heightLifted = 0;
+            let maxTorqueFound = 0;
+            while (heightLifted < travelHeight) {
+                const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
+                maxTorqueFound = Math.max(maxTorqueFound, force * (((currentRollDiameter + lathThickness) / 2) / 1000));
+                heightLifted += (Math.PI * currentRollDiameter) / 2; 
+                currentRollDiameter += lathThickness;
+            }
+            let totalFriction = baseline_friction + (height_mm >= 7000 ? 5 : 0) + (motorObj && (parseFloat(motorObj['RPM']) > 12 || (motorObj['Usage type']||"").toLowerCase().includes('high')) ? 5 : 0);
+            return maxTorqueFound * (1 + totalFriction / 100);
+        }
 
-            for (let height = minHeight; height <= maxHeight; height += interval) {
-                calculationCount++;
-                const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
-                const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
-                const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
-                
-                const result = {
-                    'Lath Type Used': currentLath.Name, 
-                    'Total Weight (kg)': props.totalWeight.toFixed(2),
-                    'Required Axle Name': axleResult.name,
-                    'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
-                };
-
-                for (const usage of selectedUsageTypes) {
-                    for (const man of selectedManufacturers) {
-                        for (const vol of selectedVoltages) {
-                            for (const mou of selectedMountings) {
-                                const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
-                                
-                                // Need to check a representative motor from this group to calc torque (due to RPM friction)
-                                const sampleMotor = motorData.find(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou);
-                                
-                                const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
-
-                                const suitableMotors = motorData.filter(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max'])).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
-                                
-                                result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
+        async function generateCsvReport() {
+            const statusDiv = document.getElementById('csv-generation-status');
+            statusDiv.textContent = 'Generating...'; statusDiv.style.color = 'blue';
+            await new Promise(resolve => setTimeout(resolve, 50));
+            const minWidth = parseInt(document.getElementById('reportMinWidth').value), maxWidth = parseInt(document.getElementById('reportMaxWidth').value), minHeight = parseInt(document.getElementById('reportMinHeight').value), maxHeight = parseInt(document.getElementById('reportMaxHeight').value), interval = parseInt(document.getElementById('reportInterval').value);
+            const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0, reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
+            const primaryLath = lathData[document.getElementById('reportLathType').value], secondaryLath = document.getElementById('reportLathType2').value !== "" ? lathData[document.getElementById('reportLathType2').value] : primaryLath, switchLimit = parseInt(document.getElementById('reportLathLimit').value) || Infinity;
+            const selectedEndlock = endlockData[document.getElementById('reportEndlockType').value], selectedBottomLath = bottomLathData[document.getElementById('reportBottomLathType').value];
+            const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
+            const selectedManufacturers = getSelectedValues('report-motor-checkbox'), selectedVoltages = getSelectedValues('report-voltage-checkbox'), selectedMountings = getSelectedValues('report-mounting-checkbox'), selectedUsageTypes = getSelectedValues('report-usage-checkbox');
+            let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
+            if (motorData.length > 0) {
+                const f = motorData[0];
+                manufacturerKey = Object.keys(f).find(k => k.toLowerCase().trim() === 'manufacturer');
+                voltageKey = Object.keys(f).find(k => k.toLowerCase().trim() === 'voltage');
+                mountingKey = Object.keys(f).find(k => k.toLowerCase().trim() === 'mounting type');
+                usageKey = Object.keys(f).find(k => k.toLowerCase().trim() === 'usage type');
+            }
+            const calculationCache = {};
+            for (let width = minWidth; width <= maxWidth; width += interval) {
+                calculationCache[width] = {};
+                const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
+                for (let height = minHeight; height <= maxHeight; height += interval) {
+                    const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
+                    const axleResult = findBestAxleHeadless(props.totalWeight, width + 100, currentLath, width);
+                    const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
+                    const result = { 'Lath Used': currentLath.Name, 'Weight (kg)': props.totalWeight.toFixed(2), 'Axle': axleResult.name, 'Defl (mm)': axleResult.deflection.toFixed(2) };
+                    for (const usage of selectedUsageTypes) {
+                        for (const man of selectedManufacturers) {
+                            for (const vol of selectedVoltages) {
+                                for (const mou of selectedMountings) {
+                                    const sampleMotor = motorData.find(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou);
+                                    const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
+                                    const suitableMotors = motorData.filter(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max'])).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                    result[`${usage}-${man}(${vol},${mou})`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
+                                }
                             }
                         }
                     }
+                    calculationCache[width][height] = result;
                 }
-                calculationCache[width][height] = result;
             }
-        }
-        const csvData = [];
-        const widthHeaders = ['Height \\ Width'];
-        for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
-        const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
-        
-        for (const tableType of tableTypes) {
-            csvData.push([`Data: ${tableType}`]);
-            csvData.push(widthHeaders);
-            for (let height = minHeight; height <= maxHeight; height += interval) {
-                const row = [height];
-                for (let width = minWidth; width <= maxWidth; width += interval) {
-                    row.push(calculationCache[width]?.[height]?.[tableType] || 'N/A');
+            const csvData = []; const widthHeaders = ['H\\W']; for (let w = minWidth; w <= maxWidth; w += interval) widthHeaders.push(w);
+            const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
+            for (const tableType of tableTypes) {
+                csvData.push([tableType], widthHeaders);
+                for (let height = minHeight; height <= maxHeight; height += interval) {
+                    const row = [height]; for (let width = minWidth; width <= maxWidth; width += interval) row.push(calculationCache[width][height][tableType] || 'N/A');
+                    csvData.push(row);
                 }
-                csvData.push(row);
+                csvData.push([]);
             }
-            csvData.push([]);
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvData.forEach(function(rowArray) { csvContent += rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",") + "\r\n"; });
+            const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "shutter_report.csv"); document.body.appendChild(link); link.click();
+            statusDiv.textContent = 'Report Generated.';
         }
-        downloadCsv(csvData);
-    }
-
-    function downloadCsv(data) {
-        let csvContent = "data:text/csv;charset=utf-8,";
-        data.forEach(function(rowArray) {
-            let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
-			csvContent += row + "\r\n";
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "shutter_report.csv");
-        document.body.appendChild(link);
-        link.click();
-    }
-</script>
+    </script>
 </body>
 </html>
