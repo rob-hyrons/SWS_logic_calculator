@@ -1995,47 +1995,59 @@
             const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
             maxCoilDiameter = finalCoilDiameter;
 
-            // FRICTION LOGIC
+            // --- FRICTION LOGIC UPDATE ---
+            // 1. Start with Base Friction from Lath (input field)
             let baselineFriction = parseFloat(dom.friction.value) || 0;
             let additionalFriction = 0;
             
-            // 1. Check Barrel Height >= 7m
+            // 2. Height Rule: Check Barrel Height >= 7m
             if (parseFloat(dom.height.value) >= 7000) {
                 additionalFriction += 5;
             }
 
-            // 2. Check Motor Usage/Speed
-            let isHighSpeedContext = false;
+            // 3. Usage/Speed Rule
+            let isHighPerformance = false;
+            
+            // Check the Dropdown Filter setting
+            const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
+            
+            // Check the specific Motor (if one is actually selected in the list)
             const selectedMotorIndex = dom.motorSelector.value;
-            // Check dropdown filter if no specific motor is selected to preemptively show high friction
-            const filterUsage = dom.motorUsageFilter.value.toLowerCase();
             
             if (selectedMotorIndex !== "" && currentFilteredMotors[selectedMotorIndex]) {
+                // If a specific motor is selected, use its specific properties
                 const m = currentFilteredMotors[selectedMotorIndex];
-                const rpm = parseFloat(m['RPM']) || 0;
                 const usage = (m['Usage type'] || '').toLowerCase();
-                if (rpm > 12 || usage.includes('high')) {
-                    isHighSpeedContext = true;
+                // Check if the specific motor is High Speed/Usage
+                if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
+                    isHighPerformance = true;
                 }
-            } else if (filterUsage.includes('high') || filterUsage.includes('speed')) {
-                 // Fallback: Use filter if no specific motor is chosen
-                 isHighSpeedContext = true;
+            } else {
+                // If NO motor is selected yet, rely on the Filter Dropdown
+                if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
+                    isHighPerformance = true;
+                }
             }
             
-            if (isHighSpeedContext) {
+            // Apply the 5% addition if High Speed/Usage is detected
+            if (isHighPerformance) {
                 additionalFriction += 5;
             }
             
+            // Update the display to show the total
             const totalAppliedFriction = baselineFriction + additionalFriction;
             dom['total-applied-friction'].textContent = totalAppliedFriction;
             const frictionMultiplier = 1 + (totalAppliedFriction / 100);
 
+            // Recalculate Torque Profile with new friction
             lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
             drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+            
             const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
             dom['max-torque'].textContent = requiredTorque.toFixed(1);
             dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
 
+            // --- FILTER MOTORS ---
             const selectedMountType = dom.motorMountingType.value;
             const selectedVoltage = dom.motorVoltageFilter.value;
             const selectedManufacturer = dom.motorManufacturerFilter.value;
@@ -2058,11 +2070,16 @@
                 return mountMatch && voltageMatch && manufacturerMatch && usageMatch && moMatch;
             });
             
-            const select = dom.motorSelector; select.innerHTML = ''; select.disabled = false;
+            const select = dom.motorSelector; 
+            // Save current selection if possible
+            const previousValue = select.value;
+            
+            select.innerHTML = ''; select.disabled = false;
             if (currentFilteredMotors.length === 0) {
                 select.innerHTML = '<option value="">-- No motors for this type --</option>';
                 updateSelectedMotorInfo(); return;
             }
+            
             let recommendedMotorIndexInFilteredList = -1;
             currentFilteredMotors.forEach((motor, index) => {
                 const option = document.createElement('option');
@@ -2080,7 +2097,12 @@
                 select.appendChild(option);
             });
 
-            if (recommendedMotorIndexInFilteredList !== -1) { select.value = recommendedMotorIndexInFilteredList; } else {
+            // Try to restore previous selection if it's still valid/available, otherwise pick best
+            if (previousValue !== "" && currentFilteredMotors[previousValue]) {
+                select.value = previousValue;
+            } else if (recommendedMotorIndexInFilteredList !== -1) { 
+                select.value = recommendedMotorIndexInFilteredList; 
+            } else {
                 const noMotorOption = document.createElement('option');
                 noMotorOption.value = ""; noMotorOption.textContent = "-- No suitable motor found --";
                 noMotorOption.selected = true; noMotorOption.disabled = true;
@@ -2130,9 +2152,11 @@
 
             dom['motor-name'].textContent = selectedMotor['Name'];
             dom['motor-torque'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`; 
-            dom['motor-rpm'].textContent = motorRPM;
+            
+            // Format RPM to 2 decimal places
+            dom['motor-rpm'].textContent = (motorRPM || 0).toFixed(2);
+            
             dom['motor-driveshaft-dia'].textContent = dsKey ? selectedMotor[dsKey] : 'N/A';
-            dom['motor-cycles-per-hour'].textContent = cyclesKey ? selectedMotor[cyclesKey] : 'N/A';
 
             dom['motor-name-inputs'].textContent = selectedMotor['Name'];
             dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
@@ -2154,12 +2178,14 @@
                 openingTimeSec = (calculatedRotations / motorRPM) * 60;
                 dom['opening-time'].textContent = openingTimeSec.toFixed(1);
             } else { dom['opening-time'].textContent = '0'; }
+            
             if (motorWattage > 0 && openingTimeSec > 0) {
                 const cycleTimeSec = openingTimeSec * 2;
                 const wattHours = (motorWattage * cycleTimeSec) / 3600;
                 const kiloWattHours = wattHours / 1000;
                 dom['power-consumed'].textContent = `${kiloWattHours.toFixed(4)} kWh`;
             } else { dom['power-consumed'].textContent = 'N/A'; }
+            
             const requiredTorque = parseFloat(dom['max-torque'].textContent);
             if (requiredTorque < motorTorqueMin || requiredTorque > motorTorqueMax) {
                 dom['motor-torque-line'].classList.add('warning-text'); dom['motor-torque-line-inputs'].classList.add('warning-text');
@@ -2167,15 +2193,21 @@
                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
             }
             
-            // Limit Turn Logic
+            // --- Limit Turn Logic & Percentage ---
             const limitTurnKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'limit turn');
             const limitTurnVal = limitTurnKey ? parseFloat(selectedMotor[limitTurnKey]) : 0;
             const limitTurnEl = dom['motor-limit-turns'];
             const limitWarnEl = dom['motor-limit-warning'];
 
             if (limitTurnVal > 0) {
-                limitTurnEl.textContent = limitTurnVal;
-                if (calculatedRotations > limitTurnVal) {
+                const neededTurns = calculatedRotations;
+                // Calculate percentage of limit used
+                const percentUsed = (neededTurns / limitTurnVal) * 100;
+                
+                // Display Limit to 2 decimals + Percentage
+                limitTurnEl.textContent = `${limitTurnVal.toFixed(2)} (${percentUsed.toFixed(0)}% used)`;
+                
+                if (neededTurns > limitTurnVal) {
                     limitWarnEl.style.display = 'block';
                     limitTurnEl.classList.add('warning-text');
                 } else {
@@ -2188,6 +2220,23 @@
                 limitTurnEl.classList.remove('warning-text');
             }
 
+            // --- Cycles Per Hour Recalculation ---
+            const standardCPH = cyclesKey ? parseFloat(selectedMotor[cyclesKey]) : 0;
+            let cphDisplayText = standardCPH > 0 ? standardCPH.toString() : 'N/A';
+
+            if (standardCPH > 0 && limitTurnVal > 0 && calculatedRotations > 0) {
+                // Formula: StandardCPH * (MaxLimit / ActualNeeded)
+                // Example: Rated 10 CPH at 20 turns. We only need 10 turns. We can do 20 CPH.
+                const adjustedCPH = standardCPH * (limitTurnVal / calculatedRotations);
+                
+                // Only show if adjusted is different and reasonable
+                if (adjustedCPH !== standardCPH && isFinite(adjustedCPH)) {
+                    cphDisplayText = `${standardCPH} (Calc: ${adjustedCPH.toFixed(1)})`;
+                }
+            }
+            dom['motor-cycles-per-hour'].textContent = cphDisplayText;
+
+            // --- Chain Drive Data ---
             if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
                 let motorNameClean = selectedMotor['Name'];
                 motorNameClean = motorNameClean.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
@@ -3335,7 +3384,8 @@ return svg;
             return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
         }
     }
-	function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+    
+    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
         const lathThickness = parseFloat(lath['Thickness']) || 0;
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
@@ -3480,12 +3530,11 @@ return svg;
         downloadCsv(csvData);
         statusDiv.textContent = 'Report generated and downloaded.'; statusDiv.style.color = 'green';
     }
-
-    function downloadCsv(data) {
+	function downloadCsv(data) {
         let csvContent = "data:text/csv;charset=utf-8,";
         data.forEach(function(rowArray) {
             let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
-			csvContent += row + "\r\n";
+            csvContent += row + "\r\n";
         });
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
