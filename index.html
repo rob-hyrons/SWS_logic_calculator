@@ -2011,25 +2011,15 @@
             // Check the Dropdown Filter setting
             const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
             
-            // Check the specific Motor (if one is actually selected in the list)
-            const selectedMotorIndex = dom.motorSelector.value;
-            
-            if (selectedMotorIndex !== "" && currentFilteredMotors[selectedMotorIndex]) {
-                // If a specific motor is selected, use its specific properties
-                const m = currentFilteredMotors[selectedMotorIndex];
-                const usage = (m['Usage type'] || '').toLowerCase();
-                // Check if the specific motor is High Speed/Usage
-                if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
-                    isHighPerformance = true;
-                }
-            } else {
-                // If NO motor is selected yet, rely on the Filter Dropdown
-                if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
-                    isHighPerformance = true;
-                }
+            // FIX: We ONLY check the filter here. We do NOT check 'dom.motorSelector.value'.
+            // Checking the specific motor causes a bug where switching from "High Speed" 
+            // to "Standard" reads the OLD motor selection (which was High Speed) 
+            // before the list is updated, keeping the 5% stuck.
+            if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
+                isHighPerformance = true;
             }
             
-            // Apply the 5% addition if High Speed/Usage is detected
+            // Apply the 5% addition if High Speed/Usage is detected via the filter
             if (isHighPerformance) {
                 additionalFriction += 5;
             }
@@ -3384,8 +3374,7 @@ return svg;
             return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
         }
     }
-    
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+	function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
         const lathThickness = parseFloat(lath['Thickness']) || 0;
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
