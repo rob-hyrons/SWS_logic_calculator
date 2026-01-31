@@ -286,7 +286,8 @@
                     </div>
                      <div class="form-group" data-admin-label="Additional Axle Width">
                         <label for="additionalLength">Additional Axle Width (Total, mm)</label>
-                        <input type="number" id="additionalLength" placeholder="e.g., 100" value="100">
+                        <!-- MODIFIED DEFAULT VALUE TO 20 -->
+                        <input type="number" id="additionalLength" placeholder="e.g., 100" value="20">
                     </div>
                     <div class="form-row">
                         <div class="form-group form-col" data-admin-label="Lath Type">
@@ -486,7 +487,7 @@
                         <p>Motor Name: <span id="motor-name">N/A</span></p>
                         <p id="motor-torque-line">Motor Torque Range: <span id="motor-torque">0</span> Nm</p>
                         <p>Motor Speed: <span id="motor-rpm">0</span> RPM</p>
-                        <p>Driveshaft Diameter: <span id="motor-driveshaft-dia">N/A</span> mm</p>
+                        <p>Driveshaft Diameter: <span id="motor-driveshaft-dia">N/A</span></p>
                         <p>Cycles Per Hour: <span id="motor-cycles-per-hour">N/A</span></p>
                         <p>Opening Time: <span id="opening-time">0</span> seconds</p>
                         <p>Power Consumed per Cycle: <span id="power-consumed">0.0000</span> kWh</p>
@@ -560,7 +561,7 @@
                         <p>Selected Safety Brake: <span id="safety-brake-name">N/A</span></p>
                         <p>Brake Operating Torque Rating: <span id="safety-brake-capacity">N/A</span> Nm</p>
                         <p>Required Motor Torque (Max): <span id="safety-brake-motor-torque">N/A</span> Nm</p>
-                        <p>Brake Shaft Diameter: <span id="safety-brake-driveshaft">N/A</span> mm</p>
+                        <p>Brake Shaft Diameter: <span id="safety-brake-driveshaft">N/A</span></p>
                     </div>
 
                     <div class="calculation-explainer">
@@ -991,7 +992,7 @@
                     'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
                     'Bottom lath': ['Bottom lath name', 'BLath weight / m length', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
-                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image', 'Limit turn'],
+                    'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image', 'Limit turn', 'Driveshaft diameter mm'],
                     'SafetyB': ['Name', 'Max Safety Torque (Nm)', 'Operating Torque (Nm)', 'Driveshaft diameter mm', 'Stop distance', 'SB image'],
                     'Endplate': ['Name', 'Size', 'Material', 'Fixing holes'],
                     'Wicket doors': ['Name', 'Height', 'Width'],
@@ -1214,10 +1215,18 @@
                 voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
             }
             if (!voltageKey) { dom.motorVoltageFilter.parentElement.style.display = 'none'; return; }
-            const voltageTypes = [...new Set(motorData.map(motor => motor[voltageKey]).filter(v => v))];
+            
+            // ADJUSTMENT: Split strings by '/' to handle 230/415 and get unique values
+            const allVoltages = motorData.map(motor => String(motor[voltageKey] || ''))
+                                         .join('/')
+                                         .split('/')
+                                         .map(v => v.trim())
+                                         .filter(v => v);
+            
+            const uniqueVoltageTypes = [...new Set(allVoltages)];
             const select = dom.motorVoltageFilter;
             select.innerHTML = '<option value="">-- All Voltages --</option>';
-            voltageTypes.forEach(type => {
+            uniqueVoltageTypes.sort().forEach(type => {
                 const option = document.createElement('option');
                 option.value = type; option.textContent = type; select.appendChild(option);
             });
@@ -2053,7 +2062,11 @@
             }
             currentFilteredMotors = motorData.filter(motor => {
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
-                const voltageMatch = !selectedVoltage || !voltageKey || String(motor[voltageKey]) === String(selectedVoltage);
+                
+                // ADJUSTMENT: Voltage filtering handles combined strings like "230/415"
+                const motorVoltages = String(motor[voltageKey] || '').split('/').map(v => v.trim());
+                const voltageMatch = !selectedVoltage || !voltageKey || motorVoltages.includes(selectedVoltage);
+                
                 const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
                 const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
                 const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
@@ -2103,6 +2116,8 @@
         
         function updateSelectedSafetyBrakeInfo() {
             calculateSafetyBrakeSelection();
+            // Re-trigger motor info update to handle shaft matching logic
+            updateSelectedMotorInfo();
         }
 
         function updateSelectedMotorInfo() {
@@ -2146,7 +2161,24 @@
             // Format RPM to 2 decimal places
             dom['motor-rpm'].textContent = (motorRPM || 0).toFixed(2);
             
-            dom['motor-driveshaft-dia'].textContent = dsKey ? selectedMotor[dsKey] : 'N/A';
+            // ADJUSTMENT: Chain Drive Shaft Selection Logic
+            let displayShaft = dsKey ? selectedMotor[dsKey] : 'N/A';
+            const selectedBrakeIndex = dom.safetyBrakeSelector.value;
+            
+            if (selectedBrakeIndex !== "" && safetyBrakeData[selectedBrakeIndex]) {
+                const selectedBrake = safetyBrakeData[selectedBrakeIndex];
+                const brakeShaftKey = Object.keys(selectedBrake).find(k => k.toLowerCase().includes('driveshaft diameter'));
+                
+                if (brakeShaftKey) {
+                    const brakeShaft = String(selectedBrake[brakeShaftKey]).trim();
+                    const motorOptions = String(displayShaft).split('/').map(s => s.trim());
+                    
+                    if (motorOptions.includes(brakeShaft)) {
+                        displayShaft = `${brakeShaft} mm (Matched to Brake)`;
+                    }
+                }
+            }
+            dom['motor-driveshaft-dia'].textContent = displayShaft;
 
             dom['motor-name-inputs'].textContent = selectedMotor['Name'];
             dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
@@ -2166,6 +2198,13 @@
             let openingTimeSec = 0;
             if (motorRPM > 0 && calculatedRotations > 0) {
                 openingTimeSec = (calculatedRotations / motorRPM) * 60;
+                
+                // ADJUSTMENT: Add 2 seconds for High Speed motors
+                const usageType = (selectedMotor['Usage type'] || '').toLowerCase();
+                if (usageType.includes('high') || usageType.includes('hi ') || usageType.includes('speed')) {
+                    openingTimeSec += 2;
+                }
+                
                 dom['opening-time'].textContent = openingTimeSec.toFixed(1);
             } else { dom['opening-time'].textContent = '0'; }
             
@@ -3336,7 +3375,7 @@ return svg;
             torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
         }
         const travelHeight = height_mm - bottomLathHeight;
-        return { totalWeight, torqueWeight, travelHeight };
+		return { totalWeight, torqueWeight, travelHeight };
     }
 
     function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
@@ -3374,7 +3413,8 @@ return svg;
             return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
         }
     }
-	function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+
+    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
         const lathThickness = parseFloat(lath['Thickness']) || 0;
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
@@ -3403,11 +3443,13 @@ return svg;
         let totalFriction = baseline_friction;
         if (height_mm >= 7000) totalFriction += 5;
         
-        // Report Logic: If we are testing a specific motor, apply friction based on its specs
+        // Logic: Add 5% friction if motor is High Speed (matches logic used in main calculator)
         if (motorObj) {
-            const rpm = parseFloat(motorObj['RPM']) || 0;
-            const usage = (motorObj['Usage type'] || '').toLowerCase();
-            if (rpm > 12 || usage.includes('high')) totalFriction += 5;
+            const usageKey = Object.keys(motorObj).find(k => k.toLowerCase().trim() === 'usage type');
+            const usage = usageKey ? (motorObj[usageKey] || '').toLowerCase() : '';
+            if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
+                totalFriction += 5;
+            }
         }
 
         return maxTorqueFound * (1 + totalFriction / 100);
@@ -3458,7 +3500,7 @@ return svg;
         }
         
         const calculationCache = {};
-        const defaultAdditionalLength = 100;
+        const defaultAdditionalLength = 20; // Updated default per requirement
         let calculationCount = 0;
         
         for (let width = minWidth; width <= maxWidth; width += interval) {
@@ -3484,12 +3526,33 @@ return svg;
                             for (const mou of selectedMountings) {
                                 const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
                                 
-                                // Need to check a representative motor from this group to calc torque (due to RPM friction)
-                                const sampleMotor = motorData.find(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou);
+                                // Find sample motor to determine if High Speed friction logic applies
+                                const sampleMotor = motorData.find(m => {
+                                    // Handle Voltage Split "230/415"
+                                    const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
+                                    const volMatch = motorVoltages.includes(String(vol));
+                                    
+                                    return m[usageKey] == usage && 
+                                           m[manufacturerKey] == man && 
+                                           volMatch && 
+                                           m[mountingKey] == mou;
+                                });
                                 
                                 const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
 
-                                const suitableMotors = motorData.filter(m => m[usageKey] == usage && m[manufacturerKey] == man && String(m[voltageKey]) == String(vol) && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max'])).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                                const suitableMotors = motorData.filter(m => {
+                                    // Handle Voltage Split "230/415"
+                                    const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
+                                    const volMatch = motorVoltages.includes(String(vol));
+
+                                    return m[usageKey] == usage && 
+                                           m[manufacturerKey] == man && 
+                                           volMatch && 
+                                           m[mountingKey] == mou && 
+                                           reqTorque > 0 && 
+                                           reqTorque >= parseFloat(m['Torque (Nm) min']) && 
+                                           reqTorque <= parseFloat(m['Torque (Nm) max']);
+                                }).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
                                 
                                 result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
                             }
