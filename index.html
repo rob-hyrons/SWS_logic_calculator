@@ -90,7 +90,10 @@
             border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08; font-weight: bold;
         }
         .graph-container { margin-top: 1.5em; width: 100%; }
-        #axle-cross-section-container, #endplate-graphic-container, #chain-graphic-container {
+        #axle-cross-section-container {
+            width: 100%; max-width: 800px; margin-left: 0; margin-right: auto;
+        }
+        #endplate-graphic-container, #chain-graphic-container {
             min-width: 450px; max-width: 550px; margin-left: auto; margin-right: auto;
         }
         .calculation-explainer {
@@ -286,7 +289,6 @@
                     </div>
                      <div class="form-group" data-admin-label="Additional Axle Width">
                         <label for="additionalLength">Additional Axle Width (Total, mm)</label>
-                        <!-- MODIFIED DEFAULT VALUE TO 20 -->
                         <input type="number" id="additionalLength" placeholder="e.g., 100" value="20">
                     </div>
                     <div class="form-row">
@@ -416,7 +418,7 @@
                     </div>
 
                     <div id="deflection-graphic-container" class="graph-container" style="height: 150px;"></div>
-                    <div id="axle-cross-section-container" class="graph-container" style="height: 250px; margin-top: 2.5em;"></div>
+                    <div id="axle-cross-section-container" class="graph-container" style="height: 300px; margin-top: 2.5em;"></div>
                     <div class="results">
                         <h3>Axle Performance</h3>
                         <p>Total Axle Length: <span id="total-axle-length">0</span> mm</p>
@@ -1216,7 +1218,6 @@
             }
             if (!voltageKey) { dom.motorVoltageFilter.parentElement.style.display = 'none'; return; }
             
-            // ADJUSTMENT: Split strings by '/' to handle 230/415 and get unique values
             const allVoltages = motorData.map(motor => String(motor[voltageKey] || ''))
                                          .join('/')
                                          .split('/')
@@ -1937,7 +1938,6 @@
                 return;
             }
 
-            // Find first brake where Operating Torque >= Motor Torque
             const suitableBrakes = safetyBrakeData.filter(brake => {
                 const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
                 const opTorque = parseFloat(brake[opTorqueKey]) || 0;
@@ -1966,7 +1966,6 @@
                     select.appendChild(option);
                 });
                 
-                // Select first suitable
                 const selectedBrake = suitableBrakes[0];
                 dom['safety-brake-name'].textContent = selectedBrake.Name;
                 dom['safety-brake-name'].classList.remove('warning-text');
@@ -2004,41 +2003,28 @@
             const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
             maxCoilDiameter = finalCoilDiameter;
 
-            // --- FRICTION LOGIC UPDATE ---
-            // 1. Start with Base Friction from Lath (input field)
             let baselineFriction = parseFloat(dom.friction.value) || 0;
             let additionalFriction = 0;
             
-            // 2. Height Rule: Check Barrel Height >= 7m
             if (parseFloat(dom.height.value) >= 7000) {
                 additionalFriction += 5;
             }
 
-            // 3. Usage/Speed Rule
             let isHighPerformance = false;
-            
-            // Check the Dropdown Filter setting
             const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
             
-            // FIX: We ONLY check the filter here. We do NOT check 'dom.motorSelector.value'.
-            // Checking the specific motor causes a bug where switching from "High Speed" 
-            // to "Standard" reads the OLD motor selection (which was High Speed) 
-            // before the list is updated, keeping the 5% stuck.
             if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
                 isHighPerformance = true;
             }
             
-            // Apply the 5% addition if High Speed/Usage is detected via the filter
             if (isHighPerformance) {
                 additionalFriction += 5;
             }
             
-            // Update the display to show the total
             const totalAppliedFriction = baselineFriction + additionalFriction;
             dom['total-applied-friction'].textContent = totalAppliedFriction;
             const frictionMultiplier = 1 + (totalAppliedFriction / 100);
 
-            // Recalculate Torque Profile with new friction
             lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
             drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
             
@@ -2046,7 +2032,6 @@
             dom['max-torque'].textContent = requiredTorque.toFixed(1);
             dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
 
-            // --- FILTER MOTORS ---
             const selectedMountType = dom.motorMountingType.value;
             const selectedVoltage = dom.motorVoltageFilter.value;
             const selectedManufacturer = dom.motorManufacturerFilter.value;
@@ -2062,11 +2047,8 @@
             }
             currentFilteredMotors = motorData.filter(motor => {
                 const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
-                
-                // ADJUSTMENT: Voltage filtering handles combined strings like "230/415"
                 const motorVoltages = String(motor[voltageKey] || '').split('/').map(v => v.trim());
                 const voltageMatch = !selectedVoltage || !voltageKey || motorVoltages.includes(selectedVoltage);
-                
                 const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
                 const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
                 const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
@@ -2074,7 +2056,6 @@
             });
             
             const select = dom.motorSelector; 
-            // Save current selection if possible
             const previousValue = select.value;
             
             select.innerHTML = ''; select.disabled = false;
@@ -2100,7 +2081,6 @@
                 select.appendChild(option);
             });
 
-            // Try to restore previous selection if it's still valid/available, otherwise pick best
             if (previousValue !== "" && currentFilteredMotors[previousValue]) {
                 select.value = previousValue;
             } else if (recommendedMotorIndexInFilteredList !== -1) { 
@@ -2116,7 +2096,6 @@
         
         function updateSelectedSafetyBrakeInfo() {
             calculateSafetyBrakeSelection();
-            // Re-trigger motor info update to handle shaft matching logic
             updateSelectedMotorInfo();
         }
 
@@ -2134,13 +2113,10 @@
             if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
                  ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour','opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
                  dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); 
-                 
                  dom['motor-image-container'].style.display = 'none';
                  dom.motorImageDisplay.src = '';
-                 
                  dom['motor-limit-turns'].textContent = 'N/A';
                  dom['motor-limit-warning'].style.display = 'none';
-
                  resetChainInfo();
                  updateChainCalculations();
                  return;
@@ -2157,11 +2133,8 @@
 
             dom['motor-name'].textContent = selectedMotor['Name'];
             dom['motor-torque'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`; 
-            
-            // Format RPM to 2 decimal places
             dom['motor-rpm'].textContent = (motorRPM || 0).toFixed(2);
             
-            // ADJUSTMENT: Chain Drive Shaft Selection Logic
             let displayShaft = dsKey ? selectedMotor[dsKey] : 'N/A';
             const selectedBrakeIndex = dom.safetyBrakeSelector.value;
             
@@ -2198,13 +2171,10 @@
             let openingTimeSec = 0;
             if (motorRPM > 0 && calculatedRotations > 0) {
                 openingTimeSec = (calculatedRotations / motorRPM) * 60;
-                
-                // ADJUSTMENT: Add 2 seconds for High Speed motors
                 const usageType = (selectedMotor['Usage type'] || '').toLowerCase();
                 if (usageType.includes('high') || usageType.includes('hi ') || usageType.includes('speed')) {
                     openingTimeSec += 2;
                 }
-                
                 dom['opening-time'].textContent = openingTimeSec.toFixed(1);
             } else { dom['opening-time'].textContent = '0'; }
             
@@ -2222,7 +2192,6 @@
                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
             }
             
-            // --- Limit Turn Logic & Percentage ---
             const limitTurnKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'limit turn');
             const limitTurnVal = limitTurnKey ? parseFloat(selectedMotor[limitTurnKey]) : 0;
             const limitTurnEl = dom['motor-limit-turns'];
@@ -2230,10 +2199,7 @@
 
             if (limitTurnVal > 0) {
                 const neededTurns = calculatedRotations;
-                // Calculate percentage of limit used
                 const percentUsed = (neededTurns / limitTurnVal) * 100;
-                
-                // Display Limit to 2 decimals + Percentage
                 limitTurnEl.textContent = `${limitTurnVal.toFixed(2)} (${percentUsed.toFixed(0)}% used)`;
                 
                 if (neededTurns > limitTurnVal) {
@@ -2249,23 +2215,17 @@
                 limitTurnEl.classList.remove('warning-text');
             }
 
-            // --- Cycles Per Hour Recalculation ---
             const standardCPH = cyclesKey ? parseFloat(selectedMotor[cyclesKey]) : 0;
             let cphDisplayText = standardCPH > 0 ? standardCPH.toString() : 'N/A';
 
             if (standardCPH > 0 && limitTurnVal > 0 && calculatedRotations > 0) {
-                // Formula: StandardCPH * (MaxLimit / ActualNeeded)
-                // Example: Rated 10 CPH at 20 turns. We only need 10 turns. We can do 20 CPH.
                 const adjustedCPH = standardCPH * (limitTurnVal / calculatedRotations);
-                
-                // Only show if adjusted is different and reasonable
                 if (adjustedCPH !== standardCPH && isFinite(adjustedCPH)) {
                     cphDisplayText = `${standardCPH} (Calc: ${adjustedCPH.toFixed(1)})`;
                 }
             }
             dom['motor-cycles-per-hour'].textContent = cphDisplayText;
 
-            // --- Chain Drive Data ---
             if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
                 let motorNameClean = selectedMotor['Name'];
                 motorNameClean = motorNameClean.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
@@ -2354,7 +2314,6 @@
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
             const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth);
             
-            // Apply Dynamic Friction to Wicket Graph
             const frictionText = dom['total-applied-friction'].textContent;
             const frictionMultiplier = 1 + (parseFloat(frictionText) || 0) / 100;
             
@@ -2923,62 +2882,127 @@
         }
 
         function drawAxleCrossSection(axle, collarSize = 0) {
-            const container = dom['axle-cross-section-container']; container.innerHTML = '';
+            const container = dom['axle-cross-section-container']; 
+            container.innerHTML = '';
             if (!axle) return;
-            const outerDia = parseFloat(axle['Diameter']); const wallThick = parseFloat(axle['Wall Thickness']); const shape = (axle['Shape'] || 'circular').toLowerCase();
+
+            const outerDia = parseFloat(axle['Diameter']); 
+            const wallThick = parseFloat(axle['Wall Thickness']); 
+            const shape = (axle['Shape'] || 'circular').toLowerCase();
             if (isNaN(outerDia) || isNaN(wallThick) || outerDia <= 0 || wallThick <= 0) return;
+
             const innerDia = outerDia - (2 * wallThick);
-            const svgNS = "http://www.w3.org/2000/svg"; const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 550; const svgHeight = 250; svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-            const padding = { top: 20, right: 100, bottom: 20, left: 100 };
-            const graphSize = Math.min(svgWidth - padding.left - padding.right, svgHeight - padding.top - padding.bottom) * 0.75;
-            const displayDiameter = collarSize > outerDia ? collarSize : outerDia;
-            const scale = graphSize / displayDiameter;
-            const cx = svgWidth / 2; const cy = svgHeight / 2;
+            const svgNS = "http://www.w3.org/2000/svg"; 
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 800; 
+            const svgHeight = 300; 
+            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+            // Shared scaling logic
+            const maxRefDia = Math.max(outerDia, collarSize, 120); 
+            const scale = 140 / maxRefDia; // Scale factor based on a 140px display diameter limit
+
+            const createElem = (type, attrs) => { 
+                const el = document.createElementNS(svgNS, type); 
+                for (const key in attrs) el.setAttribute(key, attrs[key]); return el; 
+            };
+
             const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker'); marker.setAttribute('id', 'arrow'); marker.setAttribute('viewBox', '0 0 10 10'); marker.setAttribute('refX', '1'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5'); marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path'); arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
+            const marker = document.createElementNS(svgNS, 'marker'); 
+            marker.setAttribute('id', 'axle-arrow'); marker.setAttribute('viewBox', '0 0 10 10'); 
+            marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); 
+            marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5'); marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path'); 
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); 
+            marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
+
+            // --- LEFT SIDE: CROSS SECTION ---
+            const cx = 150; 
+            const cy = 150;
+
             if (shape === 'octagonal') {
                 const createOctagon = (flatToFlat, style) => {
                     const circumRadius = (flatToFlat / 2) / Math.cos(Math.PI / 8);
                     const points = [];
                     for (let i = 0; i < 8; i++) {
                         const angle = (Math.PI / 8) + i * (Math.PI / 4);
-                        const x = cx + (circumRadius * scale) * Math.cos(angle);
-                        const y = cy - (circumRadius * scale) * Math.sin(angle);
-                        points.push(`${x},${y}`);
+                        points.push(`${cx + (circumRadius * scale) * Math.cos(angle)},${cy - (circumRadius * scale) * Math.sin(angle)}`);
                     }
-                    const polygon = document.createElementNS(svgNS, 'polygon'); polygon.setAttribute('points', points.join(' ')); for (const key in style) polygon.setAttribute(key, style[key]); return polygon;
+                    return createElem('polygon', { points: points.join(' '), ...style });
                 };
-                const polyStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
-                svg.appendChild(createOctagon(outerDia, polyStyle)); svg.appendChild(createOctagon(innerDia, polyStyle));
+                svg.appendChild(createOctagon(outerDia, { stroke: '#343a40', 'stroke-width': '2', fill: '#adb5bd' }));
+                svg.appendChild(createOctagon(innerDia, { stroke: '#343a40', 'stroke-width': '1.5', fill: '#f8f9fa' }));
             } else { 
-                const createCircle = (diameter, style) => {
-                    const circle = document.createElementNS(svgNS, 'circle'); circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', (diameter / 2) * scale); for (const key in style) circle.setAttribute(key, style[key]); return circle;
-                };
-                const circleStyle = { stroke: '#343a40', 'stroke-width': '1', fill: 'none' };
-                svg.appendChild(createCircle(outerDia, circleStyle)); svg.appendChild(createCircle(innerDia, circleStyle));
+                svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (outerDia/2)*scale, stroke: '#343a40', 'stroke-width': '2', fill: '#adb5bd' }));
+                svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (innerDia/2)*scale, stroke: '#343a40', 'stroke-width': '1.5', fill: '#f8f9fa' }));
             }
+
             if (collarSize > outerDia) {
-                const collarRadius = (collarSize / 2) * scale;
-                const collarCircle = document.createElementNS(svgNS, 'circle'); collarCircle.setAttribute('cx', cx); collarCircle.setAttribute('cy', cy); collarCircle.setAttribute('r', collarRadius); collarCircle.setAttribute('stroke', 'black'); collarCircle.setAttribute('stroke-width', '3'); collarCircle.setAttribute('fill', 'none'); svg.appendChild(collarCircle);
+                svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (collarSize/2)*scale, stroke: '#555', 'stroke-width': '1', 'stroke-dasharray': '4,2', fill: 'none' }));
             }
-            const createElem = (type, attrs) => { const el = document.createElementNS(svgNS, type); for (const key in attrs) el.setAttribute(key, attrs[key]); return el; };
-            const outerRadiusScaled = (outerDia / 2) * scale; const innerRadiusScaled = (innerDia / 2) * scale;
-            const od_dim_x = cx + outerRadiusScaled + 40;
-            svg.appendChild(createElem('line', { x1: cx, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy - outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: cx, y1: cy + outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: od_dim_x, y1: cy - outerRadiusScaled, x2: od_dim_x, y2: cy + outerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
-            const odTextX = od_dim_x + 15; const odText = createElem('text', { x: odTextX, y: cy, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${odTextX}, ${cy})` }); odText.textContent = `${outerDia.toFixed(1)}`; svg.appendChild(odText);
-            const id_dim_x = cx + innerRadiusScaled + 15;
-            svg.appendChild(createElem('line', { x1: cx, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy - innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: cx, y1: cy + innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'stroke-dasharray': '2,2' }));
-            svg.appendChild(createElem('line', { x1: id_dim_x, y1: cy - innerRadiusScaled, x2: id_dim_x, y2: cy + innerRadiusScaled, class: 'dimension-line', 'marker-start': 'url(#arrow)', 'marker-end': 'url(#arrow)' }));
-            const idTextX = id_dim_x + 15; const idText = createElem('text', { x: idTextX, y: cy, class: 'large-dimension-text', 'text-anchor': 'middle', transform: `rotate(-90, ${idTextX}, ${cy})` }); idText.textContent = `${innerDia.toFixed(1)}`; svg.appendChild(idText);
-            const angle = 135 * Math.PI / 180; const arrowTipX = cx + outerRadiusScaled * Math.cos(angle); const arrowTipY = cy - outerRadiusScaled * Math.sin(angle); const leaderElbowX = cx - outerRadiusScaled - 20; const leaderElbowY = cy - outerRadiusScaled - 20;
-            svg.appendChild(createElem('line', { x1: leaderElbowX, y1: leaderElbowY, x2: arrowTipX, y2: arrowTipY, class: 'dimension-line', 'marker-end': 'url(#arrow)' }));
-            const textLineStartX = leaderElbowX - 30; svg.appendChild(createElem('line', { x1: leaderElbowX, y1: leaderElbowY, x2: textLineStartX, y2: leaderElbowY, class: 'dimension-line' }));
-            const wtText = createElem('text', { x: textLineStartX + (leaderElbowX - textLineStartX) / 2, y: leaderElbowY - 8, class: 'large-dimension-text' }); wtText.textContent = `${wallThick.toFixed(1)}`; svg.appendChild(wtText);
+
+            // Cross section Labels
+            svg.appendChild(createElem('text', { x: cx, y: cy + (outerDia/2)*scale + 25, class: 'graph-text', 'font-weight': 'bold' }).appendChild(document.createTextNode("Cross Section")).parentNode);
+
+            // --- RIGHT SIDE: FRONT VIEW ---
+            const fvX = 400; // Start of front view
+            const fvW = 250; // Visual width of the axle tube
+            const axleH = outerDia * scale;
+            const fvY = cy - (axleH / 2);
+
+            // Get Motor Shaft Data
+            const motorShaftRaw = dom['motor-driveshaft-dia'].textContent;
+            const motorShaft = parseFloat(motorShaftRaw) || 40; // fallback
+            
+            // Logic for Right Shaft (Bearing / Safety Brake)
+            const mountType = dom.motorMountingType.value;
+            let rightShaft = motorShaft; // Default matches motor (standard bearing)
+            let rightLabel = "Bearing Shaft";
+
+            if (mountType === 'Chain drive') {
+                const brakeShaftRaw = dom['safety-brake-driveshaft'].textContent;
+                rightShaft = parseFloat(brakeShaftRaw) || motorShaft;
+                rightLabel = "Safety Brake Shaft";
+            }
+
+            const mShaftH = motorShaft * scale;
+            const rShaftH = rightShaft * scale;
+            const shaftW = 40; // Width of the shaft stub in graphic
+
+            // Draw Axle Body
+            svg.appendChild(createElem('rect', { x: fvX, y: fvY, width: fvW, height: axleH, fill: '#adb5bd', stroke: '#343a40', 'stroke-width': '2' }));
+            
+            // Draw Left Shaft (Motor)
+            svg.appendChild(createElem('rect', { x: fvX - shaftW, y: cy - (mShaftH / 2), width: shaftW, height: mShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
+            
+            // Draw Right Shaft (Brake/Bearing)
+            svg.appendChild(createElem('rect', { x: fvX + fvW, y: cy - (rShaftH / 2), width: shaftW, height: rShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
+
+            // Front View Labels
+            svg.appendChild(createElem('text', { x: fvX + fvW/2, y: cy + (outerDia/2)*scale + 25, class: 'graph-text', 'font-weight': 'bold' }).appendChild(document.createTextNode("Axle Front View")).parentNode);
+
+            // Shaft Dimensions
+            const drawVertDim = (x, yCenter, h, label) => {
+                const y1 = yCenter - h/2;
+                const y2 = yCenter + h/2;
+                svg.appendChild(createElem('line', { x1: x, y1: y1, x2: x, y2: y2, stroke: '#343a40', 'stroke-width': '1', 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
+                const txt = createElem('text', { x: x + 5, y: yCenter, class: 'dimension-text', 'text-anchor': 'start', 'dominant-baseline': 'middle', 'font-size': '10px' });
+                txt.textContent = `Ø${label}`;
+                svg.appendChild(txt);
+            };
+
+            drawVertDim(fvX - shaftW - 20, cy, mShaftH, motorShaft.toFixed(1));
+            drawVertDim(fvX + fvW + shaftW + 10, cy, rShaftH, rightShaft.toFixed(1));
+
+            // Annotation for Right side
+            const rNote = createElem('text', { x: fvX + fvW + shaftW/2, y: cy - (rShaftH / 2) - 10, class: 'graph-data-label' });
+            rNote.textContent = rightLabel;
+            svg.appendChild(rNote);
+
+            const lNote = createElem('text', { x: fvX - shaftW/2, y: cy - (mShaftH / 2) - 10, class: 'graph-data-label' });
+            lNote.textContent = "Motor Drive";
+            svg.appendChild(lNote);
+
             container.appendChild(svg);
         }
 
@@ -3202,9 +3226,10 @@
             if (bottomLathHeight > 0) {
                 drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
                 createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY); createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
-}
-return svg;
-}
+            }
+            return svg;
+        }
+
 		function switchTab(targetTabId) {
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
         tabButtons.forEach(b => b.classList.remove('active'));
@@ -3242,7 +3267,6 @@ return svg;
 
 <script>
     window.addEventListener('load', () => {
-        // TAB VISIBILITY: Tabs are visible by default unless admin hides them manually.
         initializeAdminControls(); 
         const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
         const statusDiv = document.getElementById('import-status');
@@ -3315,25 +3339,19 @@ return svg;
 
     function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
         if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
-        
         const axleRadius = 60; 
         const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
         const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
         const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
-        
         let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
-        
         const widthM = width_mm / 1000;
         let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
         const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
         const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-        
         let totalEndlockWeight = 0;
         let bufferEndlockWeight = 0; 
-
         const lathName = (lath['Name'] || '').toLowerCase();
         const isWindLath = lathName.includes('wind');
-
         if (isWindLath) {
             const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
             let castWeightG = 0;
@@ -3341,14 +3359,12 @@ return svg;
                 const wKey = Object.keys(castEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
                 castWeightG = wKey ? parseFloat(castEndlockObj[wKey]) : 0;
             }
-
             const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
             let windWeightG = 0;
             if (windEndlockObj) {
                 const wKey = Object.keys(windEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
                 windWeightG = wKey ? parseFloat(windEndlockObj[wKey]) : 0;
             }
-
             for (let i = 1; i <= numLaths; i++) {
                 if (i % 2 !== 0 && castWeightG > 0) { totalEndlockWeight += 2 * (castWeightG / 1000); }
                 const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
@@ -3367,7 +3383,6 @@ return svg;
             }
             if (endlockWeightG > 0) { bufferEndlockWeight = 4 * (endlockWeightG / 1000); }
         }
-
         const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
         let torqueWeight = totalWeight;
         if (numLaths >= 3) {
@@ -3382,13 +3397,11 @@ return svg;
          if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
         const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
         if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
-
         let bestAxle = null;
         let bestDeflection = 0;
         let requiredRatio = 400;
         if (width_mm > 10000) requiredRatio = 800;
         else if (width_mm > 8000) requiredRatio = 600;
-
         for (const axle of axlesForShape) {
             const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
             if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
@@ -3397,7 +3410,6 @@ return svg;
                 break; 
             }
         }
-        
         if (bestAxle) { 
             return { name: bestAxle.Name, deflection: bestDeflection, axleObj: bestAxle }; 
         } else { 
@@ -3418,20 +3430,17 @@ return svg;
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
         const lathThickness = parseFloat(lath['Thickness']) || 0;
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
-
         if (matchAxleDia > 0 && overrideCollarDia > 0) {
             const currentAxleDia = parseFloat(axle['Diameter']) || 0;
             if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
                 effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
             }
         }
-
         const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
         const lathsWeight = torqueWeight - bottomLathWeightActual;
         let heightLifted = 0;
         let currentRollDiameter = effectiveStartDiameter;
         let maxTorqueFound = 0;
-
         while (heightLifted < travelHeight) {
             const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
             const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
@@ -3439,11 +3448,8 @@ return svg;
             heightLifted += (Math.PI * currentRollDiameter) / 2; 
             currentRollDiameter += lathThickness;
         }
-
         let totalFriction = baseline_friction;
         if (height_mm >= 7000) totalFriction += 5;
-        
-        // Logic: Add 5% friction if motor is High Speed (matches logic used in main calculator)
         if (motorObj) {
             const usageKey = Object.keys(motorObj).find(k => k.toLowerCase().trim() === 'usage type');
             const usage = usageKey ? (motorObj[usageKey] || '').toLowerCase() : '';
@@ -3451,7 +3457,6 @@ return svg;
                 totalFriction += 5;
             }
         }
-
         return maxTorqueFound * (1 + totalFriction / 100);
     }
 
@@ -3459,7 +3464,6 @@ return svg;
         const statusDiv = document.getElementById('csv-generation-status');
         statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
         await new Promise(resolve => setTimeout(resolve, 50));
-        
         const minWidth = parseInt(document.getElementById('reportMinWidth').value);
         const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
         const minHeight = parseInt(document.getElementById('reportMinHeight').value);
@@ -3467,29 +3471,23 @@ return svg;
         const interval = parseInt(document.getElementById('reportInterval').value);
         const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
         const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
-
         const lathIndex1 = document.getElementById('reportLathType').value;
         const lathIndex2 = document.getElementById('reportLathType2').value;
         const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
-
         const endlockIndex = document.getElementById('reportEndlockType').value;
         const bottomLathIndex = document.getElementById('reportBottomLathType').value;
-
         if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
             statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
         }
-
         const primaryLath = lathData[lathIndex1];
         const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
         const selectedEndlock = endlockData[endlockIndex];
         const selectedBottomLath = bottomLathData[bottomLathIndex];
-
         const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
         const selectedManufacturers = getSelectedValues('report-motor-checkbox');
         const selectedVoltages = getSelectedValues('report-voltage-checkbox');
         const selectedMountings = getSelectedValues('report-mounting-checkbox');
         const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
-        
         let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
         if (motorData.length > 0) {
             const firstMotor = motorData[0];
@@ -3498,26 +3496,21 @@ return svg;
             mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
             usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
         }
-        
         const calculationCache = {};
-        const defaultAdditionalLength = 20; // Updated default per requirement
+        const defaultAdditionalLength = 20; 
         let calculationCount = 0;
-        
         for (let width = minWidth; width <= maxWidth; width += interval) {
             calculationCache[width] = {};
             const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
-
             for (let height = minHeight; height <= maxHeight; height += interval) {
                 calculationCount++;
                 const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
                 const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
                 const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
-                
                 const result = {
                     'Lath Type Used': currentLath.Name, 
                     'Total Weight (kg)': props.totalWeight.toFixed(2),
-                    'Required Axle Name': axleResult.name,
-                    'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
+                    'Required Axle Name': axleResult.name,'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
                 };
 
                 for (const usage of selectedUsageTypes) {
@@ -3528,10 +3521,8 @@ return svg;
                                 
                                 // Find sample motor to determine if High Speed friction logic applies
                                 const sampleMotor = motorData.find(m => {
-                                    // Handle Voltage Split "230/415"
                                     const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
                                     const volMatch = motorVoltages.includes(String(vol));
-                                    
                                     return m[usageKey] == usage && 
                                            m[manufacturerKey] == man && 
                                            volMatch && 
@@ -3541,7 +3532,6 @@ return svg;
                                 const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
 
                                 const suitableMotors = motorData.filter(m => {
-                                    // Handle Voltage Split "230/415"
                                     const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
                                     const volMatch = motorVoltages.includes(String(vol));
 
@@ -3562,9 +3552,12 @@ return svg;
                 calculationCache[width][height] = result;
             }
         }
+
+        // 4. Assemble CSV Tables
         const csvData = [];
         const widthHeaders = ['Height \\ Width'];
         for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
+        
         const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
         
         for (const tableType of tableTypes) {
@@ -3577,11 +3570,14 @@ return svg;
                 }
                 csvData.push(row);
             }
-            csvData.push([]);
+            csvData.push([]); // Spacer row
         }
+
         downloadCsv(csvData);
-        statusDiv.textContent = 'Report generated and downloaded.'; statusDiv.style.color = 'green';
+        statusDiv.textContent = 'Report generated and downloaded.'; 
+        statusDiv.style.color = 'green';
     }
+
 	function downloadCsv(data) {
         let csvContent = "data:text/csv;charset=utf-8,";
         data.forEach(function(rowArray) {
