@@ -1379,17 +1379,20 @@
             
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             const estCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, null, curtainWidth);
-            const { bestAxle } = findAndSetBestAxle(estCurtainProps.totalWeight, curtainWidth);
+            const { bestAxle: tempAxle } = findAndSetBestAxle(estCurtainProps.totalWeight, curtainWidth, false);
 
-            const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, bestAxle, curtainWidth);
+            const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, tempAxle, curtainWidth);
             const { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
             visionCalcs = visionData;
             calculateEndplateRecommendation(); 
 
-            const { deflection, totalLength } = findAndSetBestAxle(totalWeight, curtainWidth);
-            drawDeflectionGraphic(totalLength, deflection);
-            calculateMotorRecommendation(torqueWeight, effectiveLath, bestAxle, travelHeight, curtainWidth);
+            // IMPORTANT: Perform motor and safety brake calculations before final axle drawing
+            calculateMotorRecommendation(torqueWeight, effectiveLath, tempAxle, travelHeight, curtainWidth);
             calculateSafetyBrakeSelection();
+
+            // Now draw the axle cross section with safety brake info available
+            const { deflection, totalLength, bestAxle } = findAndSetBestAxle(totalWeight, curtainWidth, true);
+            drawDeflectionGraphic(totalLength, deflection);
             
             const selectedEndplateIndex = dom.endplateSelector.value;
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
@@ -1398,7 +1401,6 @@
             drawTopDownWidthGraphic(calculatedWidths, selectedGuide);
             updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
             
-            // Chain Calculation
             updateChainCalculations();
         }
         
@@ -1647,16 +1649,18 @@
             container.appendChild(svg);
         }
 
-        function findAndSetBestAxle(totalWeightKgs, curtainWidth) {
+        function findAndSetBestAxle(totalWeightKgs, curtainWidth, drawGraphics = true) {
             const width = curtainWidth || 0;
             const additionalLength = parseFloat(dom.additionalLength.value) || 0;
             const totalLength = width + additionalLength;
-            dom['total-axle-length'].textContent = totalLength.toFixed(0);
+            if(drawGraphics) dom['total-axle-length'].textContent = totalLength.toFixed(0);
 
             const selectedShape = document.querySelector('input[name="axleShape"]:checked')?.value || 'circular';
             if (totalLength <= 0 || axleData.length === 0) {
-                 ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
-                dom['axle-material-grade'].textContent = 'N/A'; dom.axleType.innerHTML = '<option>-- No data --</option>'; drawAxleCrossSection(null);
+                 if(drawGraphics) {
+                    ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
+                    dom['axle-material-grade'].textContent = 'N/A'; dom.axleType.innerHTML = '<option>-- No data --</option>'; drawAxleCrossSection(null);
+                 }
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
             }
 
@@ -1666,9 +1670,11 @@
             });
 
             if (axlesForShape.length === 0) {
-                dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available --</option>`;
-                ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
-                dom['axle-material-grade'].textContent = 'N/A'; drawAxleCrossSection(null);
+                if(drawGraphics) {
+                    dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available --</option>`;
+                    ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
+                    dom['axle-material-grade'].textContent = 'N/A'; drawAxleCrossSection(null);
+                }
                 return { bestAxle: null, deflection: 0, totalLength: 0 };
             }
 
@@ -1694,50 +1700,57 @@
                 finalSelectedOriginalIndex = recommendedAxleOriginalIndex; 
             }
 
-            const select = dom.axleType; select.innerHTML = '';
-            axlesForShape.forEach((axle, index) => {
-                const perf = axlePerformances[index];
-                const option = document.createElement('option');
-                option.value = axle.originalIndex;
-                let optionText = axle['Name'];
-                if (axle['Alternate name']) optionText += ` (${axle['Alternate name']})`;
-                option.textContent = optionText;
-                const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
-                option.classList.toggle('option-pass', passesTest);
-                option.classList.toggle('option-fail', !passesTest);
-                select.appendChild(option);
-            });
-            
-            if (finalSelectedOriginalIndex > -1) { select.value = finalSelectedOriginalIndex; }
-            const selectedAxleData = axleData[select.value];
-            if (!selectedAxleData) { drawAxleCrossSection(null); return { bestAxle: null, deflection: 0, totalLength }; }
+            if(drawGraphics) {
+                const select = dom.axleType; select.innerHTML = '';
+                axlesForShape.forEach((axle, index) => {
+                    const perf = axlePerformances[index];
+                    const option = document.createElement('option');
+                    option.value = axle.originalIndex;
+                    let optionText = axle['Name'];
+                    if (axle['Alternate name']) optionText += ` (${axle['Alternate name']})`;
+                    option.textContent = optionText;
+                    const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
+                    option.classList.toggle('option-pass', passesTest);
+                    option.classList.toggle('option-fail', !passesTest);
+                    select.appendChild(option);
+                });
+                
+                if (finalSelectedOriginalIndex > -1) { select.value = finalSelectedOriginalIndex; }
+            }
+
+            const currentIdx = drawGraphics ? dom.axleType.value : finalSelectedOriginalIndex;
+            const selectedAxleData = axleData[currentIdx];
+            if (!selectedAxleData) { if(drawGraphics) drawAxleCrossSection(null); return { bestAxle: null, deflection: 0, totalLength }; }
 
             const finalPerformance = performDeflectionCalc(totalWeightKgs, selectedAxleData, totalLength, curtainWidth);
-            dom['axle-weight'].textContent = finalPerformance.axleWeight.toFixed(2);
-            const totalDeflectionWeight = totalWeightKgs + finalPerformance.axleWeight;
-            dom['total-deflection-weight'].textContent = totalDeflectionWeight.toFixed(2);
-            dom['axle-material-grade'].textContent = finalPerformance.materialGradeValue ? `${finalPerformance.materialGradeValue} MPa` : 'N/A';
-            dom['moment-of-inertia'].textContent = finalPerformance.inertiaI.toLocaleString(undefined, { maximumFractionDigits: 2 });
-            dom['axle-deflection'].textContent = finalPerformance.deflection.toFixed(2);
-            dom['deflection-ratio'].textContent = (finalPerformance.ratio !== Infinity) ? `1 : ${Math.round(finalPerformance.ratio)} (Required 1:${requiredRatio})` : 'N/A';
-            dom['axle-safety-factor'].textContent = isFinite(finalPerformance.safetyFactor) ? finalPerformance.safetyFactor.toFixed(2) : 'Very High';
+            
+            if(drawGraphics) {
+                dom['axle-weight'].textContent = finalPerformance.axleWeight.toFixed(2);
+                const totalDeflectionWeight = totalWeightKgs + finalPerformance.axleWeight;
+                dom['total-deflection-weight'].textContent = totalDeflectionWeight.toFixed(2);
+                dom['axle-material-grade'].textContent = finalPerformance.materialGradeValue ? `${finalPerformance.materialGradeValue} MPa` : 'N/A';
+                dom['moment-of-inertia'].textContent = finalPerformance.inertiaI.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                dom['axle-deflection'].textContent = finalPerformance.deflection.toFixed(2);
+                dom['deflection-ratio'].textContent = (finalPerformance.ratio !== Infinity) ? `1 : ${Math.round(finalPerformance.ratio)} (Required 1:${requiredRatio})` : 'N/A';
+                dom['axle-safety-factor'].textContent = isFinite(finalPerformance.safetyFactor) ? finalPerformance.safetyFactor.toFixed(2) : 'Very High';
 
-            if (finalPerformance.ratio < requiredRatio || finalPerformance.deflection > 17) {
-                dom['ratio-paragraph'].classList.add('warning-text');
-                dom['axle-safety-factor'].parentElement.classList.add('warning-text');
-                dom['recommendation-box'].style.display = 'block';
-                const nextBest = axlesForShape.find(axle => {
-                    const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, curtainWidth);
-                    return perf.ratio >= requiredRatio && perf.deflection <= 17;
-                });
-                if (nextBest) { dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle failed. Max allowable deflection is 17mm. Consider using <strong>${nextBest['Name']}</strong>.`; } else { dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available ${selectedShape} axle passes the 1:${requiredRatio} ratio and 17mm deflection limit.`; }
-            } else {
-                dom['ratio-paragraph'].classList.remove('warning-text');
-                dom['axle-safety-factor'].parentElement.classList.remove('warning-text');
-                dom['recommendation-box'].style.display = 'none';
+                if (finalPerformance.ratio < requiredRatio || finalPerformance.deflection > 17) {
+                    dom['ratio-paragraph'].classList.add('warning-text');
+                    dom['axle-safety-factor'].parentElement.classList.add('warning-text');
+                    dom['recommendation-box'].style.display = 'block';
+                    const nextBest = axlesForShape.find(axle => {
+                        const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, curtainWidth);
+                        return perf.ratio >= requiredRatio && perf.deflection <= 17;
+                    });
+                    if (nextBest) { dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle failed. Max allowable deflection is 17mm. Consider using <strong>${nextBest['Name']}</strong>.`; } else { dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available ${selectedShape} axle passes the 1:${requiredRatio} ratio and 17mm deflection limit.`; }
+                } else {
+                    dom['ratio-paragraph'].classList.remove('warning-text');
+                    dom['axle-safety-factor'].parentElement.classList.remove('warning-text');
+                    dom['recommendation-box'].style.display = 'none';
+                }
+                const collarSize = parseFloat(dom.collarSize.value) || 0;
+                drawAxleCrossSection(selectedAxleData, collarSize);
             }
-            const collarSize = parseFloat(dom.collarSize.value) || 0;
-            drawAxleCrossSection(selectedAxleData, collarSize);
             return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
         }
 
@@ -1842,7 +1855,7 @@
         }
 
         function calculateMaxFloorToAxleHeight(endplateSize, lath, bottomLath, axle) {
-            if (!lath || !axle || !bottomLath || !endplateSize || endplateSize <= 0) return 0;
+            if (!lath || !axle || !bottomLath || endplateSize || endplateSize <= 0) return 0;
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(axle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
@@ -2097,6 +2110,12 @@
         function updateSelectedSafetyBrakeInfo() {
             calculateSafetyBrakeSelection();
             updateSelectedMotorInfo();
+            // Re-draw axle cross section when brake manually changed
+            const axleIdx = dom.axleType.value;
+            if(axleIdx !== "" && axleData[axleIdx]) {
+                const collarSize = parseFloat(dom.collarSize.value) || 0;
+                drawAxleCrossSection(axleData[axleIdx], collarSize);
+            }
         }
 
         function updateSelectedMotorInfo() {
@@ -2138,17 +2157,18 @@
             let displayShaft = dsKey ? selectedMotor[dsKey] : 'N/A';
             const selectedBrakeIndex = dom.safetyBrakeSelector.value;
             
-            if (selectedBrakeIndex !== "" && safetyBrakeData[selectedBrakeIndex]) {
-                const selectedBrake = safetyBrakeData[selectedBrakeIndex];
-                const brakeShaftKey = Object.keys(selectedBrake).find(k => k.toLowerCase().includes('driveshaft diameter'));
+            // Check if suitable brakes were calculated. If suitableBrakes isn't global, we can re-derive it or look at current dropdown
+            if (selectedBrakeIndex !== "") {
+                const sbText = dom.safetyBrakeSelector.options[dom.safetyBrakeSelector.selectedIndex].text;
+                const match = sbText.match(/\((.*?)\)/); // If we need to pull more info
                 
-                if (brakeShaftKey) {
-                    const brakeShaft = String(selectedBrake[brakeShaftKey]).trim();
-                    const motorOptions = String(displayShaft).split('/').map(s => s.trim());
-                    
-                    if (motorOptions.includes(brakeShaft)) {
-                        displayShaft = `${brakeShaft} mm (Matched to Brake)`;
-                    }
+                // We'll get exact Driveshaft from SafetyB tab
+                const dsVal = parseFloat(dom['safety-brake-driveshaft'].textContent);
+                if (!isNaN(dsVal)) {
+                     const motorOptions = String(displayShaft).split('/').map(s => s.trim());
+                     if (motorOptions.includes(String(dsVal))) {
+                         displayShaft = `${dsVal} mm (Matched to Brake)`;
+                     }
                 }
             }
             dom['motor-driveshaft-dia'].textContent = displayShaft;
@@ -2253,6 +2273,13 @@
                 resetChainInfo();
             }
             updateChainCalculations();
+            
+            // Re-draw cross section to reflect new motor shaft diameter
+            const axleIdx = dom.axleType.value;
+            if(axleIdx !== "" && axleData[axleIdx]) {
+                const collarSize = parseFloat(dom.collarSize.value) || 0;
+                drawAxleCrossSection(axleData[axleIdx], collarSize);
+            }
         }
         
         function updateSelectedWicketInfo() {
@@ -3457,7 +3484,7 @@
         const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
         const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
         const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
-        let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
+		let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
         const widthM = width_mm / 1000;
         let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
         const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
@@ -3633,7 +3660,6 @@
                             for (const mou of selectedMountings) {
                                 const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
                                 
-                                // Find sample motor to determine if High Speed friction logic applies
                                 const sampleMotor = motorData.find(m => {
                                     const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
                                     const volMatch = motorVoltages.includes(String(vol));
@@ -3667,7 +3693,6 @@
             }
         }
 
-        // 4. Assemble CSV Tables
         const csvData = [];
         const widthHeaders = ['Height \\ Width'];
         for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
@@ -3684,7 +3709,7 @@
                 }
                 csvData.push(row);
             }
-            csvData.push([]); // Spacer row
+            csvData.push([]); 
         }
 
         downloadCsv(csvData);
