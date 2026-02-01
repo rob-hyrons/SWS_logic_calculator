@@ -2880,6 +2880,7 @@
             }
             container.appendChild(svg);
         }
+		
 function drawAxleCrossSection(axle, collarSize = 0) {
             const container = dom['axle-cross-section-container']; 
             container.innerHTML = '';
@@ -3093,7 +3094,30 @@ function drawAxleCrossSection(axle, collarSize = 0) {
                 lblL.textContent = leftLabel; svg.appendChild(lblL);
             } else {
                 // Tubular Internal Line
-                svg.appendChild(createElem('line', { x1: fvX, y1: fvY, x2: fvX, y2: fvY+axleH, stroke:'#343a40', 'stroke-width': '4'
+                svg.appendChild(createElem('line', { x1: fvX, y1: fvY, x2: fvX, y2: fvY+axleH, stroke:'#343a40', 'stroke-width': '4' }));
+                const txtTub = createElem('text', { x: fvX + 10, y: cy, 'text-anchor': 'start', 'dominant-baseline': 'middle', 'fill': '#fff', 'font-family': 'Arial', 'font-size':'14px' });
+                txtTub.textContent = "Tubular Motor"; svg.appendChild(txtTub);
+            }
+
+            // --- RIGHT SHAFT ---
+            // Shaft
+            svg.appendChild(createElem('rect', { x: fvX + fvW, y: cy - (rightShaftH / 2), width: shaftW, height: rightShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
+
+            // Dimension
+            const rDimX = fvX + fvW + shaftW + 15;
+            svg.appendChild(createElem('line', { x1: rDimX, y1: cy - rightShaftH/2, x2: rDimX, y2: cy + rightShaftH/2, stroke: '#212529', 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
+            svg.appendChild(createElem('line', { x1: fvX + fvW + shaftW, y1: cy - rightShaftH/2, x2: rDimX, y2: cy - rightShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
+            svg.appendChild(createElem('line', { x1: fvX + fvW + shaftW, y1: cy + rightShaftH/2, x2: rDimX, y2: cy + rightShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
+
+            const txtR = createElem('text', { x: rDimX + 5, y: cy, 'text-anchor': 'start', 'dominant-baseline':'middle', ...stdFontBold });
+            txtR.textContent = `Ø${rightShaftDia.toFixed(1)}`; svg.appendChild(txtR);
+
+            // Label (Moved further right)
+            const lblR = createElem('text', { x: fvX + fvW + shaftW + 20, y: cy - (rightShaftH/2) - 15, 'text-anchor': 'start', ...stdFont });
+            lblR.textContent = rightLabel; svg.appendChild(lblR);
+
+            container.appendChild(svg);
+        }
 				
         function drawTopDownWidthGraphic(calculatedWidths, guide) {
             const container = dom['width-graphic-container']; container.innerHTML = '';
