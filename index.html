@@ -819,7 +819,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let motorImageMap = new Map();
@@ -1000,14 +1000,16 @@
                     'Wicket doors': ['Name', 'Height', 'Width'],
                     'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
                     'Guides': ['Name', 'Width', 'Penetration'],
-                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter']
+                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter'],
+                    'Bearings': ['Shaft size in mm']
                 };
 
                 for (const sheetName in required) {
                     if (!workbook.Sheets[sheetName]) {
-                        if (sheetName === 'Wicket doors' || sheetName === 'Endlock') {
+                        if (sheetName === 'Wicket doors' || sheetName === 'Endlock' || sheetName === 'Bearings') {
                             if(sheetName === 'Wicket doors') wicketData = [];
                             if(sheetName === 'Endlock') endlockData = [];
+                            if(sheetName === 'Bearings') bearingData = [];
                             continue;
                         }
                         throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
@@ -1024,6 +1026,7 @@
                         case 'Endlock': endlockData = objectData; break;
                         case 'Guides': guideData = objectData; break;
                         case 'Chaindrive': chainDriveData = objectData; break;
+                        case 'Bearings': bearingData = objectData; break;
                     }
                 }
 
@@ -1078,8 +1081,30 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = [];
             }
+        }
+
+        /**
+         * Logic Adjustment: Check Bearings sheet for next available shaft size
+         */
+        function getMatchingBearingSize(requiredSize) {
+            if (!bearingData || bearingData.length === 0 || isNaN(requiredSize)) return requiredSize;
+            
+            const sizes = bearingData
+                .map(b => parseFloat(b['Shaft size in mm']))
+                .filter(s => !isNaN(s))
+                .sort((a, b) => a - b);
+                
+            if (sizes.length === 0) return requiredSize;
+            
+            // Check for exact match or first size larger
+            for (let size of sizes) {
+                if (size >= requiredSize) return size;
+            }
+            
+            // If the required size is larger than all available bearings, return the original
+            return requiredSize;
         }
 
         function handleCsvImport() {
@@ -1975,7 +2000,9 @@
                 dom['safety-brake-capacity'].textContent = parseFloat(selectedBrake[opTorqueKey]) || 0;
                 
                 const dsKey = Object.keys(selectedBrake).find(k => k.toLowerCase().includes('driveshaft diameter mm'));
-                dom['safety-brake-driveshaft'].textContent = selectedBrake[dsKey] || 'N/A';
+                const rawShaft = parseFloat(selectedBrake[dsKey]);
+                const bearingShaft = getMatchingBearingSize(rawShaft);
+                dom['safety-brake-driveshaft'].textContent = bearingShaft !== rawShaft ? `${rawShaft} (Bearing Match: ${bearingShaft} mm)` : `${rawShaft} mm`;
                 
                 const brakeName = selectedBrake.Name;
                 const imageContainer = dom['safety-brake-image-container'];
@@ -2143,11 +2170,14 @@
                 const brakeShaftKey = Object.keys(selectedBrake).find(k => k.toLowerCase().includes('driveshaft diameter'));
                 
                 if (brakeShaftKey) {
-                    const brakeShaft = String(selectedBrake[brakeShaftKey]).trim();
+                    const rawBrakeShaft = parseFloat(selectedBrake[brakeShaftKey]);
+                    const bearingShaft = getMatchingBearingSize(rawBrakeShaft);
+                    const brakeShaftDisplay = bearingShaft !== rawBrakeShaft ? `${rawBrakeShaft} (Bearing: ${bearingShaft} mm)` : `${rawBrakeShaft} mm`;
+                    
                     const motorOptions = String(displayShaft).split('/').map(s => s.trim());
                     
-                    if (motorOptions.includes(brakeShaft)) {
-                        displayShaft = `${brakeShaft} mm (Matched to Brake)`;
+                    if (motorOptions.includes(String(rawBrakeShaft))) {
+                        displayShaft = `${brakeShaftDisplay} (Matched to Brake)`;
                     }
                 }
             }
@@ -2255,6 +2285,11 @@
             updateChainCalculations();
         }
         
+        function updateSelectedSafetyBrakeInfo() {
+            calculateSafetyBrakeSelection();
+            updateSelectedMotorInfo();
+        }
+
         function updateSelectedWicketInfo() {
             const selectedIndex = dom.wicketDoorSelector.value;
             if (selectedIndex !== "" && wicketData[selectedIndex]) {
@@ -2918,6 +2953,10 @@
             }
             if (isNaN(brakeShaftValue) || brakeShaftValue === 0) brakeShaftValue = 40;
 
+            // Apply Bearings Adjustment Logic
+            const motorShaftBearing = getMatchingBearingSize(motorShaftRaw);
+            const brakeShaftBearing = getMatchingBearingSize(brakeShaftValue);
+
             // C. Determine Shaft Configuration
             let leftShaftDia = 40;
             let rightShaftDia = 40;
@@ -2929,30 +2968,30 @@
                 // --- TUBULAR MOTOR ---
                 showLeftShaft = false; 
                 
-                // Right Side: Safety Brake (Use EXACT brake size)
-                rightShaftDia = brakeShaftValue;
+                // Right Side: Safety Brake
+                rightShaftDia = brakeShaftBearing;
                 rightLabel = "Safety Brake Shaft";
 
             } else if (isChainDrive) {
                 // --- CHAIN DRIVE ---
                 
-                // Right Side: Safety Brake (Use EXACT brake size)
-                rightShaftDia = brakeShaftValue;
+                // Right Side: Safety Brake
+                rightShaftDia = brakeShaftBearing;
                 rightLabel = "Safety Brake Shaft";
 
-                // Left Side: Bearing Shaft (Matches brake size, but MINIMUM 30mm)
-                leftShaftDia = (brakeShaftValue < 30) ? 30 : brakeShaftValue;
+                // Left Side: Bearing Shaft
+                leftShaftDia = getMatchingBearingSize(Math.max(brakeShaftValue, 30));
                 leftLabel = "Bearing Shaft";
 
             } else {
                 // --- DIRECT DRIVE ---
                 
-                // Left Side: Motor Shaft (Use EXACT motor size)
-                leftShaftDia = motorShaftRaw;
+                // Left Side: Motor Shaft
+                leftShaftDia = motorShaftBearing;
                 leftLabel = "Motor Shaft";
 
-                // Right Side: Bearing Shaft (Matches motor, but MINIMUM 30mm)
-                rightShaftDia = (motorShaftRaw < 30) ? 30 : motorShaftRaw;
+                // Right Side: Bearing Shaft
+                rightShaftDia = getMatchingBearingSize(Math.max(motorShaftRaw, 30));
                 rightLabel = "Bearing Shaft";
             }
 
@@ -3504,207 +3543,206 @@
             torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
         }
         const travelHeight = height_mm - bottomLathHeight;
-		return { totalWeight, torqueWeight, travelHeight };
-    }
-
-    function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
-         if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
-        const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
-        if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
-        let bestAxle = null;
-        let bestDeflection = 0;
-        let requiredRatio = 400;
-        if (width_mm > 10000) requiredRatio = 800;
-        else if (width_mm > 8000) requiredRatio = 600;
-        for (const axle of axlesForShape) {
-            const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-            if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
-                bestAxle = axle; 
-                bestDeflection = perf.deflection;
-                break; 
-            }
-        }
-        if (bestAxle) { 
-            return { name: bestAxle.Name, deflection: bestDeflection, axleObj: bestAxle }; 
-        } else { 
-            let bestFailAxle = axlesForShape[0];
-            let minDeflection = Infinity;
-            axlesForShape.forEach(axle => {
-                 const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
-                 if(perf.deflection < minDeflection) {
-                     minDeflection = perf.deflection;
-                     bestFailAxle = axle;
-                 }
-            });
-            return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
+return { totalWeight, torqueWeight, travelHeight };
+}
+	function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
+     if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
+    const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
+    if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
+    let bestAxle = null;
+    let bestDeflection = 0;
+    let requiredRatio = 400;
+    if (width_mm > 10000) requiredRatio = 800;
+    else if (width_mm > 8000) requiredRatio = 600;
+    for (const axle of axlesForShape) {
+        const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
+        if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
+            bestAxle = axle; 
+            bestDeflection = perf.deflection;
+            break; 
         }
     }
-
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
-        if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
-        const lathThickness = parseFloat(lath['Thickness']) || 0;
-        let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
-        if (matchAxleDia > 0 && overrideCollarDia > 0) {
-            const currentAxleDia = parseFloat(axle['Diameter']) || 0;
-            if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
-                effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
-            }
-        }
-        const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-        const lathsWeight = torqueWeight - bottomLathWeightActual;
-        let heightLifted = 0;
-        let currentRollDiameter = effectiveStartDiameter;
-        let maxTorqueFound = 0;
-        while (heightLifted < travelHeight) {
-            const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
-            const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
-            maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
-            heightLifted += (Math.PI * currentRollDiameter) / 2; 
-            currentRollDiameter += lathThickness;
-        }
-        let totalFriction = baseline_friction;
-        if (height_mm >= 7000) totalFriction += 5;
-        if (motorObj) {
-            const usageKey = Object.keys(motorObj).find(k => k.toLowerCase().trim() === 'usage type');
-            const usage = usageKey ? (motorObj[usageKey] || '').toLowerCase() : '';
-            if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
-                totalFriction += 5;
-            }
-        }
-        return maxTorqueFound * (1 + totalFriction / 100);
+    if (bestAxle) { 
+        return { name: bestAxle.Name, deflection: bestDeflection, axleObj: bestAxle }; 
+    } else { 
+        let bestFailAxle = axlesForShape[0];
+        let minDeflection = Infinity;
+        axlesForShape.forEach(axle => {
+             const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
+             if(perf.deflection < minDeflection) {
+                 minDeflection = perf.deflection;
+                 bestFailAxle = axle;
+             }
+        });
+        return { name: bestFailAxle.Name, deflection: minDeflection, axleObj: bestFailAxle }; 
     }
+}
 
-    async function generateCsvReport() {
-        const statusDiv = document.getElementById('csv-generation-status');
-        statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const minWidth = parseInt(document.getElementById('reportMinWidth').value);
-        const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
-        const minHeight = parseInt(document.getElementById('reportMinHeight').value);
-        const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
-        const interval = parseInt(document.getElementById('reportInterval').value);
-        const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
-        const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
-        const lathIndex1 = document.getElementById('reportLathType').value;
-        const lathIndex2 = document.getElementById('reportLathType2').value;
-        const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
-        const endlockIndex = document.getElementById('reportEndlockType').value;
-        const bottomLathIndex = document.getElementById('reportBottomLathType').value;
-        if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
-            statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
+function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+    if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
+    const lathThickness = parseFloat(lath['Thickness']) || 0;
+    let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
+    if (matchAxleDia > 0 && overrideCollarDia > 0) {
+        const currentAxleDia = parseFloat(axle['Diameter']) || 0;
+        if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
+            effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
         }
-        const primaryLath = lathData[lathIndex1];
-        const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
-        const selectedEndlock = endlockData[endlockIndex];
-        const selectedBottomLath = bottomLathData[bottomLathIndex];
-        const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
-        const selectedManufacturers = getSelectedValues('report-motor-checkbox');
-        const selectedVoltages = getSelectedValues('report-voltage-checkbox');
-        const selectedMountings = getSelectedValues('report-mounting-checkbox');
-        const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
-        let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
-        if (motorData.length > 0) {
-            const firstMotor = motorData[0];
-            manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
-            voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
-            mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
-            usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
+    }
+    const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+    const lathsWeight = torqueWeight - bottomLathWeightActual;
+    let heightLifted = 0;
+    let currentRollDiameter = effectiveStartDiameter;
+    let maxTorqueFound = 0;
+    while (heightLifted < travelHeight) {
+        const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
+        const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
+        maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
+        heightLifted += (Math.PI * currentRollDiameter) / 2; 
+        currentRollDiameter += lathThickness;
+    }
+    let totalFriction = baseline_friction;
+    if (height_mm >= 7000) totalFriction += 5;
+    if (motorObj) {
+        const usageKey = Object.keys(motorObj).find(k => k.toLowerCase().trim() === 'usage type');
+        const usage = usageKey ? (motorObj[usageKey] || '').toLowerCase() : '';
+        if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
+            totalFriction += 5;
         }
-        const calculationCache = {};
-        const defaultAdditionalLength = 20; 
-        let calculationCount = 0;
-        for (let width = minWidth; width <= maxWidth; width += interval) {
-            calculationCache[width] = {};
-            const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
-            for (let height = minHeight; height <= maxHeight; height += interval) {
-                calculationCount++;
-                const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
-                const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
-                const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
-                const result = {
-                    'Lath Type Used': currentLath.Name, 
-                    'Total Weight (kg)': props.totalWeight.toFixed(2),
-                    'Required Axle Name': axleResult.name,'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
-                };
+    }
+    return maxTorqueFound * (1 + totalFriction / 100);
+}
 
-                for (const usage of selectedUsageTypes) {
-                    for (const man of selectedManufacturers) {
-                        for (const vol of selectedVoltages) {
-                            for (const mou of selectedMountings) {
-                                const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
-                                
-                                // Find sample motor to determine if High Speed friction logic applies
-                                const sampleMotor = motorData.find(m => {
-                                    const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
-                                    const volMatch = motorVoltages.includes(String(vol));
-                                    return m[usageKey] == usage && 
-                                           m[manufacturerKey] == man && 
-                                           volMatch && 
-                                           m[mountingKey] == mou;
-                                });
-                                
-                                const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
+async function generateCsvReport() {
+    const statusDiv = document.getElementById('csv-generation-status');
+    statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const minWidth = parseInt(document.getElementById('reportMinWidth').value);
+    const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
+    const minHeight = parseInt(document.getElementById('reportMinHeight').value);
+    const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
+    const interval = parseInt(document.getElementById('reportInterval').value);
+    const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
+    const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
+    const lathIndex1 = document.getElementById('reportLathType').value;
+    const lathIndex2 = document.getElementById('reportLathType2').value;
+    const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
+    const endlockIndex = document.getElementById('reportEndlockType').value;
+    const bottomLathIndex = document.getElementById('reportBottomLathType').value;
+    if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
+        statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
+    }
+    const primaryLath = lathData[lathIndex1];
+    const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
+    const selectedEndlock = endlockData[endlockIndex];
+    const selectedBottomLath = bottomLathData[bottomLathIndex];
+    const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
+    const selectedManufacturers = getSelectedValues('report-motor-checkbox');
+    const selectedVoltages = getSelectedValues('report-voltage-checkbox');
+    const selectedMountings = getSelectedValues('report-mounting-checkbox');
+    const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
+    let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
+    if (motorData.length > 0) {
+        const firstMotor = motorData[0];
+        manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
+        voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
+        mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
+        usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
+    }
+    const calculationCache = {};
+    const defaultAdditionalLength = 20; 
+    let calculationCount = 0;
+    for (let width = minWidth; width <= maxWidth; width += interval) {
+        calculationCache[width] = {};
+        const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
+        for (let height = minHeight; height <= maxHeight; height += interval) {
+            calculationCount++;
+            const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
+            const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
+            const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
+            const result = {
+                'Lath Type Used': currentLath.Name, 
+                'Total Weight (kg)': props.totalWeight.toFixed(2),
+                'Required Axle Name': axleResult.name,'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
+            };
 
-                                const suitableMotors = motorData.filter(m => {
-                                    const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
-                                    const volMatch = motorVoltages.includes(String(vol));
+            for (const usage of selectedUsageTypes) {
+                for (const man of selectedManufacturers) {
+                    for (const vol of selectedVoltages) {
+                        for (const mou of selectedMountings) {
+                            const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
+                            
+                            // Find sample motor to determine if High Speed friction logic applies
+                            const sampleMotor = motorData.find(m => {
+                                const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
+                                const volMatch = motorVoltages.includes(String(vol));
+                                return m[usageKey] == usage && 
+                                       m[manufacturerKey] == man && 
+                                       volMatch && 
+                                       m[mountingKey] == mou;
+                            });
+                            
+                            const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
 
-                                    return m[usageKey] == usage && 
-                                           m[manufacturerKey] == man && 
-                                           volMatch && 
-                                           m[mountingKey] == mou && 
-                                           reqTorque > 0 && 
-                                           reqTorque >= parseFloat(m['Torque (Nm) min']) && 
-                                           reqTorque <= parseFloat(m['Torque (Nm) max']);
-                                }).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
-                                
-                                result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
-                            }
+                            const suitableMotors = motorData.filter(m => {
+                                const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
+                                const volMatch = motorVoltages.includes(String(vol));
+
+                                return m[usageKey] == usage && 
+                                       m[manufacturerKey] == man && 
+                                       volMatch && 
+                                       m[mountingKey] == mou && 
+                                       reqTorque > 0 && 
+                                       reqTorque >= parseFloat(m['Torque (Nm) min']) && 
+                                       reqTorque <= parseFloat(m['Torque (Nm) max']);
+                            }).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
+                            
+                            result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
                         }
                     }
                 }
-                calculationCache[width][height] = result;
             }
+            calculationCache[width][height] = result;
         }
-
-        // 4. Assemble CSV Tables
-        const csvData = [];
-        const widthHeaders = ['Height \\ Width'];
-        for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
-        
-        const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
-        
-        for (const tableType of tableTypes) {
-            csvData.push([`Data: ${tableType}`]);
-            csvData.push(widthHeaders);
-            for (let height = minHeight; height <= maxHeight; height += interval) {
-                const row = [height];
-                for (let width = minWidth; width <= maxWidth; width += interval) {
-                    row.push(calculationCache[width]?.[height]?.[tableType] || 'N/A');
-                }
-                csvData.push(row);
-            }
-            csvData.push([]); // Spacer row
-        }
-
-        downloadCsv(csvData);
-        statusDiv.textContent = 'Report generated and downloaded.'; 
-        statusDiv.style.color = 'green';
     }
 
-	function downloadCsv(data) {
-        let csvContent = "data:text/csv;charset=utf-8,";
-        data.forEach(function(rowArray) {
-            let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
-            csvContent += row + "\r\n";
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "shutter_report.csv");
-        document.body.appendChild(link);
-        link.click();
+    // 4. Assemble CSV Tables
+    const csvData = [];
+    const widthHeaders = ['Height \\ Width'];
+    for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
+    
+    const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
+    
+    for (const tableType of tableTypes) {
+        csvData.push([`Data: ${tableType}`]);
+        csvData.push(widthHeaders);
+        for (let height = minHeight; height <= maxHeight; height += interval) {
+            const row = [height];
+            for (let width = minWidth; width <= maxWidth; width += interval) {
+                row.push(calculationCache[width]?.[height]?.[tableType] || 'N/A');
+            }
+            csvData.push(row);
+        }
+        csvData.push([]); // Spacer row
     }
+
+    downloadCsv(csvData);
+    statusDiv.textContent = 'Report generated and downloaded.'; 
+    statusDiv.style.color = 'green';
+}
+
+function downloadCsv(data) {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    data.forEach(function(rowArray) {
+        let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
+        csvContent += row + "\r\n";
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "shutter_report.csv");
+    document.body.appendChild(link);
+    link.click();
+}
 </script>
 </body>
-</html>
+</html>	
