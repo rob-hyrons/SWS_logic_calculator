@@ -429,6 +429,11 @@
                         <p>Calculated Deflection: <span id="axle-deflection">0.00</span> mm</p>
                         <p id="ratio-paragraph">Deflection Ratio: <span id="deflection-ratio">N/A</span></p>
                         <p>Safety Factor: <span id="axle-safety-factor">N/A</span></p>
+                        <hr>
+                        <h4>Bearing Analysis</h4>
+                        <p>Selected Bearing Shaft: <span id="bearing-shaft-size">N/A</span> mm</p>
+                        <p>Bearing Load Capacity: <span id="bearing-capacity">N/A</span> kgs</p>
+                        <p id="bearing-warning" class="warning-text" style="display:none;">⚠️ Warning: Total weight exceeds bearing capacity!</p>
                     </div>
                     <div id="recommendation-box"></div>
                 </div>
@@ -819,7 +824,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let motorImageMap = new Map();
@@ -853,7 +858,8 @@
          'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
          'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
          'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction',
-         'motor-image-container', 'motorImageDisplay', 'motor-limit-turns', 'motor-limit-warning'
+         'motor-image-container', 'motorImageDisplay', 'motor-limit-turns', 'motor-limit-warning',
+         'bearing-shaft-size', 'bearing-capacity', 'bearing-warning'
         ].forEach(id => dom[id] = document.getElementById(id));
         
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -1000,14 +1006,16 @@
                     'Wicket doors': ['Name', 'Height', 'Width'],
                     'Endlock': ['Description', 'Weight in grams', 'end lock offset'],
                     'Guides': ['Name', 'Width', 'Penetration'],
-                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter']
+                    'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter'],
+                    'Bearings': ['Shaft size in mm', 'Load capacity in kgs']
                 };
 
                 for (const sheetName in required) {
                     if (!workbook.Sheets[sheetName]) {
-                        if (sheetName === 'Wicket doors' || sheetName === 'Endlock') {
+                        if (sheetName === 'Wicket doors' || sheetName === 'Endlock' || sheetName === 'Bearings') {
                             if(sheetName === 'Wicket doors') wicketData = [];
                             if(sheetName === 'Endlock') endlockData = [];
+                            if(sheetName === 'Bearings') bearingData = [];
                             continue;
                         }
                         throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
@@ -1024,6 +1032,7 @@
                         case 'Endlock': endlockData = objectData; break;
                         case 'Guides': guideData = objectData; break;
                         case 'Chaindrive': chainDriveData = objectData; break;
+                        case 'Bearings': bearingData = objectData; break;
                     }
                 }
 
@@ -1078,7 +1087,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = [];
             }
         }
 
@@ -1310,7 +1319,7 @@
                 const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
                 const widthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
                 const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-                const guideWidth = parseFloat(guide[widthKey]) || 0;
+                const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
 
                 if (widthType === 'curtainWidth') {
                     curtainWidth = inputWidth;
@@ -1738,6 +1747,15 @@
             }
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             drawAxleCrossSection(selectedAxleData, collarSize);
+
+            // Bearing warning logic
+            const bearingCapacityValue = parseFloat(dom['bearing-capacity'].textContent) || 0;
+            if (bearingCapacityValue > 0 && totalDeflectionWeight > bearingCapacityValue) {
+                dom['bearing-warning'].style.display = 'block';
+            } else {
+                dom['bearing-warning'].style.display = 'none';
+            }
+
             return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
         }
 
@@ -2294,7 +2312,14 @@
             dom['wicket-lath-height'].textContent = wicketLathHeight.toFixed(0);
             const selectedEndplateIndex = dom.endplateSelector.value;
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
-            drawWicketGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, selectedWicket, wicketLathHeight, endlockOffsets);
+            drawShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, visionData, endlockOffsets);
+            updateWicketCalculationsAndGraphic_sub(curtainWidth, selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, selectedWicket, wicketLathHeight, endlockOffsets);
+        }
+
+        function updateWicketCalculationsAndGraphic_sub(curtainWidth, selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets) {
+            const container = dom['wicket-graphic-container']; container.innerHTML = '';
+            const graphic = createBaseShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
+            if(graphic) container.appendChild(graphic);
             calculateWicketTorque(curtainWidth);
         }
 
@@ -2478,7 +2503,7 @@
                     for (let i = 1; i <= numLaths; i++) {
                         if (i % 2 !== 0 && castEndlockWeightG > 0) { totalEndlockWeight += 2 * (castEndlockWeightG / 1000); }
                         const isWindLathPosition = (i === 2 || i === 4 || i === 6 || i === 8) || (i > 8 && i % 8 === 0);
-                        if (isWindLathPosition && windEndlockWeightG > 0) { totalEndlockWeight += 2 * (windEndlockWeightG / 1000); }
+                        if (isWindPos && windEndlockWeightG > 0) { totalEndlockWeight += 2 * (windEndlockWeightG / 1000); }
                     }
                 } else {
                     if (castEndlockWeightG > 0) {
@@ -2881,6 +2906,21 @@
             container.appendChild(svg);
         }
 
+        /**
+         * Helper to find exact shaft size or next size up from bearingData
+         */
+        function getBearingInfo(requiredSize) {
+            if (!bearingData || bearingData.length === 0) return { size: requiredSize, capacity: 0 };
+            
+            const sizes = bearingData.map(b => ({
+                size: parseFloat(b['Shaft size in mm']),
+                capacity: parseFloat(b['Load capacity in kgs'])
+            })).sort((a,b) => a.size - b.size);
+
+            const match = sizes.find(b => b.size >= requiredSize);
+            return match ? match : sizes[sizes.length - 1]; // return largest if none found
+        }
+
         function drawAxleCrossSection(axle, collarSize = 0) {
             const container = dom['axle-cross-section-container']; 
             container.innerHTML = '';
@@ -2903,47 +2943,48 @@
             let motorShaftRaw = parseFloat(dom['motor-driveshaft-dia'].textContent);
             if (isNaN(motorShaftRaw)) motorShaftRaw = 40; 
             
-            // B. Get Safety Brake Shaft Size (Directly from display field to ensure it is the calculated value)
+            // B. Get Safety Brake Shaft Size (Directly from display field)
             let brakeShaftValue = parseFloat(dom['safety-brake-driveshaft'].textContent.replace(/[^\d.]/g, ''));
             if (isNaN(brakeShaftValue) || brakeShaftValue === 0) brakeShaftValue = 40;
 
-            // C. Determine Shaft Configuration
+            // C. Determine Shaft Configuration + Bearing Logic
             let leftShaftDia = 40;
             let rightShaftDia = 40;
             let leftLabel = "Motor Shaft";
             let rightLabel = "Bearing Shaft";
             let showLeftShaft = true;
+            let bearingCap = 0;
+            let bearingShaftSizeUsed = 0;
 
             if (isTubular) {
-                // --- TUBULAR MOTOR ---
                 showLeftShaft = false; 
-                
-                // Right Side: Safety Brake
                 rightShaftDia = brakeShaftValue;
                 rightLabel = "Safety Brake Shaft";
-
+                // Bearing typically matches the Brake size or next up
+                const bInfo = getBearingInfo(brakeShaftValue);
+                bearingShaftSizeUsed = bInfo.size;
+                bearingCap = bInfo.capacity;
             } else if (isChainDrive) {
-                // --- CHAIN DRIVE ---
-                
-                // Right Side: Safety Brake
                 rightShaftDia = brakeShaftValue;
                 rightLabel = "Safety Brake Shaft";
-
-                // Left Side: Bearing Shaft (Matches brake size, but MINIMUM 30mm)
-                leftShaftDia = (brakeShaftValue < 30) ? 30 : brakeShaftValue;
+                const bInfo = getBearingInfo(brakeShaftValue);
+                leftShaftDia = bInfo.size;
                 leftLabel = "Bearing Shaft";
-
+                bearingShaftSizeUsed = bInfo.size;
+                bearingCap = bInfo.capacity;
             } else {
-                // --- DIRECT DRIVE ---
-                
-                // Left Side: Motor Shaft
                 leftShaftDia = motorShaftRaw;
                 leftLabel = "Motor Shaft";
-
-                // Right Side: Bearing Shaft (Matches motor, but MINIMUM 30mm)
-                rightShaftDia = (motorShaftRaw < 30) ? 30 : motorShaftRaw;
+                const bInfo = getBearingInfo(motorShaftRaw);
+                rightShaftDia = bInfo.size;
                 rightLabel = "Bearing Shaft";
+                bearingShaftSizeUsed = bInfo.size;
+                bearingCap = bInfo.capacity;
             }
+
+            // Update UI with bearing info
+            dom['bearing-shaft-size'].textContent = bearingShaftSizeUsed.toFixed(1);
+            dom['bearing-capacity'].textContent = bearingCap.toLocaleString();
 
             // --- 2. SETUP SVG ---
             const svgNS = "http://www.w3.org/2000/svg"; 
@@ -2952,21 +2993,18 @@
             const svgHeight = 350; 
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
-            // Scaling
+            // Scaling - Reduced by 10% (126 instead of 140)
             const maxRefDia = Math.max(outerDia, collarSize, 120); 
-            const scale = 140 / maxRefDia; 
+            const scale = 126 / maxRefDia; 
 
-            // Standardized Font Settings
             const stdFont = { 'font-family': 'Arial, sans-serif', 'font-size': '14px', 'fill': '#212529', 'font-weight': '500' };
             const stdFontBold = { ...stdFont, 'font-weight': 'bold' };
 
-            // Helper
             const createElem = (type, attrs) => { 
                 const el = document.createElementNS(svgNS, type); 
                 for (const key in attrs) el.setAttribute(key, attrs[key]); return el; 
             };
 
-            // Definitions (Markers)
             const defs = document.createElementNS(svgNS, 'defs');
             const marker = document.createElementNS(svgNS, 'marker'); 
             marker.setAttribute('id', 'axle-arrow'); marker.setAttribute('viewBox', '0 0 10 10'); 
@@ -2980,7 +3018,6 @@
             const cx = 150; 
             const cy = 175; 
 
-            // Draw Body
             if (shape === 'octagonal') {
                 const createOctagon = (flatToFlat, style) => {
                     const circumRadius = (flatToFlat / 2) / Math.cos(Math.PI / 8);
@@ -2998,14 +3035,12 @@
                 svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (innerDia/2)*scale, stroke: '#343a40', 'stroke-width': '1.5', fill: '#f8f9fa' }));
             }
 
-            // Collar Ghost
             if (collarSize > outerDia) {
                 svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (collarSize/2)*scale, stroke: '#555', 'stroke-width': '1', 'stroke-dasharray': '4,2', fill: 'none' }));
                 const txtCollar = createElem('text', { x: cx, y: cy - (collarSize/2)*scale - 10, 'text-anchor': 'middle', ...stdFont });
                 txtCollar.textContent = `Collar: Ø${collarSize}`; svg.appendChild(txtCollar);
             }
 
-            // Dimensions: OD (Top)
             const odRadius = (outerDia/2) * scale;
             const dimLineY = cy - odRadius - 25;
             svg.appendChild(createElem('line', { x1: cx - odRadius, y1: cy - odRadius, x2: cx - odRadius, y2: dimLineY, stroke: '#adb5bd', 'stroke-dasharray':'2,2' }));
@@ -3014,7 +3049,6 @@
             const textOD = createElem('text', { x: cx, y: dimLineY, 'text-anchor': 'middle', ...stdFontBold });
             textOD.textContent = `Ø${outerDia.toFixed(1)} OD`; svg.appendChild(textOD);
 
-            // Dimensions: ID (Bottom)
             if (innerDia > 40) {
                 const idRadius = (innerDia/2) * scale;
                 const dimIDY = cy + odRadius + 25;
@@ -3025,23 +3059,21 @@
                 textID.textContent = `Ø${innerDia.toFixed(1)} ID`; svg.appendChild(textID);
             }
 
-            // Dimensions: Wall Thickness (Rotated 45 degrees NE)
             const angle45 = -Math.PI / 4; 
             const distOuter = odRadius + 60;
             const distInner = odRadius - (wallThick * scale) / 2;
-            
             const startX = cx + distOuter * Math.cos(angle45);
             const startY = cy + distOuter * Math.sin(angle45);
             const endX = cx + distInner * Math.cos(angle45);
             const endY = cy + distInner * Math.sin(angle45);
-
             svg.appendChild(createElem('line', { x1: startX, y1: startY, x2: endX, y2: endY, stroke: '#212529', 'marker-end': 'url(#axle-arrow)' }));
             const textWall = createElem('text', { x: startX + 5, y: startY - 5, 'text-anchor': 'start', ...stdFont });
             textWall.textContent = `${wallThick.toFixed(1)}mm Wall`; svg.appendChild(textWall);
 
 
             // --- 4. RIGHT SIDE: FRONT VIEW ---
-            const fvX = 500; 
+            // Moved to the left (from 500 to 470)
+            const fvX = 470; 
             const fvW = 250; 
             const axleH = outerDia * scale;
             const fvY = cy - (axleH / 2);
@@ -3050,58 +3082,41 @@
             const rightShaftH = rightShaftDia * scale;
             const shaftW = 50; 
 
-            // Axle Body Rect
             svg.appendChild(createElem('rect', { x: fvX, y: fvY, width: fvW, height: axleH, fill: '#adb5bd', stroke: '#343a40', 'stroke-width': '2' }));
             
-            // Wall Thickness Dotted Lines (Front View)
             const scaledWall = wallThick * scale;
             const topWallY = fvY + scaledWall;
             const bottomWallY = fvY + axleH - scaledWall;
             svg.appendChild(createElem('line', { x1: fvX, y1: topWallY, x2: fvX + fvW, y2: topWallY, stroke: '#495057', 'stroke-width': '1', 'stroke-dasharray': '5,3' }));
             svg.appendChild(createElem('line', { x1: fvX, y1: bottomWallY, x2: fvX + fvW, y2: bottomWallY, stroke: '#495057', 'stroke-width': '1', 'stroke-dasharray': '5,3' }));
 
-            // Label: Axle Front View
             const textFV = createElem('text', { x: fvX + fvW/2, y: cy + (outerDia/2)*scale + 30, 'text-anchor': 'middle', ...stdFontBold });
             textFV.textContent = "Axle Front View"; svg.appendChild(textFV);
 
-            // --- LEFT SHAFT ---
             if (showLeftShaft) {
-                // Shaft
                 svg.appendChild(createElem('rect', { x: fvX - shaftW, y: cy - (leftShaftH / 2), width: shaftW, height: leftShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
-                
-                // Dimension
                 const lDimX = fvX - shaftW - 15;
                 svg.appendChild(createElem('line', { x1: lDimX, y1: cy - leftShaftH/2, x2: lDimX, y2: cy + leftShaftH/2, stroke: '#212529', 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
                 svg.appendChild(createElem('line', { x1: lDimX, y1: cy - leftShaftH/2, x2: fvX - shaftW, y2: cy - leftShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
                 svg.appendChild(createElem('line', { x1: lDimX, y1: cy + leftShaftH/2, x2: fvX - shaftW, y2: cy + leftShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
-                
                 const txtL = createElem('text', { x: lDimX - 5, y: cy, 'text-anchor': 'end', 'dominant-baseline':'middle', ...stdFontBold });
                 txtL.textContent = `Ø${leftShaftDia.toFixed(1)}`; svg.appendChild(txtL);
-
-                // Label
                 const lblL = createElem('text', { x: fvX - shaftW - 20, y: cy - (leftShaftH/2) - 15, 'text-anchor': 'end', ...stdFont });
                 lblL.textContent = leftLabel; svg.appendChild(lblL);
             } else {
-                // Tubular Internal Line
                 svg.appendChild(createElem('line', { x1: fvX, y1: fvY, x2: fvX, y2: fvY+axleH, stroke:'#343a40', 'stroke-width': '4' }));
                 const txtTub = createElem('text', { x: fvX + 10, y: cy, 'text-anchor': 'start', 'dominant-baseline': 'middle', 'fill': '#fff', 'font-family': 'Arial', 'font-size':'14px' });
                 txtTub.textContent = "Tubular Motor"; svg.appendChild(txtTub);
             }
 
-            // --- RIGHT SHAFT ---
-            // Shaft
+            // RIGHT SHAFT
             svg.appendChild(createElem('rect', { x: fvX + fvW, y: cy - (rightShaftH / 2), width: shaftW, height: rightShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
-
-            // Dimension
             const rDimX = fvX + fvW + shaftW + 15;
             svg.appendChild(createElem('line', { x1: rDimX, y1: cy - rightShaftH/2, x2: rDimX, y2: cy + rightShaftH/2, stroke: '#212529', 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
             svg.appendChild(createElem('line', { x1: fvX + fvW + shaftW, y1: cy - rightShaftH/2, x2: rDimX, y2: cy - rightShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
             svg.appendChild(createElem('line', { x1: fvX + fvW + shaftW, y1: cy + rightShaftH/2, x2: rDimX, y2: cy + rightShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
-
             const txtR = createElem('text', { x: rDimX + 5, y: cy, 'text-anchor': 'start', 'dominant-baseline':'middle', ...stdFontBold });
             txtR.textContent = `Ø${rightShaftDia.toFixed(1)}`; svg.appendChild(txtR);
-
-            // Label
             const lblR = createElem('text', { x: fvX + fvW + shaftW + 20, y: cy - (rightShaftH/2) - 15, 'text-anchor': 'start', ...stdFont });
             lblR.textContent = rightLabel; svg.appendChild(lblR);
 
@@ -3144,7 +3159,7 @@
             const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth; const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
             const rightGuidePath = document.createElementNS(svgNS, 'path'); rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(rightGuidePath);
             const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
-            const curtain = document.createElementNS(svgNS, 'rect'); curtain.setAttribute('x', curtainX); curtain.setAttribute('y', graphicTopY); curtain.setAttribute('width', scaledCurtainWidth); curtain.setAttribute('height', curtainHeight); curtain.setAttribute('class', 'shutter-bottomlath-graphic'); svg.appendChild(curtain);
+            const curtain = document.createElementNS(svgNS, 'rect'); curtain.setAttribute('x', curtainWidthX); curtain.setAttribute('y', graphicTopY); curtain.setAttribute('width', scaledCurtainWidth); curtain.setAttribute('height', curtainHeight); curtain.setAttribute('class', 'shutter-bottomlath-graphic'); svg.appendChild(curtain);
             const endCapWidth = 5; const leftEndCap = document.createElementNS(svgNS, 'rect'); leftEndCap.setAttribute('x', curtainX); leftEndCap.setAttribute('y', graphicTopY); leftEndCap.setAttribute('width', endCapWidth); leftEndCap.setAttribute('height', curtainHeight); leftEndCap.setAttribute('fill', 'black'); svg.appendChild(leftEndCap);
             const rightEndCap = document.createElementNS(svgNS, 'rect'); rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth); rightEndCap.setAttribute('y', graphicTopY); rightEndCap.setAttribute('width', endCapWidth); rightEndCap.setAttribute('height', curtainHeight); rightEndCap.setAttribute('fill', 'black'); svg.appendChild(rightEndCap);
             const drawDim = (yOffset, startX, endX, label, value) => {
@@ -3458,7 +3473,7 @@
         if (isWindLath) {
             const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
             let castWeightG = 0;
-            if (castEndlockObj) {
+			if (castEndlockObj) {
                 const wKey = Object.keys(castEndlockObj).find(k => k.toLowerCase().trim() === 'weight in grams');
                 castWeightG = wKey ? parseFloat(castEndlockObj[wKey]) : 0;
             }
@@ -3493,18 +3508,20 @@
             torqueWeight = totalWeight - bufferLathWeight - bufferEndlockWeight;
         }
         const travelHeight = height_mm - bottomLathHeight;
-		return { totalWeight, torqueWeight, travelHeight };
+        return { totalWeight, torqueWeight, travelHeight };
     }
 
     function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
-         if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
+        if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
         const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
         if (axlesForShape.length === 0) return { name: 'null', deflection: 0, axleObj: null };
+        
         let bestAxle = null;
         let bestDeflection = 0;
         let requiredRatio = 400;
         if (width_mm > 10000) requiredRatio = 800;
         else if (width_mm > 8000) requiredRatio = 600;
+
         for (const axle of axlesForShape) {
             const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, width_mm);
             if (perf.ratio >= requiredRatio && perf.deflection <= 17) { 
@@ -3546,7 +3563,7 @@
         let maxTorqueFound = 0;
         while (heightLifted < travelHeight) {
             const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
-            const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
+            const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
             maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
             heightLifted += (Math.PI * currentRollDiameter) / 2; 
             currentRollDiameter += lathThickness;
@@ -3579,9 +3596,11 @@
         const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
         const endlockIndex = document.getElementById('reportEndlockType').value;
         const bottomLathIndex = document.getElementById('reportBottomLathType').value;
+
         if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
             statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
         }
+
         const primaryLath = lathData[lathIndex1];
         const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
         const selectedEndlock = endlockData[endlockIndex];
@@ -3591,6 +3610,7 @@
         const selectedVoltages = getSelectedValues('report-voltage-checkbox');
         const selectedMountings = getSelectedValues('report-mounting-checkbox');
         const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
+        
         let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
         if (motorData.length > 0) {
             const firstMotor = motorData[0];
@@ -3599,21 +3619,35 @@
             mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
             usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
         }
+
         const calculationCache = {};
         const defaultAdditionalLength = 20; 
-        let calculationCount = 0;
+
         for (let width = minWidth; width <= maxWidth; width += interval) {
             calculationCache[width] = {};
             const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
             for (let height = minHeight; height <= maxHeight; height += interval) {
-                calculationCount++;
                 const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
                 const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
+                
+                // Calculate weight for bearing logic
+                const totalDefWeight = props.totalWeight + (axleResult.axleObj ? performDeflectionCalc(props.totalWeight, axleResult.axleObj, width + defaultAdditionalLength, width).axleWeight : 0);
+                
+                // Headless Bearing Selection
+                let reqShaft = 40; // baseline
+                if (axleResult.axleObj) reqShaft = parseFloat(axleResult.axleObj.Diameter) > 101 ? 40 : 30; // simple fallback logic
+                const bInfo = getBearingInfo(reqShaft);
+                const bWarn = totalDefWeight > bInfo.capacity ? "FAIL" : "PASS";
+
                 const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
                 const result = {
                     'Lath Type Used': currentLath.Name, 
-                    'Total Weight (kg)': props.totalWeight.toFixed(2),
-                    'Required Axle Name': axleResult.name,'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
+                    'Total Weight (kg)': totalDefWeight.toFixed(2),
+                    'Required Axle Name': axleResult.name,
+                    'Axle Deflection (mm)': axleResult.deflection.toFixed(2),
+                    'Bearing Shaft (mm)': bInfo.size,
+                    'Bearing Capacity (kg)': bInfo.capacity,
+                    'Bearing Result': bWarn
                 };
 
                 for (const usage of selectedUsageTypes) {
@@ -3623,16 +3657,14 @@
                                 const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
                                 const sampleMotor = motorData.find(m => {
                                     const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
-                                    const volMatch = motorVoltages.includes(String(vol));
-                                    return m[usageKey] == usage && m[manufacturerKey] == man && volMatch && m[mountingKey] == mou;
+                                    return m[usageKey] == usage && m[manufacturerKey] == man && motorVoltages.includes(String(vol)) && m[mountingKey] == mou;
                                 });
                                 
                                 const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
 
                                 const suitableMotors = motorData.filter(m => {
                                     const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
-                                    const volMatch = motorVoltages.includes(String(vol));
-                                    return m[usageKey] == usage && m[manufacturerKey] == man && volMatch && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max']);
+                                    return m[usageKey] == usage && m[manufacturerKey] == man && motorVoltages.includes(String(vol)) && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max']);
                                 }).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
                                 
                                 result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
