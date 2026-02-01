@@ -2880,7 +2880,18 @@
             }
             container.appendChild(svg);
         }
-		
+
+        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
+            const container = dom['shutter-graphic-container']; container.innerHTML = '';
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
+            if(graphic) container.appendChild(graphic);
+        }
+        
+        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
+            const container = dom['wicket-graphic-container']; container.innerHTML = '';
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
+            if(graphic) container.appendChild(graphic);
+        }
 function drawAxleCrossSection(axle, collarSize = 0) {
             const container = dom['axle-cross-section-container']; 
             container.innerHTML = '';
@@ -2899,26 +2910,14 @@ function drawAxleCrossSection(axle, collarSize = 0) {
             const isTubular = mountType.includes('tubular');
             const isChainDrive = mountType.includes('chain');
 
-            // A. Get Motor Shaft Size
+            // Raw inputs from DOM
             let motorShaftRaw = parseFloat(dom['motor-driveshaft-dia'].textContent);
-            if (isNaN(motorShaftRaw)) motorShaftRaw = 40; 
+            if (isNaN(motorShaftRaw)) motorShaftRaw = 40; // Fallback
             
-            // B. Get Safety Brake Shaft Size (Directly from Data)
-            let brakeShaftValue = 0;
-            const sbIndex = dom.safetyBrakeSelector.value;
-            
-            if (sbIndex !== "" && safetyBrakeData[sbIndex]) {
-                const sb = safetyBrakeData[sbIndex];
-                const dsKey = Object.keys(sb).find(k => k.toLowerCase().includes('driveshaft diameter'));
-                if (dsKey) brakeShaftValue = parseFloat(sb[dsKey]);
-            }
-            // Fallback
-            if (!brakeShaftValue || isNaN(brakeShaftValue)) {
-                brakeShaftValue = parseFloat(dom['safety-brake-driveshaft'].textContent);
-            }
-            if (isNaN(brakeShaftValue) || brakeShaftValue === 0) brakeShaftValue = 40;
+            let brakeShaftRaw = parseFloat(dom['safety-brake-driveshaft'].textContent);
+            if (isNaN(brakeShaftRaw) || brakeShaftRaw === 0) brakeShaftRaw = 40; // Fallback
 
-            // C. Determine Shaft Configuration
+            // Variables for Graphic
             let leftShaftDia = 40;
             let rightShaftDia = 40;
             let leftLabel = "Motor Shaft";
@@ -2926,40 +2925,34 @@ function drawAxleCrossSection(axle, collarSize = 0) {
             let showLeftShaft = true;
 
             if (isTubular) {
-                // --- TUBULAR MOTOR ---
-                showLeftShaft = false; 
-                
-                // Right Side: Safety Brake (Use EXACT brake size)
-                rightShaftDia = brakeShaftValue;
-                rightLabel = "Safety Brake Shaft";
-
+                showLeftShaft = false; // Hide external shaft graphic for tubular
+                // Right side logic for tubular (usually standard bearing)
+                rightShaftDia = 40; 
+                rightLabel = "Bearing Shaft";
             } else if (isChainDrive) {
-                // --- CHAIN DRIVE ---
-                
-                // Right Side: Safety Brake (Use EXACT brake size)
-                rightShaftDia = brakeShaftValue;
+                // Chain Drive Logic:
+                // Right Side: Safety Brake
+                rightShaftDia = brakeShaftRaw;
                 rightLabel = "Safety Brake Shaft";
-
-                // Left Side: Bearing Shaft (Matches brake size, but MINIMUM 30mm)
-                leftShaftDia = (brakeShaftValue < 30) ? 30 : brakeShaftValue;
-                leftLabel = "Bearing Shaft";
-
-            } else {
-                // --- DIRECT DRIVE ---
                 
-                // Left Side: Motor Shaft (Use EXACT motor size)
+                // Left Side: "Replaced with bearing shaft... same diameter as safety brake"
+                leftShaftDia = brakeShaftRaw;
+                leftLabel = "Bearing Shaft";
+            } else {
+                // Direct Drive Logic:
+                // Left Side: Motor
                 leftShaftDia = motorShaftRaw;
                 leftLabel = "Motor Shaft";
 
-                // Right Side: Bearing Shaft (Matches motor, but MINIMUM 30mm)
-                rightShaftDia = (motorShaftRaw < 30) ? 30 : motorShaftRaw;
+                // Right Side: "Match the diameter of the motor shaft"
+                rightShaftDia = motorShaftRaw;
                 rightLabel = "Bearing Shaft";
             }
 
             // --- 2. SETUP SVG ---
             const svgNS = "http://www.w3.org/2000/svg"; 
             const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 900; 
+            const svgWidth = 900; // Increased width to prevent overlap
             const svgHeight = 350; 
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
@@ -3037,7 +3030,7 @@ function drawAxleCrossSection(axle, collarSize = 0) {
             }
 
             // Dimensions: Wall Thickness (Rotated 45 degrees NE)
-            const angle45 = -Math.PI / 4; 
+            const angle45 = -Math.PI / 4; // -45 degrees
             const distOuter = odRadius + 60;
             const distInner = odRadius - (wallThick * scale) / 2;
             
@@ -3052,6 +3045,7 @@ function drawAxleCrossSection(axle, collarSize = 0) {
 
 
             // --- 4. RIGHT SIDE: FRONT VIEW ---
+            // Moved further right to 500 to prevent label overlap with cross section dimensions
             const fvX = 500; 
             const fvW = 250; 
             const axleH = outerDia * scale;
@@ -3061,17 +3055,8 @@ function drawAxleCrossSection(axle, collarSize = 0) {
             const rightShaftH = rightShaftDia * scale;
             const shaftW = 50; 
 
-            // Axle Body Rect
+            // Axle Body
             svg.appendChild(createElem('rect', { x: fvX, y: fvY, width: fvW, height: axleH, fill: '#adb5bd', stroke: '#343a40', 'stroke-width': '2' }));
-            
-            // Wall Thickness Dotted Lines (Front View)
-            const scaledWall = wallThick * scale;
-            const topWallY = fvY + scaledWall;
-            const bottomWallY = fvY + axleH - scaledWall;
-            svg.appendChild(createElem('line', { x1: fvX, y1: topWallY, x2: fvX + fvW, y2: topWallY, stroke: '#495057', 'stroke-width': '1', 'stroke-dasharray': '5,3' }));
-            svg.appendChild(createElem('line', { x1: fvX, y1: bottomWallY, x2: fvX + fvW, y2: bottomWallY, stroke: '#495057', 'stroke-width': '1', 'stroke-dasharray': '5,3' }));
-
-            // Label: Axle Front View
             const textFV = createElem('text', { x: fvX + fvW/2, y: cy + (outerDia/2)*scale + 30, 'text-anchor': 'middle', ...stdFontBold });
             textFV.textContent = "Axle Front View"; svg.appendChild(textFV);
 
@@ -3089,8 +3074,8 @@ function drawAxleCrossSection(axle, collarSize = 0) {
                 const txtL = createElem('text', { x: lDimX - 5, y: cy, 'text-anchor': 'end', 'dominant-baseline':'middle', ...stdFontBold });
                 txtL.textContent = `Ø${leftShaftDia.toFixed(1)}`; svg.appendChild(txtL);
 
-                // Label (Moved further left)
-                const lblL = createElem('text', { x: fvX - shaftW - 20, y: cy - (leftShaftH/2) - 15, 'text-anchor': 'end', ...stdFont });
+                // Label (Moved left to avoid overlapping barrel)
+                const lblL = createElem('text', { x: fvX - shaftW - 10, y: cy - (leftShaftH/2) - 15, 'text-anchor': 'end', ...stdFont });
                 lblL.textContent = leftLabel; svg.appendChild(lblL);
             } else {
                 // Tubular Internal Line
@@ -3112,13 +3097,12 @@ function drawAxleCrossSection(axle, collarSize = 0) {
             const txtR = createElem('text', { x: rDimX + 5, y: cy, 'text-anchor': 'start', 'dominant-baseline':'middle', ...stdFontBold });
             txtR.textContent = `Ø${rightShaftDia.toFixed(1)}`; svg.appendChild(txtR);
 
-            // Label (Moved further right)
-            const lblR = createElem('text', { x: fvX + fvW + shaftW + 20, y: cy - (rightShaftH/2) - 15, 'text-anchor': 'start', ...stdFont });
+            // Label (Moved right to avoid overlapping barrel)
+            const lblR = createElem('text', { x: fvX + fvW + shaftW + 10, y: cy - (rightShaftH/2) - 15, 'text-anchor': 'start', ...stdFont });
             lblR.textContent = rightLabel; svg.appendChild(lblR);
 
             container.appendChild(svg);
         }
-				
         function drawTopDownWidthGraphic(calculatedWidths, guide) {
             const container = dom['width-graphic-container']; container.innerHTML = '';
             const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
