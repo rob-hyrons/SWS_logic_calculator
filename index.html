@@ -2880,8 +2880,7 @@
             }
             container.appendChild(svg);
         }
-
-        function drawAxleCrossSection(axle, collarSize = 0) {
+function drawAxleCrossSection(axle, collarSize = 0) {
             const container = dom['axle-cross-section-container']; 
             container.innerHTML = '';
             if (!axle) return;
@@ -2889,37 +2888,65 @@
             const outerDia = parseFloat(axle['Diameter']); 
             const wallThick = parseFloat(axle['Wall Thickness']); 
             const shape = (axle['Shape'] || 'circular').toLowerCase();
+            
             if (isNaN(outerDia) || isNaN(wallThick) || outerDia <= 0 || wallThick <= 0) return;
 
             const innerDia = outerDia - (2 * wallThick);
+
+            // --- 1. GATHER DYNAMIC DATA ---
+            const mountType = (dom.motorMountingType.value || '').toLowerCase();
+            const isTubular = mountType.includes('tubular');
+            const isChainDrive = mountType.includes('chain');
+
+            // Parse Motor Shaft
+            const motorShaftText = dom['motor-driveshaft-dia'].textContent;
+            let motorShaftDia = parseFloat(motorShaftText);
+            if (isNaN(motorShaftDia)) motorShaftDia = 40; // Default fallback
+
+            // Parse Safety Brake / Bearing Shaft
+            // If Chain drive, use brake shaft. If direct/tubular, usually a standard bearing stub (e.g. 40mm)
+            const brakeShaftText = dom['safety-brake-driveshaft'].textContent;
+            let rightShaftDia = parseFloat(brakeShaftText);
+            
+            // If we can't parse a brake shaft, or it's not chain drive, default to 40mm bearing
+            if (isNaN(rightShaftDia) || rightShaftDia === 0) {
+                 rightShaftDia = 40; 
+            }
+
+            const rightLabel = isChainDrive ? "Safety Brake Shaft" : "Bearing Shaft";
+
+            // --- 2. SETUP SVG ---
             const svgNS = "http://www.w3.org/2000/svg"; 
             const svg = document.createElementNS(svgNS, "svg");
             const svgWidth = 800; 
-            const svgHeight = 300; 
+            const svgHeight = 350; // Increased height slightly for dims
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
-            // Shared scaling logic
+            // Scale calculation (fit within ~140px height)
             const maxRefDia = Math.max(outerDia, collarSize, 120); 
-            const scale = 140 / maxRefDia; // Scale factor based on a 140px display diameter limit
+            const scale = 140 / maxRefDia; 
 
+            // Helper to create elements
             const createElem = (type, attrs) => { 
                 const el = document.createElementNS(svgNS, type); 
                 for (const key in attrs) el.setAttribute(key, attrs[key]); return el; 
             };
 
+            // Definitions (Markers)
             const defs = document.createElementNS(svgNS, 'defs');
             const marker = document.createElementNS(svgNS, 'marker'); 
             marker.setAttribute('id', 'axle-arrow'); marker.setAttribute('viewBox', '0 0 10 10'); 
-            marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); 
-            marker.setAttribute('markerWidth', '5'); marker.setAttribute('markerHeight', '5'); marker.setAttribute('orient', 'auto-start-reverse');
+            marker.setAttribute('refX', '0'); marker.setAttribute('refY', '5'); 
+            marker.setAttribute('markerWidth', '6'); marker.setAttribute('markerHeight', '6'); marker.setAttribute('orient', 'auto-start-reverse');
             const arrowPath = document.createElementNS(svgNS, 'path'); 
             arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); 
             marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
 
-            // --- LEFT SIDE: CROSS SECTION ---
+            // --- 3. LEFT SIDE: CROSS SECTION ---
             const cx = 150; 
-            const cy = 150;
+            const cy = 175; // Centered vertically
 
+            // Draw Body
             if (shape === 'octagonal') {
                 const createOctagon = (flatToFlat, style) => {
                     const circumRadius = (flatToFlat / 2) / Math.cos(Math.PI / 8);
@@ -2937,75 +2964,121 @@
                 svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (innerDia/2)*scale, stroke: '#343a40', 'stroke-width': '1.5', fill: '#f8f9fa' }));
             }
 
+            // Draw Collar Ghost (if applicable)
             if (collarSize > outerDia) {
                 svg.appendChild(createElem('circle', { cx: cx, cy: cy, r: (collarSize/2)*scale, stroke: '#555', 'stroke-width': '1', 'stroke-dasharray': '4,2', fill: 'none' }));
+                // Collar Label
+                svg.appendChild(createElem('text', { x: cx, y: cy - (collarSize/2)*scale - 10, class: 'graph-data-label', 'text-anchor': 'middle' }).appendChild(document.createTextNode(`Collar: Ø${collarSize}`)).parentNode);
             }
 
-            // Cross section Labels
-            svg.appendChild(createElem('text', { x: cx, y: cy + (outerDia/2)*scale + 25, class: 'graph-text', 'font-weight': 'bold' }).appendChild(document.createTextNode("Cross Section")).parentNode);
+            // --- CROSS SECTION DIMENSIONS ---
+            const fontSize = '14px';
+            const dimColor = '#212529';
+            
+            // 1. OD Dimension (Top)
+            const odRadius = (outerDia/2) * scale;
+            const dimLineY = cy - odRadius - 25;
+            const limitXLeft = cx - odRadius;
+            const limitXRight = cx + odRadius;
 
-            // --- RIGHT SIDE: FRONT VIEW ---
-            const fvX = 400; // Start of front view
-            const fvW = 250; // Visual width of the axle tube
+            svg.appendChild(createElem('line', { x1: limitXLeft, y1: cy - odRadius, x2: limitXLeft, y2: dimLineY, stroke: '#adb5bd', 'stroke-dasharray':'2,2' }));
+            svg.appendChild(createElem('line', { x1: limitXRight, y1: cy - odRadius, x2: limitXRight, y2: dimLineY, stroke: '#adb5bd', 'stroke-dasharray':'2,2' }));
+            // Arrow Line
+            svg.appendChild(createElem('line', { x1: limitXLeft, y1: dimLineY + 10, x2: limitXRight, y2: dimLineY + 10, stroke: dimColor, 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
+            // Text
+            const textOD = createElem('text', { x: cx, y: dimLineY, 'text-anchor': 'middle', fill: dimColor, 'font-size': fontSize, 'font-weight': 'bold' });
+            textOD.textContent = `Ø${outerDia.toFixed(1)} OD`;
+            svg.appendChild(textOD);
+
+            // 2. ID Dimension (Inside if fits, or bottom)
+            if (innerDia > 40) { // If large enough, put inside
+                const idRadius = (innerDia/2) * scale;
+                svg.appendChild(createElem('line', { x1: cx - idRadius, y1: cy, x2: cx + idRadius, y2: cy, stroke: dimColor, 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
+                const textID = createElem('text', { x: cx, y: cy - 5, 'text-anchor': 'middle', fill: dimColor, 'font-size': '12px' });
+                textID.textContent = `Ø${innerDia.toFixed(1)} ID`;
+                svg.appendChild(textID);
+            }
+
+            // 3. Wall Thickness (Right side callout)
+            const wallCalloutX = cx + odRadius + 40;
+            const wallCalloutY = cy;
+            // Line pointing to the wall meat
+            const wallMeatX = cx + (odRadius - (wallThick*scale)/2);
+            svg.appendChild(createElem('line', { x1: wallCalloutX, y1: wallCalloutY, x2: wallMeatX, y2: cy, stroke: dimColor, 'marker-end': 'url(#axle-arrow)' }));
+            const textWall = createElem('text', { x: wallCalloutX + 5, y: wallCalloutY + 4, 'text-anchor': 'start', fill: dimColor, 'font-size': '12px' });
+            textWall.textContent = `${wallThick.toFixed(1)}mm Wall`;
+            svg.appendChild(textWall);
+
+
+            // --- 4. RIGHT SIDE: FRONT VIEW ---
+            const fvX = 420; // Start of front view
+            const fvW = 280; // Visual width of the axle tube
             const axleH = outerDia * scale;
             const fvY = cy - (axleH / 2);
 
-            // Get Motor Shaft Data
-            const motorShaftRaw = dom['motor-driveshaft-dia'].textContent;
-            const motorShaft = parseFloat(motorShaftRaw) || 40; // fallback
-            
-            // Logic for Right Shaft (Bearing / Safety Brake)
-            const mountType = dom.motorMountingType.value;
-            let rightShaft = motorShaft; // Default matches motor (standard bearing)
-            let rightLabel = "Bearing Shaft";
-
-            if (mountType === 'Chain drive') {
-                const brakeShaftRaw = dom['safety-brake-driveshaft'].textContent;
-                rightShaft = parseFloat(brakeShaftRaw) || motorShaft;
-                rightLabel = "Safety Brake Shaft";
-            }
-
-            const mShaftH = motorShaft * scale;
-            const rShaftH = rightShaft * scale;
-            const shaftW = 40; // Width of the shaft stub in graphic
+            const mShaftH = motorShaftDia * scale;
+            const rShaftH = rightShaftDia * scale;
+            const shaftW = 50; // Width of the shaft stub
 
             // Draw Axle Body
             svg.appendChild(createElem('rect', { x: fvX, y: fvY, width: fvW, height: axleH, fill: '#adb5bd', stroke: '#343a40', 'stroke-width': '2' }));
             
-            // Draw Left Shaft (Motor)
-            svg.appendChild(createElem('rect', { x: fvX - shaftW, y: cy - (mShaftH / 2), width: shaftW, height: mShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
-            
-            // Draw Right Shaft (Brake/Bearing)
+            // Label: Axle Front View
+            svg.appendChild(createElem('text', { x: fvX + fvW/2, y: cy + (outerDia/2)*scale + 30, class: 'graph-text', 'font-weight': 'bold', 'font-size': '14px' }).appendChild(document.createTextNode("Axle Front View")).parentNode);
+
+            // --- LEFT SHAFT (MOTOR) ---
+            if (isTubular) {
+                // Tubular Motor: No external shaft, maybe just a small cap or nothing.
+                // Draw a faint line to show motor is inside
+                svg.appendChild(createElem('line', { x1: fvX, y1: fvY, x2: fvX, y2: fvY+axleH, stroke:'#343a40', 'stroke-width': '4' })); // End cap
+                
+                const tubText = createElem('text', { x: fvX + 10, y: cy, 'text-anchor': 'start', fill: '#fff', 'font-size': '12px', 'dominant-baseline': 'middle' });
+                tubText.textContent = "Tubular Motor Internal";
+                svg.appendChild(tubText);
+            } else {
+                // External Motor (Flange/Chain)
+                // Draw Shaft
+                svg.appendChild(createElem('rect', { x: fvX - shaftW, y: cy - (mShaftH / 2), width: shaftW, height: mShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
+                
+                // Dimension
+                const dimX = fvX - shaftW - 15;
+                svg.appendChild(createElem('line', { x1: dimX, y1: cy - mShaftH/2, x2: dimX, y2: cy + mShaftH/2, stroke: dimColor, 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
+                // Leader lines
+                svg.appendChild(createElem('line', { x1: dimX, y1: cy - mShaftH/2, x2: fvX - shaftW, y2: cy - mShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
+                svg.appendChild(createElem('line', { x1: dimX, y1: cy + mShaftH/2, x2: fvX - shaftW, y2: cy + mShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
+
+                const txtM = createElem('text', { x: dimX - 5, y: cy, 'text-anchor': 'end', fill: dimColor, 'font-size': '14px', 'dominant-baseline':'middle', 'font-weight':'bold' });
+                txtM.textContent = `Ø${motorShaftDia.toFixed(1)}`;
+                svg.appendChild(txtM);
+
+                // Label
+                const labelM = createElem('text', { x: fvX - shaftW/2, y: cy - (mShaftH/2) - 15, 'text-anchor': 'middle', fill: dimColor, 'font-size': '12px' });
+                labelM.textContent = "Motor Shaft";
+                svg.appendChild(labelM);
+            }
+
+            // --- RIGHT SHAFT (BEARING / BRAKE) ---
+            // Draw Shaft
             svg.appendChild(createElem('rect', { x: fvX + fvW, y: cy - (rShaftH / 2), width: shaftW, height: rShaftH, fill: '#6c757d', stroke: '#343a40', 'stroke-width': '1' }));
 
-            // Front View Labels
-            svg.appendChild(createElem('text', { x: fvX + fvW/2, y: cy + (outerDia/2)*scale + 25, class: 'graph-text', 'font-weight': 'bold' }).appendChild(document.createTextNode("Axle Front View")).parentNode);
+            // Dimension
+            const rDimX = fvX + fvW + shaftW + 15;
+            svg.appendChild(createElem('line', { x1: rDimX, y1: cy - rShaftH/2, x2: rDimX, y2: cy + rShaftH/2, stroke: dimColor, 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
+             // Leader lines
+             svg.appendChild(createElem('line', { x1: fvX + fvW + shaftW, y1: cy - rShaftH/2, x2: rDimX, y2: cy - rShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
+             svg.appendChild(createElem('line', { x1: fvX + fvW + shaftW, y1: cy + rShaftH/2, x2: rDimX, y2: cy + rShaftH/2, stroke: '#ccc', 'stroke-dasharray':'2,2' }));
 
-            // Shaft Dimensions
-            const drawVertDim = (x, yCenter, h, label) => {
-                const y1 = yCenter - h/2;
-                const y2 = yCenter + h/2;
-                svg.appendChild(createElem('line', { x1: x, y1: y1, x2: x, y2: y2, stroke: '#343a40', 'stroke-width': '1', 'marker-start': 'url(#axle-arrow)', 'marker-end': 'url(#axle-arrow)' }));
-                const txt = createElem('text', { x: x + 5, y: yCenter, class: 'dimension-text', 'text-anchor': 'start', 'dominant-baseline': 'middle', 'font-size': '10px' });
-                txt.textContent = `Ø${label}`;
-                svg.appendChild(txt);
-            };
+            const txtR = createElem('text', { x: rDimX + 5, y: cy, 'text-anchor': 'start', fill: dimColor, 'font-size': '14px', 'dominant-baseline':'middle', 'font-weight':'bold' });
+            txtR.textContent = `Ø${rightShaftDia.toFixed(1)}`;
+            svg.appendChild(txtR);
 
-            drawVertDim(fvX - shaftW - 20, cy, mShaftH, motorShaft.toFixed(1));
-            drawVertDim(fvX + fvW + shaftW + 10, cy, rShaftH, rightShaft.toFixed(1));
-
-            // Annotation for Right side
-            const rNote = createElem('text', { x: fvX + fvW + shaftW/2, y: cy - (rShaftH / 2) - 10, class: 'graph-data-label' });
-            rNote.textContent = rightLabel;
-            svg.appendChild(rNote);
-
-            const lNote = createElem('text', { x: fvX - shaftW/2, y: cy - (mShaftH / 2) - 10, class: 'graph-data-label' });
-            lNote.textContent = "Motor Drive";
-            svg.appendChild(lNote);
+            // Label (Dynamic)
+            const labelR = createElem('text', { x: fvX + fvW + shaftW/2, y: cy - (rShaftH/2) - 15, 'text-anchor': 'middle', fill: dimColor, 'font-size': '12px' });
+            labelR.textContent = rightLabel;
+            svg.appendChild(labelR);
 
             container.appendChild(svg);
         }
-
         function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
             const container = dom['shutter-graphic-container']; container.innerHTML = '';
             const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
