@@ -741,6 +741,15 @@
                                 <small style="color:#666;">Used when Width > Switch Width.</small>
                             </div>
                         </div>
+                        
+                        <!-- NEW: Report Specific Powder Coating Option -->
+                        <div class="form-group" style="margin-bottom: 1em;">
+                            <label for="reportPowderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="reportPowderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">
+                                Include Powder Coating (+0.5 kg/m²)
+                            </label>
+                        </div>
+
                         <div class="form-row">
                             <div class="form-group form-col">
                                 <label for="reportEndlockType">Endlock Type</label>
@@ -3478,7 +3487,7 @@
         newBtn.addEventListener('click', generateCsvReport);
     }
 
-    function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm) {
+	function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm, isPowderCoated) {
         if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
         const axleRadius = 60; 
         const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
@@ -3486,7 +3495,11 @@
         const heightToCoverByLaths = (height_mm - bottomLathHeight) + axleRadius;
 		let numLaths = (lathCompressedHeight > 0 && heightToCoverByLaths > 0) ? Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2 : 0;
         const widthM = width_mm / 1000;
+        
+        // UPDATED: Apply powder coating weight if flag is true
         let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+        if (isPowderCoated) { kgsPerM2 += 0.5; }
+
         const lathWeightBasedOnCoverage = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
         const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
         let totalEndlockWeight = 0;
@@ -3601,7 +3614,7 @@
         return maxTorqueFound * (1 + totalFriction / 100);
     }
 
-    async function generateCsvReport() {
+	async function generateCsvReport() {
         const statusDiv = document.getElementById('csv-generation-status');
         statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -3612,6 +3625,10 @@
         const interval = parseInt(document.getElementById('reportInterval').value);
         const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
         const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
+        
+        // UPDATED: Get the powder coated checkbox state
+        const isReportPowderCoated = document.getElementById('reportPowderCoated').checked;
+
         const lathIndex1 = document.getElementById('reportLathType').value;
         const lathIndex2 = document.getElementById('reportLathType2').value;
         const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
@@ -3645,9 +3662,16 @@
             const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
             for (let height = minHeight; height <= maxHeight; height += interval) {
                 calculationCount++;
-                const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height);
+                
+                // UPDATED: Pass the isReportPowderCoated flag to the calculation
+                const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height, isReportPowderCoated);
+                
                 const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
                 const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
+                
+                // Note: Powder coating logic might also affect Deflection if using a different headless function, 
+                // but generally weight is the driving factor which is updated in props above.
+                
                 const result = {
                     'Lath Type Used': currentLath.Name, 
                     'Total Weight (kg)': props.totalWeight.toFixed(2),
