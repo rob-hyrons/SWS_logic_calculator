@@ -153,9 +153,10 @@
         .width-graphic-value { font-family: sans-serif; font-size: 10px; fill: #555; text-anchor: middle; }
         .dimension-tick { stroke: #343a40; stroke-width: 1; }
 
-        .print-container {
-            display: flex; justify-content: flex-end; padding: 0; margin-bottom: 1em;
-        }
+<div class="print-container" style="display: flex; gap: 10px; justify-content: flex-end;">
+    <button id="dxfButton" style="padding: 0.8em 1.5em; font-size: 0.9em; font-weight: 600; color: white; background-color: #28a745; border: none; border-radius: 5px; cursor: pointer;">Download CAD (.dxf)</button>
+    <button id="printButton">Print Report to PDF</button>
+</div>
         #printButton {
             padding: 0.8em 1.5em; font-size: 0.9em; font-weight: 600; color: white;
             background-color: #007bff; border: none; border-radius: 5px; cursor: pointer;
