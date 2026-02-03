@@ -249,9 +249,10 @@
         <div class="content-area">
             <h1>Complete Shutter Calculator</h1>
             
-            <div class="print-container">
-                <button id="printButton">Print Report to PDF</button>
-            </div>
+			<div class="print-container" style="gap: 10px;">
+				<button id="dxfButton" style="padding: 0.8em 1.5em; font-size: 0.9em; font-weight: 600; color: white; background-color: #28a745; border: none; border-radius: 5px; cursor: pointer;">Download CAD (.dxf)</button>
+				<button id="printButton">Print Report to PDF</button>
+			</div>
 
             <div class="tab-content">
                 <!-- Inputs Tab -->
@@ -914,6 +915,7 @@
         dom.printButton.addEventListener('click', () => {
             window.print();
         });
+		document.getElementById('dxfButton').addEventListener('click', downloadDXF);
         dom.importCsvButton.addEventListener('click', handleCsvImport);
 
         function updatePrintStyles() {
@@ -3940,6 +3942,111 @@
         document.body.appendChild(link);
         link.click();
     }
+	
+	
+	function downloadDXF() {
+        const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+        const floorToAxle = parseFloat(dom.height.value) || 0;
+        const additionalAxle = parseFloat(dom.additionalLength.value) || 0;
+        const totalAxleWidth = curtainWidth + additionalAxle;
+        const lathIndex = dom.lathType.value;
+        const bLathIndex = dom.bottomLathType.value;
+        const axleIndex = dom.axleType.value;
+        
+        if (!curtainWidth || lathIndex === "" || axleIndex === "") {
+            alert("Please complete the shutter specification first.");
+            return;
+        }
+
+        const lath = lathData[lathIndex];
+        const bLath = bottomLathData[bLathIndex];
+        const axle = axleData[axleIndex];
+        const lathCompH = parseFloat(lath['Compressed lath height']);
+        const bLathH = parseFloat(bLath['BLath height']) || 0;
+        const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+        const axleDia = parseFloat(axle['Diameter']);
+        const axleRad = axleDia / 2;
+
+        // DXF Construction
+        let dxf = [
+            "0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", // Units: mm
+            "0", "SECTION", "2", "ENTITIES"
+        ];
+
+        // --- FRONT VIEW (Elevation) ---
+        // Coordinates: Floor is Y=0. Axle is at Y = floorToAxle.
+        const shutterXStart = (additionalAxle / 2);
+        
+        // 1. Axle (Drawn as a rectangle)
+        addDxfRect(dxf, 0, floorToAxle - axleRad, totalAxleWidth, axleDia, "AXLE");
+        
+        // 2. Bottom Lath
+        addDxfRect(dxf, shutterXStart, 0, curtainWidth, bLathH, "LATHS");
+
+        // 3. Main Laths
+        for (let i = 0; i < numLaths; i++) {
+            let yPos = bLathH + (i * lathCompH);
+            addDxfRect(dxf, shutterXStart, yPos, curtainWidth, lathCompH, "LATHS");
+        }
+
+        // 4. Endplates (If selected)
+        const epIndex = dom.endplateSelector.value;
+        if (epIndex !== "" && currentFilteredEndplates[epIndex]) {
+            const ep = currentFilteredEndplates[epIndex];
+            const epSize = parseFloat(ep.Size);
+            const epY = floorToAxle - (epSize / 2);
+            addDxfRect(dxf, 0, epY, totalAxleWidth, epSize, "ENDPLATES");
+        }
+
+        // --- PLAN VIEW ---
+        // Positioned 1000mm below the front view for clarity
+        const planY = -1000;
+        const guideIndex = dom.guideType.value;
+        const lathThick = parseFloat(lath['Thickness']) || 15;
+        
+        if (guideIndex !== "" && guideData[guideIndex]) {
+            const guide = guideData[guideIndex];
+            const gWidth = parseFloat(guide['Width']) || 50;
+            const penetration = parseFloat(guide['Penetration']) || 30;
+            const gap = 20; // 20mm gap logic from your width graphic
+
+            // Curtain in Plan
+            addDxfRect(dxf, shutterXStart, planY, curtainWidth, lathThick, "PLAN_CURTAIN");
+
+            // Left Guide (U-Channel)
+            const leftWebX = shutterXStart - gap;
+            addDxfLine(dxf, leftWebX + gWidth, planY - 5, leftWebX, planY - 5, "PLAN_GUIDES");
+            addDxfLine(dxf, leftWebX, planY - 5, leftWebX, planY + lathThick + 5, "PLAN_GUIDES");
+            addDxfLine(dxf, leftWebX, planY + lathThick + 5, leftWebX + gWidth, planY + lathThick + 5, "PLAN_GUIDES");
+
+            // Right Guide
+            const rightWebX = shutterXStart + curtainWidth + gap;
+            addDxfLine(dxf, rightWebX - gWidth, planY - 5, rightWebX, planY - 5, "PLAN_GUIDES");
+            addDxfLine(dxf, rightWebX, planY - 5, rightWebX, planY + lathThick + 5, "PLAN_GUIDES");
+            addDxfLine(dxf, rightWebX, planY + lathThick + 5, rightWebX - gWidth, planY + lathThick + 5, "PLAN_GUIDES");
+        }
+
+        dxf.push("0", "ENDSEC", "0", "EOF");
+
+        // Trigger Download
+        const blob = new Blob([dxf.join('\n')], { type: 'application/dxf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Shutter_${curtainWidth}x${floorToAxle}.dxf`;
+        link.click();
+    }
+
+    function addDxfLine(arr, x1, y1, x2, y2, layer) {
+        arr.push("0", "LINE", "8", layer, "10", x1.toString(), "20", y1.toString(), "11", x2.toString(), "21", y2.toString());
+    }
+
+    function addDxfRect(arr, x, y, w, h, layer) {
+        addDxfLine(arr, x, y, x + w, y, layer);
+        addDxfLine(arr, x + w, y, x + w, y + h, layer);
+        addDxfLine(arr, x + w, y + h, x, y + h, layer);
+        addDxfLine(arr, x, y + h, x, y, layer);
+    }
+	
 </script>
 </body>
 </html>
