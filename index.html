@@ -1414,8 +1414,12 @@
             const selectedEndplateIndex = dom.endplateSelector.value;
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
             drawShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), effectiveLath, selectedBottomLath, bestAxle, selectedEndplate, visionData, endlockOffsets);
+            
             const selectedGuide = guideData.length > 0 ? guideData[dom.guideType.value] : null;
-            drawTopDownWidthGraphic(calculatedWidths, selectedGuide);
+            
+            // CHANGED: Added effectiveLath and additionalLength to arguments
+            drawTopDownWidthGraphic(calculatedWidths, selectedGuide, effectiveLath, parseFloat(dom.additionalLength.value));
+            
             updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
             
             updateChainCalculations();
@@ -3207,47 +3211,196 @@
             if(graphic) container.appendChild(graphic);
         }
 
-        function drawTopDownWidthGraphic(calculatedWidths, guide) {
-            const container = dom['width-graphic-container']; container.innerHTML = '';
+       function drawTopDownWidthGraphic(calculatedWidths, guide, lath, additionalLength) {
+            const container = dom['width-graphic-container']; 
+            container.innerHTML = '';
+            
             const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            if (!guide || !overallWidth || overallWidth <= 0) { return; }
+            // Need lath for thickness, guide for width, and dims for scaling
+            if (!guide || !lath || !curtainWidth || curtainWidth <= 0) { return; }
+
             const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
             const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
             const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-            const guideWidth = parseFloat(guide[guideWidthKey]) || 0;
-            const svgNS = "http://www.w3.org/2000/svg"; const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 600; const svgHeight = 180; 
+            const guideWidthVal = parseFloat(guide[guideWidthKey]) || 50; // Default to 50 if missing
+            const lathThickness = parseFloat(lath['Thickness']) || 14;
+
+            const svgNS = "http://www.w3.org/2000/svg"; 
+            const svg = document.createElementNS(svgNS, "svg");
+            const svgWidth = 600; 
+            const svgHeight = 180; 
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
             const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker'); marker.setAttribute('id', 'dim-arrow-width-graphic'); marker.setAttribute('viewBox', '0 0 10 10'); marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path'); arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); arrowPath.setAttribute('fill', '#343a40'); marker.appendChild(arrowPath); defs.appendChild(marker); svg.appendChild(defs);
-            const padding = { x: 50, y: 30 }; const graphicWidth = svgWidth - 2 * padding.x; const scale = graphicWidth / overallWidth;
-            const curtainHeight = 20; const guideDepth = 30; const graphicTopY = padding.y;
-            const scaledGuideWidth = guideWidth * scale; const scaledCurtainWidth = curtainWidth * scale; const scaledClearOpening = clearOpening * scale; const scaledPenetration = guidePenetration * scale;
-            const overallStartX = padding.x;
+            const marker = document.createElementNS(svgNS, 'marker'); 
+            marker.setAttribute('id', 'dim-arrow-width-graphic'); 
+            marker.setAttribute('viewBox', '0 0 10 10'); 
+            marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); 
+            marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); 
+            marker.setAttribute('orient', 'auto-start-reverse');
+            const arrowPath = document.createElementNS(svgNS, 'path'); 
+            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); 
+            arrowPath.setAttribute('fill', '#343a40'); 
+            marker.appendChild(arrowPath); 
+            defs.appendChild(marker); 
+            svg.appendChild(defs);
+
+            // --- ALIGNMENT LOGIC ---
+            // We use the exact same padding and scaling logic as the Front View (drawShutterGraphic)
+            // Front View Padding: left: 120, right: 120. Graph Width = 360.
+            const padding = { left: 120, right: 120, top: 30 };
+            const graphWidth = svgWidth - padding.left - padding.right; // 360px
+            
+            // Calculate Total Scale based on Axle Width (Curtain + Additional), same as Front View
+            const totalRealAxleWidth = curtainWidth + (additionalLength || 0);
+            const scale = graphWidth / totalRealAxleWidth;
+
+            // Calculate Start X for the curtain so it centers exactly like the Front View
+            const scaledShutterWidth = curtainWidth * scale;
+            const scaledTotalAxleWidth = totalRealAxleWidth * scale;
+            const lathStartX = padding.left + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
+
+            // Dimensions for drawing
+            const scaledLathHeight = lathThickness * scale; // Scale the lath thickness
+            const scaledGuideWidth = guideWidthVal * scale; // Scale the guide width
+            const scaledGap = 20 * scale; // 20mm gap as requested
+            
+            // Ensure the lath visual isn't invisible if scale is tiny
+            const visualLathHeight = Math.max(scaledLathHeight, 4); 
+            
+            const graphicTopY = padding.top;
+            
+            // --- DRAW CURTAIN (LATH) ---
+            const curtain = document.createElementNS(svgNS, 'rect'); 
+            curtain.setAttribute('x', lathStartX); 
+            curtain.setAttribute('y', graphicTopY); 
+            curtain.setAttribute('width', scaledShutterWidth); 
+            curtain.setAttribute('height', visualLathHeight); 
+            curtain.setAttribute('class', 'shutter-bottomlath-graphic'); // Reuse style
+            // Override fill to look like lath (grey)
+            curtain.setAttribute('fill', '#ced4da');
+            curtain.setAttribute('stroke', '#adb5bd');
+            curtain.setAttribute('stroke-width', '1');
+            svg.appendChild(curtain);
+
+            // --- DRAW ENDLOCKS (Black Caps) ---
+            const endCapWidth = 5; // Fixed visual width for endlock visibility
+            const leftEndCap = document.createElementNS(svgNS, 'rect'); 
+            leftEndCap.setAttribute('x', lathStartX); 
+            leftEndCap.setAttribute('y', graphicTopY); 
+            leftEndCap.setAttribute('width', endCapWidth); 
+            leftEndCap.setAttribute('height', visualLathHeight); 
+            leftEndCap.setAttribute('fill', 'black'); 
+            svg.appendChild(leftEndCap);
+
+            const rightEndCap = document.createElementNS(svgNS, 'rect'); 
+            rightEndCap.setAttribute('x', lathStartX + scaledShutterWidth - endCapWidth); 
+            rightEndCap.setAttribute('y', graphicTopY); 
+            rightEndCap.setAttribute('width', endCapWidth); 
+            rightEndCap.setAttribute('height', visualLathHeight); 
+            rightEndCap.setAttribute('fill', 'black'); 
+            svg.appendChild(rightEndCap);
+
+            // --- DRAW GUIDES ---
+            // Logic: 20mm gap between curtain end and guide channel web
+            // Guide width from data is used as the length of the channel legs
             const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
-            const leftGuideX = overallStartX; const leftGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
-            const leftGuidePath = document.createElementNS(svgNS, 'path'); leftGuidePath.setAttribute('d', `M ${leftGuideX + scaledGuideWidth},${leftGuideY} L ${leftGuideX},${leftGuideY} L ${leftGuideX},${leftGuideY + guideDepth} L ${leftGuideX + scaledGuideWidth},${leftGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(leftGuidePath);
-            const rightGuideX = overallStartX + graphicWidth - scaledGuideWidth; const rightGuideY = graphicTopY - (guideDepth - curtainHeight) / 2;
-            const rightGuidePath = document.createElementNS(svgNS, 'path'); rightGuidePath.setAttribute('d', `M ${rightGuideX},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY} L ${rightGuideX + scaledGuideWidth},${rightGuideY + guideDepth} L ${rightGuideX},${rightGuideY + guideDepth}`); Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); svg.appendChild(rightGuidePath);
-            const curtainX = overallStartX + scaledGuideWidth - scaledPenetration;
-            const curtain = document.createElementNS(svgNS, 'rect'); curtain.setAttribute('x', curtainX); curtain.setAttribute('y', graphicTopY); curtain.setAttribute('width', scaledCurtainWidth); curtain.setAttribute('height', curtainHeight); curtain.setAttribute('class', 'shutter-bottomlath-graphic'); svg.appendChild(curtain);
-            const endCapWidth = 5; const leftEndCap = document.createElementNS(svgNS, 'rect'); leftEndCap.setAttribute('x', curtainX); leftEndCap.setAttribute('y', graphicTopY); leftEndCap.setAttribute('width', endCapWidth); leftEndCap.setAttribute('height', curtainHeight); leftEndCap.setAttribute('fill', 'black'); svg.appendChild(leftEndCap);
-            const rightEndCap = document.createElementNS(svgNS, 'rect'); rightEndCap.setAttribute('x', curtainX + scaledCurtainWidth - endCapWidth); rightEndCap.setAttribute('y', graphicTopY); rightEndCap.setAttribute('width', endCapWidth); rightEndCap.setAttribute('height', curtainHeight); rightEndCap.setAttribute('fill', 'black'); svg.appendChild(rightEndCap);
+            const guideOpeningSize = visualLathHeight + 6; // Space for lath + tolerance
+            const guideY = graphicTopY - (guideOpeningSize - visualLathHeight) / 2;
+            
+            // Left Guide
+            // Web X position is 20mm to the left of the lath start
+            const leftWebX = lathStartX - scaledGap;
+            const leftOpeningX = leftWebX + scaledGuideWidth; // Legs point right
+            const leftGuidePath = document.createElementNS(svgNS, 'path'); 
+            leftGuidePath.setAttribute('d', `
+                M ${leftOpeningX},${guideY} 
+                L ${leftWebX},${guideY} 
+                L ${leftWebX},${guideY + guideOpeningSize} 
+                L ${leftOpeningX},${guideY + guideOpeningSize}
+            `); 
+            Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key])); 
+            svg.appendChild(leftGuidePath);
+
+            // Right Guide
+            const rightWebX = lathStartX + scaledShutterWidth + scaledGap;
+            const rightOpeningX = rightWebX - scaledGuideWidth; // Legs point left
+            const rightGuidePath = document.createElementNS(svgNS, 'path'); 
+            rightGuidePath.setAttribute('d', `
+                M ${rightOpeningX},${guideY} 
+                L ${rightWebX},${guideY} 
+                L ${rightWebX},${guideY + guideOpeningSize} 
+                L ${rightOpeningX},${guideY + guideOpeningSize}
+            `); 
+            Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); 
+            svg.appendChild(rightGuidePath);
+
+            // --- DIMENSIONS ---
             const drawDim = (yOffset, startX, endX, label, value) => {
-                const lineY = graphicTopY + guideDepth + yOffset; const tickHeight = 8; const textGap = 5;
-                const line = document.createElementNS(svgNS, 'line'); line.setAttribute('x1', startX); line.setAttribute('y1', lineY); line.setAttribute('x2', endX); line.setAttribute('y2', lineY); line.setAttribute('class', 'dimension-line'); line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); svg.appendChild(line);
-                const tick1 = document.createElementNS(svgNS, 'line'); tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY); tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight); tick1.setAttribute('class', 'dimension-tick'); svg.appendChild(tick1);
-                const tick2 = document.createElementNS(svgNS, 'line'); tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY); tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight); tick2.setAttribute('class', 'dimension-tick'); svg.appendChild(tick2);
-                const labelText = document.createElementNS(svgNS, 'text'); labelText.textContent = label; labelText.setAttribute('class', 'width-graphic-label'); labelText.setAttribute('x', startX + (endX - startX) / 2); labelText.setAttribute('y', lineY - textGap); svg.appendChild(labelText);
-                const valueText = document.createElementNS(svgNS, 'text'); valueText.textContent = `(${value.toFixed(0)} mm)`; valueText.setAttribute('class', 'width-graphic-value'); valueText.setAttribute('x', startX + (endX - startX) / 2); valueText.setAttribute('y', lineY + textGap + 10); svg.appendChild(valueText);
+                const lineY = graphicTopY + guideOpeningSize + yOffset; 
+                const tickHeight = 8; 
+                const textGap = 5;
+                
+                const line = document.createElementNS(svgNS, 'line'); 
+                line.setAttribute('x1', startX); line.setAttribute('y1', lineY); 
+                line.setAttribute('x2', endX); line.setAttribute('y2', lineY); 
+                line.setAttribute('class', 'dimension-line'); 
+                line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); 
+                line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); 
+                svg.appendChild(line);
+
+                const tick1 = document.createElementNS(svgNS, 'line'); 
+                tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY); 
+                tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight); 
+                tick1.setAttribute('class', 'dimension-tick'); 
+                svg.appendChild(tick1);
+
+                const tick2 = document.createElementNS(svgNS, 'line'); 
+                tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY); 
+                tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight); 
+                tick2.setAttribute('class', 'dimension-tick'); 
+                svg.appendChild(tick2);
+
+                const labelText = document.createElementNS(svgNS, 'text'); 
+                labelText.textContent = label; 
+                labelText.setAttribute('class', 'width-graphic-label'); 
+                labelText.setAttribute('x', startX + (endX - startX) / 2); 
+                labelText.setAttribute('y', lineY - textGap); 
+                svg.appendChild(labelText);
+
+                const valueText = document.createElementNS(svgNS, 'text'); 
+                valueText.textContent = `(${value.toFixed(0)} mm)`; 
+                valueText.setAttribute('class', 'width-graphic-value'); 
+                valueText.setAttribute('x', startX + (endX - startX) / 2); 
+                valueText.setAttribute('y', lineY + textGap + 10); 
+                svg.appendChild(valueText);
             };
-            const clearOpeningStartX = overallStartX + scaledGuideWidth; const clearOpeningEndX = clearOpeningStartX + scaledClearOpening;
-            drawDim(30, clearOpeningStartX, clearOpeningEndX, 'Clear Opening', clearOpening);
-            const curtainEndX = curtainX + scaledCurtainWidth;
-            drawDim(65, curtainX, curtainEndX, 'Curtain width', curtainWidth);
-            const overallEndX = overallStartX + graphicWidth;
-            drawDim(100, overallStartX, overallEndX, 'Overall width', overallWidth);
+
+            // Calculate Dimension Positions relative to the new gap logic
+            // Clear Opening = Width between guide faces
+            // Since we drew guides with a 20mm gap from curtain, and GuideWidth leg length:
+            // The "Face" of the guide is at: lathStartX - Gap + GuideWidth. 
+            // Wait, normally Face is fixed, curtain floats. 
+            // Based on user calc: Clear Opening = Curtain - 2*Penetration.
+            // We will draw dimensions based on the Calculated Values passed in, centered on the graphic.
+            
+            const center = svgWidth / 2;
+            const scaledClearOpening = clearOpening * scale;
+            const scaledOverallWidth = overallWidth * scale;
+
+            // Draw Curtain Width Dimension (Matches the grey rect)
+            drawDim(30, lathStartX, lathStartX + scaledShutterWidth, 'Curtain Width', curtainWidth);
+
+            // Draw Clear Opening Dimension
+            const coStartX = center - (scaledClearOpening / 2);
+            const coEndX = center + (scaledClearOpening / 2);
+            drawDim(65, coStartX, coEndX, 'Clear Opening', clearOpening);
+
+            // Draw Overall Width Dimension
+            const ovStartX = center - (scaledOverallWidth / 2);
+            const ovEndX = center + (scaledOverallWidth / 2);
+            drawDim(100, ovStartX, ovEndX, 'Overall Width', overallWidth);
+
             container.appendChild(svg);
         }
 
