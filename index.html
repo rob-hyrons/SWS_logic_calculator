@@ -1948,7 +1948,7 @@
             drawEndplateForceDiagram(finalDownwardForce, finalPulloutForce, offsetDistanceM, fixingHoleSeparation, parseFloat(selectedPlate.Size));
         }
 
-        function calculateSafetyBrakeSelection() {
+function calculateSafetyBrakeSelection() {
             const motorMaxTorqueText = dom['max-torque'].textContent;
             const motorMaxTorque = parseFloat(motorMaxTorqueText) || 0;
             
@@ -1957,9 +1957,13 @@
                 dom['safety-brake-motor-torque'].textContent = 'N/A';
                 dom['safety-brake-capacity'].textContent = 'N/A';
                 dom['safety-brake-driveshaft'].textContent = 'N/A';
+                // Clear the selector so the graphic knows there is no brake
+                dom.safetyBrakeSelector.innerHTML = '<option value="">-- No Brake --</option>';
+                dom.safetyBrakeSelector.value = "";
                 return;
             }
 
+            // Filter suitable brakes
             const suitableBrakes = safetyBrakeData.filter(brake => {
                 const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
                 const opTorque = parseFloat(brake[opTorqueKey]) || 0;
@@ -1975,19 +1979,35 @@
             if (suitableBrakes.length === 0) {
                 const option = document.createElement('option');
                 option.textContent = "-- No Suitable Safety Brake Found --";
+                option.value = "";
                 select.appendChild(option);
+                select.value = ""; // Ensure value is empty
+                
                 dom['safety-brake-name'].textContent = 'NO SUITABLE BRAKE FOUND';
                 dom['safety-brake-name'].classList.add('warning-text');
+                dom['safety-brake-driveshaft'].textContent = 'N/A';
             } else {
-                suitableBrakes.forEach((brake, idx) => {
+                suitableBrakes.forEach((brake) => {
                     const option = document.createElement('option');
+                    
+                    // FIX: Find the index of this specific brake in the GLOBAL data array
+                    // This ensures the Drawing function looks up the correct brake details
+                    const globalIndex = safetyBrakeData.indexOf(brake);
+                    
                     const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
                     const opTorque = parseFloat(brake[opTorqueKey]) || 0;
-                    option.value = idx;
+                    
+                    option.value = globalIndex; // Set value to the GLOBAL index
                     option.textContent = `${brake.Name} (Op Torque: ${opTorque} Nm)`;
                     select.appendChild(option);
                 });
                 
+                // Automatically select the first (best fit) option
+                if (select.options.length > 0) {
+                    select.value = select.options[0].value;
+                }
+
+                // Get details of the selected brake (Best fit)
                 const selectedBrake = suitableBrakes[0];
                 dom['safety-brake-name'].textContent = selectedBrake.Name;
                 dom['safety-brake-name'].classList.remove('warning-text');
@@ -2003,8 +2023,11 @@
                 const imageContainer = dom['safety-brake-image-container'];
                 const imageDisplay = dom['safetyBrakeImageDisplay'];
                 if (safetyBrakeImageMap.has(brakeName)) {
-                    imageDisplay.src = safetyBrakeImageMap.get(brakeName); imageContainer.style.display = 'block';
-                } else { imageContainer.style.display = 'none'; }
+                    imageDisplay.src = safetyBrakeImageMap.get(brakeName); 
+                    imageContainer.style.display = 'block';
+                } else { 
+                    imageContainer.style.display = 'none'; 
+                }
             }
         }
 
