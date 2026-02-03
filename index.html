@@ -4047,7 +4047,135 @@
         addDxfLine(arr, x + w, y + h, x, y + h, layer);
         addDxfLine(arr, x, y + h, x, y, layer);
     }
-	
+	// Helper to add a line to DXF array
+function addDxfLine(arr, x1, y1, x2, y2, layer = "0") {
+    arr.push("0", "LINE", "8", layer, "10", x1.toFixed(3), "20", y1.toFixed(3), "30", "0.0", "11", x2.toFixed(3), "21", y2.toFixed(3), "31", "0.0");
+}
+
+// Helper to add a rectangle to DXF array
+function addDxfRect(arr, x, y, w, h, layer = "0") {
+    addDxfLine(arr, x, y, x + w, y, layer);
+    addDxfLine(arr, x + w, y, x + w, y + h, layer);
+    addDxfLine(arr, x + w, y + h, x, y + h, layer);
+    addDxfLine(arr, x, y + h, x, y, layer);
+}
+
+function downloadDXF() {
+    console.log("Generating DXF...");
+    try {
+        // 1. Get Core Dimensions
+        const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+        const heightToAxle = parseFloat(dom.height.value) || 0;
+        const additionalAxle = parseFloat(dom.additionalLength.value) || 0;
+        const totalAxleWidth = curtainWidth + additionalAxle;
+        
+        const lathIndex = dom.lathType.value;
+        const axleIndex = dom.axleType.value;
+        const bLathIndex = dom.bottomLathType.value;
+
+        if (!curtainWidth || lathIndex === "" || axleIndex === "") {
+            alert("Please ensure Width, Lath, and Axle are selected.");
+            return;
+        }
+
+        const lath = lathData[lathIndex];
+        const axle = axleData[axleIndex];
+        const bLath = bottomLathData[bLathIndex];
+        
+        const lathH = parseFloat(lath['Compressed lath height']);
+        const bLathH = parseFloat(bLath['BLath height']) || 0;
+        const numLaths = parseInt(dom['lath-count'].textContent) || 0;
+        const axleDia = parseFloat(axle['Diameter']);
+        const axleRad = axleDia / 2;
+
+        // 2. Start DXF File Header
+        let dxf = [
+            "0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC", // 4 = Millimeters
+            "0", "SECTION", "2", "TABLES", "0", "TABLE", "2", "LAYER",
+            "0", "LAYER", "70", "0", "2", "AXLE", "62", "1", "70", "0", // Red
+            "0", "LAYER", "70", "0", "2", "CURTAIN", "62", "7", "70", "0", // White/Black
+            "0", "LAYER", "70", "0", "2", "GUIDES", "62", "4", "70", "0", // Cyan
+            "0", "LAYER", "70", "0", "2", "ENDPLATE", "62", "2", "70", "0", // Yellow
+            "0", "ENDTAB", "0", "ENDSEC",
+            "0", "SECTION", "2", "ENTITIES"
+        ];
+
+        // --- FRONT ELEVATION ---
+        const shutterXStart = (additionalAxle / 2);
+        
+        // Draw Axle
+        addDxfRect(dxf, 0, heightToAxle - axleRad, totalAxleWidth, axleDia, "AXLE");
+        
+        // Draw Bottom Lath
+        addDxfRect(dxf, shutterXStart, 0, curtainWidth, bLathH, "CURTAIN");
+        
+        // Draw Main Laths
+        for (let i = 0; i < numLaths; i++) {
+            let yPos = bLathH + (i * lathH);
+            addDxfRect(dxf, shutterXStart, yPos, curtainWidth, lathH, "CURTAIN");
+        }
+
+        // Draw Endplate (Box Outline)
+        const epIndex = dom.endplateSelector.value;
+        if (epIndex !== "" && currentFilteredEndplates[epIndex]) {
+            const ep = currentFilteredEndplates[epIndex];
+            const epSize = parseFloat(ep.Size);
+            const epY = heightToAxle - (epSize / 2);
+            addDxfRect(dxf, 0, epY, totalAxleWidth, epSize, "ENDPLATE");
+        }
+
+        // --- PLAN VIEW (Offset 1500mm below floor) ---
+        const planY = -1500;
+        const lathThick = parseFloat(lath['Thickness']) || 15;
+        const guideIndex = dom.guideType.value;
+        
+        // Draw Lath in Plan
+        addDxfRect(dxf, shutterXStart, planY, curtainWidth, lathThick, "CURTAIN");
+
+        if (guideIndex !== "" && guideData[guideIndex]) {
+            const guide = guideData[guideIndex];
+            const gWidth = parseFloat(guide['Width']) || 50;
+            const gap = 20; // 20mm gap from your logic
+            
+            // Left Guide
+            const lx = shutterXStart - gap;
+            addDxfLine(dxf, lx, planY - 10, lx - gWidth, planY - 10, "GUIDES");
+            addDxfLine(dxf, lx - gWidth, planY - 10, lx - gWidth, planY + lathThick + 10, "GUIDES");
+            addDxfLine(dxf, lx - gWidth, planY + lathThick + 10, lx, planY + lathThick + 10, "GUIDES");
+
+            // Right Guide
+            const rx = shutterXStart + curtainWidth + gap;
+            addDxfLine(dxf, rx, planY - 10, rx + gWidth, planY - 10, "GUIDES");
+            addDxfLine(dxf, rx + gWidth, planY - 10, rx + gWidth, planY + lathThick + 10, "GUIDES");
+            addDxfLine(dxf, rx + gWidth, planY + lathThick + 10, rx, planY + lathThick + 10, "GUIDES");
+        }
+
+        // 3. Close File
+        dxf.push("0", "ENDSEC", "0", "EOF");
+
+        // 4. Create Blob and trigger download
+        const dxfString = dxf.join('\n');
+        const blob = new Blob([dxfString], { type: 'application/dxf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Shutter_${curtainWidth.toFixed(0)}x${heightToAxle.toFixed(0)}.dxf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log("DXF Downloaded Successfully");
+
+    } catch (err) {
+        console.error("DXF Generation Error:", err);
+        alert("Error generating DXF. Check console for details.");
+    }
+}
+
+// Re-bind the event listener to the button
+document.getElementById('dxfButton').addEventListener('click', downloadDXF);
+
 </script>
 </body>
 </html>
