@@ -839,7 +839,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [], discData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [], diskData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let motorImageMap = new Map();
@@ -1025,7 +1025,7 @@
                     'Guides': ['Name', 'Width', 'Penetration'],
                     'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter'],
                     'Bearings': ['Shaft size in mm', 'Bearing name', 'load capacity in kgs'],
-                    'Disc size': ['Disc OD', 'Disc bore', 'Disc thickness', 'Disc name']
+                    'Disk size': ['Disk OD', 'Disk bore', 'Disk thickness', 'Disk name'] // Looking for "Disk" but will map to "Disc" logic
                 };
 
                 for (const sheetName in required) {
@@ -1050,7 +1050,7 @@
                         case 'Guides': guideData = objectData; break;
                         case 'Chaindrive': chainDriveData = objectData; break;
                         case 'Bearings': bearingData = objectData; break;
-                        case 'Disc size': discData = objectData; break;
+                        case 'Disk size': diskData = objectData; break;
                     }
                 }
 
@@ -1105,7 +1105,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = []; discData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = []; diskData = [];
             }
         }
 
@@ -2973,18 +2973,20 @@
         }
 
         function findMatchingDisc(axleInnerDia, shaftSize) {
-            if (!discData || discData.length === 0 || !axleInnerDia || !shaftSize) return null;
+            if (!diskData || diskData.length === 0 || !axleInnerDia || !shaftSize) return null;
             
-            // Allow a small tolerance for the Axle Inner Diameter match (e.g. +/- 1mm)
-            const tolerance = 1.5; 
+            // Allow tolerance for loose matches
+            const odTolerance = 3.0; // Increased to 3.0mm
+            const boreTolerance = 1.0; 
 
             // Filter for discs that match the axle ID (approx) and Shaft size (exact)
-            const matches = discData.filter(d => {
-                const dOD = parseFloat(d['Disc OD']) || 0;
-                const dBore = parseFloat(d['Disc bore']) || 0;
+            const matches = diskData.filter(d => {
+                // Handle different potential spellings from Excel source
+                const dOD = parseFloat(d['Disk OD']) || parseFloat(d['Disc OD']) || 0;
+                const dBore = parseFloat(d['Disk bore']) || parseFloat(d['Disc bore']) || 0;
                 
-                const fitsAxle = Math.abs(dOD - axleInnerDia) <= tolerance;
-                const fitsShaft = Math.abs(dBore - shaftSize) <= 0.5; // slight tolerance on bore
+                const fitsAxle = Math.abs(dOD - axleInnerDia) <= odTolerance;
+                const fitsShaft = Math.abs(dBore - shaftSize) <= boreTolerance;
 
                 return fitsAxle && fitsShaft;
             });
@@ -3108,8 +3110,13 @@
             // Check Left Side (if shaft exists)
             if (showLeftShaft) {
                 const leftDisc = findMatchingDisc(innerDia, leftShaftDia);
+                // Use bracket notation to safely access keys regardless of casing issues in raw data
+                const discName = leftDisc ? (leftDisc['Disk name'] || leftDisc['Disc name']) : "No matching disc found";
+                const discOD = leftDisc ? (leftDisc['Disk OD'] || leftDisc['Disc OD']) : null;
+                const discThk = leftDisc ? (leftDisc['Disk thickness'] || leftDisc['Disc thickness']) : null;
+
                 if (leftDisc) {
-                    discResults.push(`<strong>${leftLabel}:</strong> ${leftDisc['Disc name']} (OD: ${leftDisc['Disc OD']}mm, Thk: ${leftDisc['Disc thickness']}mm)`);
+                    discResults.push(`<strong>${leftLabel}:</strong> ${discName} (OD: ${discOD}mm, Thk: ${discThk}mm)`);
                 } else {
                     discResults.push(`<strong>${leftLabel}:</strong> No matching disc found for Ø${innerDia.toFixed(1)} Axle ID / Ø${leftShaftDia} Shaft.`);
                 }
@@ -3117,8 +3124,12 @@
 
             // Check Right Side
             const rightDisc = findMatchingDisc(innerDia, rightShaftDia);
+            const rDiscName = rightDisc ? (rightDisc['Disk name'] || rightDisc['Disc name']) : "No matching disc found";
+            const rDiscOD = rightDisc ? (rightDisc['Disk OD'] || rightDisc['Disc OD']) : null;
+            const rDiscThk = rightDisc ? (rightDisc['Disk thickness'] || rightDisc['Disc thickness']) : null;
+
             if (rightDisc) {
-                discResults.push(`<strong>${rightLabel}:</strong> ${rightDisc['Disc name']} (OD: ${rightDisc['Disc OD']}mm, Thk: ${rightDisc['Disc thickness']}mm)`);
+                discResults.push(`<strong>${rightLabel}:</strong> ${rDiscName} (OD: ${rDiscOD}mm, Thk: ${rDiscThk}mm)`);
             } else {
                 discResults.push(`<strong>${rightLabel}:</strong> No matching disc found for Ø${innerDia.toFixed(1)} Axle ID / Ø${rightShaftDia} Shaft.`);
             }
@@ -3265,211 +3276,6 @@
             container.appendChild(svg);
         }
 
-        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
-            const container = dom['shutter-graphic-container']; container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets }, 'shutter');
-            if(graphic) container.appendChild(graphic);
-        }
-        
-        function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
-            const container = dom['wicket-graphic-container']; container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
-            if(graphic) container.appendChild(graphic);
-        }
-
-       function drawTopDownWidthGraphic(calculatedWidths, guide, lath, additionalLength) {
-            const container = dom['width-graphic-container']; 
-            container.innerHTML = '';
-            
-            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            // Need lath for thickness, guide for width, and dims for scaling
-            if (!guide || !lath || !curtainWidth || curtainWidth <= 0) { return; }
-
-            const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
-            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
-            const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-            const guideWidthVal = parseFloat(guide[guideWidthKey]) || 50; // Default to 50 if missing
-            const lathThickness = parseFloat(lath['Thickness']) || 14;
-
-            const svgNS = "http://www.w3.org/2000/svg"; 
-            const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 600; 
-            const svgHeight = 180; 
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker'); 
-            marker.setAttribute('id', 'dim-arrow-width-graphic'); 
-            marker.setAttribute('viewBox', '0 0 10 10'); 
-            marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); 
-            marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); 
-            marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path'); 
-            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); 
-            arrowPath.setAttribute('fill', '#343a40'); 
-            marker.appendChild(arrowPath); 
-            defs.appendChild(marker); 
-            svg.appendChild(defs);
-
-            // --- ALIGNMENT LOGIC ---
-            // We use the exact same padding and scaling logic as the Front View (drawShutterGraphic)
-            // Front View Padding: left: 120, right: 120. Graph Width = 360.
-            const padding = { left: 120, right: 120, top: 30 };
-            const graphWidth = svgWidth - padding.left - padding.right; // 360px
-            
-            // Calculate Total Scale based on Axle Width (Curtain + Additional), same as Front View
-            const totalRealAxleWidth = curtainWidth + (additionalLength || 0);
-            const scale = graphWidth / totalRealAxleWidth;
-
-            // Calculate Start X for the curtain so it centers exactly like the Front View
-            const scaledShutterWidth = curtainWidth * scale;
-            const scaledTotalAxleWidth = totalRealAxleWidth * scale;
-            const lathStartX = padding.left + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
-
-            // Dimensions for drawing
-            const scaledLathHeight = lathThickness * scale; // Scale the lath thickness
-            const scaledGuideWidth = guideWidthVal * scale; // Scale the guide width
-            const scaledGap = 20 * scale; // 20mm gap as requested
-            
-            // Ensure the lath visual isn't invisible if scale is tiny
-            const visualLathHeight = Math.max(scaledLathHeight, 4); 
-            
-            const graphicTopY = padding.top;
-            
-            // --- DRAW CURTAIN (LATH) ---
-            const curtain = document.createElementNS(svgNS, 'rect'); 
-            curtain.setAttribute('x', lathStartX); 
-            curtain.setAttribute('y', graphicTopY); 
-            curtain.setAttribute('width', scaledShutterWidth); 
-            curtain.setAttribute('height', visualLathHeight); 
-            curtain.setAttribute('class', 'shutter-bottomlath-graphic'); // Reuse style
-            // Override fill to look like lath (grey)
-            curtain.setAttribute('fill', '#ced4da');
-            curtain.setAttribute('stroke', '#adb5bd');
-            curtain.setAttribute('stroke-width', '1');
-            svg.appendChild(curtain);
-
-            // --- DRAW ENDLOCKS (Black Caps) ---
-            const endCapWidth = 5; // Fixed visual width for endlock visibility
-            const leftEndCap = document.createElementNS(svgNS, 'rect'); 
-            leftEndCap.setAttribute('x', lathStartX); 
-            leftEndCap.setAttribute('y', graphicTopY); 
-            leftEndCap.setAttribute('width', endCapWidth); 
-            leftEndCap.setAttribute('height', visualLathHeight); 
-            leftEndCap.setAttribute('fill', 'black'); 
-            svg.appendChild(leftEndCap);
-
-            const rightEndCap = document.createElementNS(svgNS, 'rect'); 
-            rightEndCap.setAttribute('x', lathStartX + scaledShutterWidth - endCapWidth); 
-            rightEndCap.setAttribute('y', graphicTopY); 
-            rightEndCap.setAttribute('width', endCapWidth); 
-            rightEndCap.setAttribute('height', visualLathHeight); 
-            rightEndCap.setAttribute('fill', 'black'); 
-            svg.appendChild(rightEndCap);
-
-            // --- DRAW GUIDES ---
-            // Logic: 20mm gap between curtain end and guide channel web
-            // Guide width from data is used as the length of the channel legs
-            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
-            const guideOpeningSize = visualLathHeight + 6; // Space for lath + tolerance
-            const guideY = graphicTopY - (guideOpeningSize - visualLathHeight) / 2;
-            
-            // Left Guide
-            // Web X position is 20mm to the left of the lath start
-            const leftWebX = lathStartX - scaledGap;
-            const leftOpeningX = leftWebX + scaledGuideWidth; // Legs point right
-            const leftGuidePath = document.createElementNS(svgNS, 'path'); 
-            leftGuidePath.setAttribute('d', `
-                M ${leftOpeningX},${guideY} 
-                L ${leftWebX},${guideY} 
-                L ${leftWebX},${guideY + guideOpeningSize} 
-                L ${leftOpeningX},${guideY + guideOpeningSize}
-            `); 
-            Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key])); 
-            svg.appendChild(leftGuidePath);
-
-            // Right Guide
-            const rightWebX = lathStartX + scaledShutterWidth + scaledGap;
-            const rightOpeningX = rightWebX - scaledGuideWidth; // Legs point left
-            const rightGuidePath = document.createElementNS(svgNS, 'path'); 
-            rightGuidePath.setAttribute('d', `
-                M ${rightOpeningX},${guideY} 
-                L ${rightWebX},${guideY} 
-                L ${rightWebX},${guideY + guideOpeningSize} 
-                L ${rightOpeningX},${guideY + guideOpeningSize}
-            `); 
-            Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); 
-            svg.appendChild(rightGuidePath);
-
-            // --- DIMENSIONS ---
-            const drawDim = (yOffset, startX, endX, label, value) => {
-                const lineY = graphicTopY + guideOpeningSize + yOffset; 
-                const tickHeight = 8; 
-                const textGap = 5;
-                
-                const line = document.createElementNS(svgNS, 'line'); 
-                line.setAttribute('x1', startX); line.setAttribute('y1', lineY); 
-                line.setAttribute('x2', endX); line.setAttribute('y2', lineY); 
-                line.setAttribute('class', 'dimension-line'); 
-                line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); 
-                line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); 
-                svg.appendChild(line);
-
-                const tick1 = document.createElementNS(svgNS, 'line'); 
-                tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY); 
-                tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight); 
-                tick1.setAttribute('class', 'dimension-tick'); 
-                svg.appendChild(tick1);
-
-                const tick2 = document.createElementNS(svgNS, 'line'); 
-                tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY); 
-                tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight); 
-                tick2.setAttribute('class', 'dimension-tick'); 
-                svg.appendChild(tick2);
-
-                const labelText = document.createElementNS(svgNS, 'text'); 
-                labelText.textContent = label; 
-                labelText.setAttribute('class', 'width-graphic-label'); 
-                labelText.setAttribute('x', startX + (endX - startX) / 2); 
-                labelText.setAttribute('y', lineY - textGap); 
-                svg.appendChild(labelText);
-
-                const valueText = document.createElementNS(svgNS, 'text'); 
-                valueText.textContent = `(${value.toFixed(0)} mm)`; 
-                valueText.setAttribute('class', 'width-graphic-value'); 
-                valueText.setAttribute('x', startX + (endX - startX) / 2); 
-                valueText.setAttribute('y', lineY + textGap + 10); 
-                svg.appendChild(valueText);
-            };
-
-            // Calculate Dimension Positions relative to the new gap logic
-            // Clear Opening = Width between guide faces
-            // Since we drew guides with a 20mm gap from curtain, and GuideWidth leg length:
-            // The "Face" of the guide is at: lathStartX - Gap + GuideWidth. 
-            // Wait, normally Face is fixed, curtain floats. 
-            // Based on user calc: Clear Opening = Curtain - 2*Penetration.
-            // We will draw dimensions based on the Calculated Values passed in, centered on the graphic.
-            
-            const center = svgWidth / 2;
-            const scaledClearOpening = clearOpening * scale;
-            const scaledOverallWidth = overallWidth * scale;
-
-            // Draw Curtain Width Dimension (Matches the grey rect)
-            drawDim(30, lathStartX, lathStartX + scaledShutterWidth, 'Curtain Width', curtainWidth);
-
-            // Draw Clear Opening Dimension
-            const coStartX = center - (scaledClearOpening / 2);
-            const coEndX = center + (scaledClearOpening / 2);
-            drawDim(65, coStartX, coEndX, 'Clear Opening', clearOpening);
-
-            // Draw Overall Width Dimension
-            const ovStartX = center - (scaledOverallWidth / 2);
-            const ovEndX = center + (scaledOverallWidth / 2);
-            drawDim(100, ovStartX, ovEndX, 'Overall Width', overallWidth);
-
-            container.appendChild(svg);
-        }
-
         function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
             if (!realWidth || !lath || !bottomLath || !axle) { return null; }
@@ -3591,12 +3397,21 @@
                 const endplateSize = parseFloat(selectedEndplate.Size) || 0;
                 if (endplateSize > 0) {
                     const scaledEndplateHeight = endplateSize * scale;
-                    const endplateBox = document.createElementNS(svgNS, 'rect'); endplateBox.setAttribute('x', startX); endplateBox.setAttribute('y', endplateTopY); endplateBox.setAttribute('width', scaledTotalAxleWidth); endplateBox.setAttribute('height', scaledEndplateHeight); endplateBox.setAttribute
-					endplateBox.setAttribute('class', 'endplate-box-graphic'); svg.appendChild(endplateBox);
+                    const endplateBox = document.createElementNS(svgNS, 'rect'); endplateBox.setAttribute('x', startX); endplateBox.setAttribute('y', endplateTopY); endplateBox.setAttribute('width', scaledTotalAxleWidth); endplateBox.setAttribute('height', scaledEndplateHeight); endplateBox.setAttribute('class', 'endplate-box-graphic'); svg.appendChild(endplateBox);
                 }
             }
             const axleRect = document.createElementNS(svgNS, 'rect'); axleRect.setAttribute('x', startX); axleRect.setAttribute('y', axleY); axleRect.setAttribute('width', scaledTotalAxleWidth); axleRect.setAttribute('height', scaledAxleHeight); axleRect.setAttribute('class', 'shutter-axle-graphic'); svg.appendChild(axleRect);
-            const centerline = document.createElementNS(svgNS, 'line'); centerline.setAttribute('x1', startX); centerline.setAttribute('y', axleCenterlineY); centerline.setAttribute('x2', startX + scaledTotalAxleWidth); centerline.setAttribute('y2', axleCenterlineY); centerline.setAttribute('class', 'axle-centerline-graphic'); svg.appendChild(centerline);
+            
+            // --- UPDATED CENTERLINE LOGIC ---
+            // Ensure y1 equals y2 for a strictly horizontal line
+            const centerline = document.createElementNS(svgNS, 'line'); 
+            centerline.setAttribute('x1', startX); 
+            centerline.setAttribute('y1', axleCenterlineY); 
+            centerline.setAttribute('x2', startX + scaledTotalAxleWidth); 
+            centerline.setAttribute('y2', axleCenterlineY); 
+            centerline.setAttribute('class', 'axle-centerline-graphic'); 
+            svg.appendChild(centerline);
+
             if (wicket) {
                 const wicketRect = document.createElementNS(svgNS, 'rect'); wicketRect.setAttribute('x', lathStartX); wicketRect.setAttribute('y', wicketTopY); wicketRect.setAttribute('width', scaledWicketWidth); wicketRect.setAttribute('height', scaledWicketHeight); wicketRect.setAttribute('class', 'wicket-door-graphic'); svg.appendChild(wicketRect);
             }
@@ -3621,6 +3436,29 @@
                     createLeaderLine(rightDimX_Inner, endplateBottomY, startX + scaledTotalAxleWidth, endplateBottomY); createLeaderLine(rightDimX_Inner, bottomY, startX + scaledTotalAxleWidth, bottomY);
                 }
             }
+            
+            // NEW: Overall Height Dimension
+            const farRightX = startX + scaledTotalAxleWidth + 70;
+            // Determine top point: Endplate top if exists, else Axle top
+            const overallTopY = (selectedEndplate && parseFloat(selectedEndplate.Size) > 0) ? endplateTopY : axleY;
+            // Determine bottom point: Bottom of shutter (floor)
+            const overallBottomY = bottomY;
+            
+            // Calculate total height value in mm
+            // floorToAxle is dom.height.value. 
+            // If endplate, add half endplate size. If no endplate, add half axle dia.
+            let overallHeightVal = parseFloat(dom.height.value);
+            if (selectedEndplate && parseFloat(selectedEndplate.Size) > 0) {
+                overallHeightVal += (parseFloat(selectedEndplate.Size) / 2);
+            } else {
+                overallHeightVal += (axleDiameter / 2);
+            }
+
+            drawDimensionLine(farRightX, overallTopY, farRightX, overallBottomY, `${overallHeightVal.toFixed(0)} mm Overall Height`, 'vertical', 'left');
+            createLeaderLine(farRightX, overallTopY, startX + scaledTotalAxleWidth, overallTopY);
+            createLeaderLine(farRightX, overallBottomY, startX + scaledTotalAxleWidth, overallBottomY);
+
+
             drawDimensionLine(rightDimX_Outer, axleCenterlineY, rightDimX_Outer, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Centre of Axle`, 'vertical', 'left');
             createLeaderLine(rightDimX_Outer, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY); createLeaderLine(rightDimX_Outer, bottomY, startX + scaledTotalAxleWidth, bottomY);
             const leftDimX_Inner = basePadding.left - 15; const leftDimX_Outer = basePadding.left - 55;
@@ -3633,6 +3471,7 @@
                  }
             }
             if (bottomLathHeight > 0) {
+                drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm if (bottomLathHeight > 0) {
                 drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
                 createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY); createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
             }
