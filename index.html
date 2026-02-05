@@ -839,7 +839,7 @@
     </div>
     
     <script>
-        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [], diskData = [];
+        let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [], discData = [];
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let motorImageMap = new Map();
@@ -1025,7 +1025,7 @@
                     'Guides': ['Name', 'Width', 'Penetration'],
                     'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter'],
                     'Bearings': ['Shaft size in mm', 'Bearing name', 'load capacity in kgs'],
-                    'Disk size': ['Disk OD', 'Disk bore', 'Disk thickness', 'Disk name']
+                    'Disc size': ['Disc OD', 'Disc bore', 'Disc thickness', 'Disc name']
                 };
 
                 for (const sheetName in required) {
@@ -1050,7 +1050,7 @@
                         case 'Guides': guideData = objectData; break;
                         case 'Chaindrive': chainDriveData = objectData; break;
                         case 'Bearings': bearingData = objectData; break;
-                        case 'Disk size': diskData = objectData; break;
+                        case 'Disc size': discData = objectData; break;
                     }
                 }
 
@@ -1105,7 +1105,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
-                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = []; diskData = [];
+                lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = []; discData = [];
             }
         }
 
@@ -2973,15 +2973,15 @@
         }
 
         function findMatchingDisc(axleInnerDia, shaftSize) {
-            if (!diskData || diskData.length === 0 || !axleInnerDia || !shaftSize) return null;
+            if (!discData || discData.length === 0 || !axleInnerDia || !shaftSize) return null;
             
             // Allow a small tolerance for the Axle Inner Diameter match (e.g. +/- 1mm)
             const tolerance = 1.5; 
 
             // Filter for discs that match the axle ID (approx) and Shaft size (exact)
-            const matches = diskData.filter(d => {
-                const dOD = parseFloat(d['Disk OD']) || 0;
-                const dBore = parseFloat(d['Disk bore']) || 0;
+            const matches = discData.filter(d => {
+                const dOD = parseFloat(d['Disc OD']) || 0;
+                const dBore = parseFloat(d['Disc bore']) || 0;
                 
                 const fitsAxle = Math.abs(dOD - axleInnerDia) <= tolerance;
                 const fitsShaft = Math.abs(dBore - shaftSize) <= 0.5; // slight tolerance on bore
@@ -3109,7 +3109,7 @@
             if (showLeftShaft) {
                 const leftDisc = findMatchingDisc(innerDia, leftShaftDia);
                 if (leftDisc) {
-                    discResults.push(`<strong>${leftLabel}:</strong> ${leftDisc['Disk name']} (OD: ${leftDisc['Disk OD']}mm, Thk: ${leftDisc['Disk thickness']}mm)`);
+                    discResults.push(`<strong>${leftLabel}:</strong> ${leftDisc['Disc name']} (OD: ${leftDisc['Disc OD']}mm, Thk: ${leftDisc['Disc thickness']}mm)`);
                 } else {
                     discResults.push(`<strong>${leftLabel}:</strong> No matching disc found for Ø${innerDia.toFixed(1)} Axle ID / Ø${leftShaftDia} Shaft.`);
                 }
@@ -3118,7 +3118,7 @@
             // Check Right Side
             const rightDisc = findMatchingDisc(innerDia, rightShaftDia);
             if (rightDisc) {
-                discResults.push(`<strong>${rightLabel}:</strong> ${rightDisc['Disk name']} (OD: ${rightDisc['Disk OD']}mm, Thk: ${rightDisc['Disk thickness']}mm)`);
+                discResults.push(`<strong>${rightLabel}:</strong> ${rightDisc['Disc name']} (OD: ${rightDisc['Disc OD']}mm, Thk: ${rightDisc['Disc thickness']}mm)`);
             } else {
                 discResults.push(`<strong>${rightLabel}:</strong> No matching disc found for Ø${innerDia.toFixed(1)} Axle ID / Ø${rightShaftDia} Shaft.`);
             }
