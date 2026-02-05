@@ -1025,19 +1025,27 @@
                     'Guides': ['Name', 'Width', 'Penetration'],
                     'Chaindrive': ['Motor Description', 'Sprocket teeth', 'Plate wheel', 'Chain size', 'Chain Breaking Strain in newtons', 'Sprocket diameter', 'Platewheel Diameter'],
                     'Bearings': ['Shaft size in mm', 'Bearing name', 'load capacity in kgs'],
-                    'Disk size': ['Disk OD', 'Disk bore', 'Disk thickness', 'Disk name'] // Looking for "Disk" but will map to "Disc" logic
+                    'Disk size': ['Disk OD', 'Disk bore', 'Disk thickness', 'Disk name'] // Also checks 'Disc size'
                 };
 
+                const optionalSheets = ['Wicket doors', 'Endlock', 'Disk size', 'Disc size'];
+
                 for (const sheetName in required) {
+                    // Special handling for Disk size which might be named differently
+                    let actualSheetName = sheetName;
                     if (!workbook.Sheets[sheetName]) {
-                        if (sheetName === 'Wicket doors' || sheetName === 'Endlock') {
+                        if (sheetName === 'Disk size' && workbook.Sheets['Disc size']) {
+                            actualSheetName = 'Disc size';
+                        } else if (optionalSheets.includes(sheetName)) {
                             if(sheetName === 'Wicket doors') wicketData = [];
                             if(sheetName === 'Endlock') endlockData = [];
+                            if(sheetName === 'Disk size') diskData = [];
                             continue;
+                        } else {
+                            throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
                         }
-                        throw new Error(`Required sheet "${sheetName}" not found or is empty in the Excel file.`);
                     }
-                    const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+                    const objectData = XLSX.utils.sheet_to_json(workbook.Sheets[actualSheetName]);
                     switch (sheetName) {
                         case 'Lath': lathData = objectData; break;
                         case 'Bottom lath': bottomLathData = objectData; break;
@@ -1105,6 +1113,7 @@
                 dom['import-status'].textContent = `Error processing Excel file: ${error.message}`;
                 dom['import-status'].style.color = 'red';
                 alert(`Error Reading File: ${error.message}`);
+                // Clear data to prevent partial state errors
                 lathData = []; axleData = []; motorData = []; bottomLathData = []; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData = []; bearingData = []; diskData = [];
             }
         }
@@ -2976,12 +2985,14 @@
             if (!diskData || diskData.length === 0 || !axleInnerDia || !shaftSize) return null;
             
             // Allow tolerance for loose matches
-            const odTolerance = 3.0; // Increased to 3.0mm
+            // Increased tolerance to 3.0mm to catch Ø98.8 vs 100mm/98mm scenarios
+            const odTolerance = 3.0; 
             const boreTolerance = 1.0; 
 
             // Filter for discs that match the axle ID (approx) and Shaft size (exact)
             const matches = diskData.filter(d => {
                 // Handle different potential spellings from Excel source
+                // Looks for "Disk" first (as per sheet), fallback to "Disc" just in case
                 const dOD = parseFloat(d['Disk OD']) || parseFloat(d['Disc OD']) || 0;
                 const dBore = parseFloat(d['Disk bore']) || parseFloat(d['Disc bore']) || 0;
                 
@@ -2992,7 +3003,12 @@
             });
 
             if (matches.length > 0) {
-                return matches[0]; // Return best match
+                // Return best match (closest OD)
+                return matches.sort((a,b) => {
+                    const odA = parseFloat(a['Disk OD'] || a['Disc OD']) || 0;
+                    const odB = parseFloat(b['Disk OD'] || b['Disc OD']) || 0;
+                    return Math.abs(odA - axleInnerDia) - Math.abs(odB - axleInnerDia);
+                })[0];
             }
             return null;
         }
@@ -3471,7 +3487,6 @@
                  }
             }
             if (bottomLathHeight > 0) {
-                drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm if (bottomLathHeight > 0) {
                 drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
                 createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY); createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
             }
