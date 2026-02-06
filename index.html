@@ -3355,6 +3355,15 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             const svgNS = "http://www.w3.org/2000/svg";
             if (!realWidth || !lath || !bottomLath || !axle) { return null; }
             
+            // --- NEW: Dynamic Hangdown Logic ---
+            let hangdownValue = 50; // Default fallback
+            const hangdownKey = Object.keys(bottomLath).find(k => k.toLowerCase().trim() === 'hangdown');
+            if (hangdownKey) {
+                const val = parseFloat(bottomLath[hangdownKey]);
+                if (!isNaN(val)) hangdownValue = val;
+            }
+            // -----------------------------------
+
             const { wicket = null, visionOptions = null, endlockOffsets = { cast: 0, wind: 0 }, guide = null } = options;
             const selectedEndlockIndex = dom.endlockType.value; 
             const endlocksSelected = selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex];
@@ -3442,7 +3451,6 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 svg.appendChild(text);
             };
 
-            // Annotation (Rotated 90deg, Closer to shutter)
             const drawAnnotation = (startY, endY, label) => {
                 const lineX = basePadding.left - 25; 
                 const textX = lineX - 12;
@@ -3553,14 +3561,13 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             }
 
             // FRONT VIEW DIMENSIONS
-            // (Removed Top Dimension as requested)
-
+            const totalWidthDimY = basePadding.top;
+            drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
             const rightDimX = startX + scaledTotalAxleWidth + 20;
             drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Center of Axle`, 'vertical', 'left');
             createLeaderLine(rightDimX, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
             createLeaderLine(rightDimX, bottomY, startX + scaledTotalAxleWidth, bottomY);
 
-            // Left Dimensions (Bottom Lath) - Aligned with Lath Count
             const leftDimX_Aligned = basePadding.left - 25; 
             if (bottomLathHeight > 0) {
                 drawDimensionLine(leftDimX_Aligned, bottomLathTopY, leftDimX_Aligned, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
@@ -3644,10 +3651,11 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 const lastPoint = points[points.length-1].split(' ');
                 const lx = parseFloat(lastPoint[1]);
                 const ly = parseFloat(lastPoint[2]);
-                const dangleDist = 50 * scale;
+                
+                // Dynamic Dangle Height
+                const dangleDist = hangdownValue * scale;
                 const dangleTopY = boxBottomY;
 
-                // To create outline effect:
                 // 1. Draw Thick Black Path (Background)
                 const pathD = points.join(" ");
                 svg.appendChild(createElem('path', { d: pathD, fill: 'none', stroke: '#343a40', 'stroke-width': scaledLathThickness + 1, 'stroke-linecap': 'butt' }));
@@ -3655,7 +3663,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 // 2. Draw Connector Line Black
                 svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: '#343a40', 'stroke-width': scaledLathThickness + 1 }));
 
-                // 3. Draw Dangle Rect Black Outline (slightly larger)
+                // 3. Draw Dangle Rect Black Outline
                 svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2) - 0.5, y: dangleTopY, width: scaledLathThickness + 1, height: dangleDist + 0.5, fill: '#343a40' }));
 
                 // 4. Draw Inner Yellow Path
@@ -3668,35 +3676,33 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2), y: dangleTopY, width: scaledLathThickness - 0.5, height: dangleDist, fill: '#ffc107' }));
             }
             
-            // --- SECTION DIMENSIONS (Optimized Layout) ---
+            // --- SECTION DIMENSIONS ---
             
             // 1. Shared Line for "Endplate Size" and "Height to Underside"
             const rightSharedLineX = boxLeft + scaledBoxSize + 20;
 
-            // 1a. Endplate Size (Top half of shared line) - Rotated - Removed "Box"
+            // 1a. Endplate Size
             drawDimensionLine(rightSharedLineX, boxTop, rightSharedLineX, boxBottomY, `${endplateSize.toFixed(0)} mm`, 'vertical', 'right');
             createLeaderLine(boxLeft + scaledBoxSize, boxTop, rightSharedLineX, boxTop);
             
-            // 1b. Height to Underside (Bottom half of shared line) - Rotated
-            // This is "in line with" Endplate Size as requested (same vertical axis)
+            // 1b. Height to Underside
             const heightToUnder = parseFloat(dom.height.value) - (endplateSize/2);
             drawDimensionLine(rightSharedLineX, boxBottomY, rightSharedLineX, bottomY, `${heightToUnder.toFixed(0)} mm to Underside`, 'vertical', 'right');
             createLeaderLine(boxLeft + scaledBoxSize, boxBottomY, rightSharedLineX, boxBottomY);
             createLeaderLine(boxLeft + scaledBoxSize, bottomY, rightSharedLineX, bottomY);
 
-            // 2. Height to Top (Far Right) - Rotated
+            // 2. Height to Top
             const farRightDimX = rightSharedLineX + 30;
             const heightToTop = parseFloat(dom.height.value) + (endplateSize/2);
             drawDimensionLine(farRightDimX, boxTop, farRightDimX, bottomY, `${heightToTop.toFixed(0)} mm to Top`, 'vertical', 'right');
             createLeaderLine(rightSharedLineX, boxTop, farRightDimX, boxTop);
             createLeaderLine(rightSharedLineX, bottomY, farRightDimX, bottomY);
 
-            // 3. Clear Opening Height (Left Side of Section)
-            // Calculated Value: Height - (Endplate/2) - 50
-            const dangleDist = 50 * scale; // default 50mm hanging
+            // 3. Clear Opening Height
+            const dangleDist = hangdownValue * scale;
             const clearOpeningY = boxBottomY + dangleDist;
             const coDimX = boxLeft - 20; 
-            const calculatedCO = parseFloat(dom.height.value) - (endplateSize/2) - 50;
+            const calculatedCO = parseFloat(dom.height.value) - (endplateSize/2) - hangdownValue;
 
             drawDimensionLine(coDimX, clearOpeningY, coDimX, bottomY, `${calculatedCO.toFixed(0)} mm Clear Opening`, 'vertical', 'left');
             createLeaderLine(coDimX, clearOpeningY, sectionX + 10, clearOpeningY); 
