@@ -3373,7 +3373,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             const svg = document.createElementNS(svgNS, "svg");
             const svgWidth = 850; 
             
-            // UPDATED PADDING: Left increased to 130 to accommodate 3 layers of dimensions
+            // Padding (Left 130 to allow for staggered dimensions)
             const basePadding = { top: 25, right: 300, bottom: 60, left: 130 }; 
             const topDimClearance = 10; 
             const totalTopPadding = basePadding.top + topDimClearance;
@@ -3452,25 +3452,70 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 svg.appendChild(text);
             };
 
-            // Enhanced Annotation Helper: Draws dimension line AND leaders back to shutter
+            // --- UPDATED ANNOTATION HELPER WITH WORD WRAPPING ---
             const drawAnnotation = (startY, endY, label, offset = 25) => {
                 const lineX = basePadding.left - offset; 
                 const textX = lineX - 12;
                 
-                // Draw Vertical Dimension Line
+                // Draw Dimension Line & Leaders
                 svg.appendChild(createElem('line', { x1:lineX, y1:startY, x2:lineX, y2:endY, class:'dimension-line', 'marker-start':`url(#dim-arrow-${idSuffix})`, 'marker-end':`url(#dim-arrow-${idSuffix})` }));
-                
-                // Draw Horizontal Leaders back to the shutter edge (lathStartX)
                 createLeaderLine(lineX, startY, lathStartX, startY);
                 createLeaderLine(lineX, endY, lathStartX, endY);
 
-                const text = createElem('text', { class:'dimension-text' });
+                const textEl = createElem('text', { class:'dimension-text' });
                 const middleY = startY + (endY - startY) / 2;
-                text.setAttribute('x', textX); text.setAttribute('y', middleY);
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('transform', `rotate(-90, ${textX}, ${middleY})`);
-                text.textContent = label;
-                svg.appendChild(text);
+                
+                // Apply rotation
+                textEl.setAttribute('transform', `rotate(-90, ${textX}, ${middleY})`);
+                textEl.setAttribute('x', textX); 
+                textEl.setAttribute('y', middleY);
+                textEl.setAttribute('text-anchor', 'middle');
+
+                // Wrapping Logic
+                const segmentHeight = Math.abs(endY - startY);
+                const charLimit = Math.floor(segmentHeight / 6.5); // Approx 6.5px per char for 12px font
+                
+                if (label.length <= charLimit) {
+                    // Fits on one line
+                    textEl.textContent = label;
+                    textEl.setAttribute('dy', '0.35em'); // Center vertically relative to baseline
+                } else {
+                    // Needs wrapping
+                    const words = label.split(' ');
+                    let lines = [];
+                    let currentLine = words[0];
+
+                    for (let i = 1; i < words.length; i++) {
+                        if ((currentLine + " " + words[i]).length < charLimit) {
+                            currentLine += " " + words[i];
+                        } else {
+                            lines.push(currentLine);
+                            currentLine = words[i];
+                        }
+                    }
+                    lines.push(currentLine);
+
+                    // Render lines as tspans
+                    // Calculate centering offset. Line height ~1.1em.
+                    const lineHeight = 1.1; 
+                    const totalHeightEm = lines.length * lineHeight;
+                    // Start dy shifts the first line up so the block is centered
+                    const startDy = -((totalHeightEm - lineHeight) / 2) + 0.35; 
+
+                    lines.forEach((lineStr, idx) => {
+                        const tspan = document.createElementNS(svgNS, 'tspan');
+                        tspan.textContent = lineStr;
+                        tspan.setAttribute('x', textX); // Must reset X inside rotated context
+                        if (idx === 0) {
+                            tspan.setAttribute('dy', `${startDy}em`);
+                        } else {
+                            tspan.setAttribute('dy', `${lineHeight}em`);
+                        }
+                        textEl.appendChild(tspan);
+                    });
+                }
+                
+                svg.appendChild(textEl);
             };
             
             const scaledAxleHeight = axleDiameter * scale; 
@@ -3538,7 +3583,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 drawLathBlock(vo.numLathsBelow, 'shutter-lath-graphic');
                 if (vo.numLathsBelow > 0) drawAnnotation(currentY, sectionBottom1, `${lath['Name']} (x${vo.numLathsBelow})`, 25);
                 
-                // 2. Vision Block (Track 2: Offset 65 - Staggered Left)
+                // 2. Vision Block (Track 2: Offset 65)
                 const sectionBottom2 = currentY;
                 drawLathBlock(vo.numLathsVision, 'shutter-vision-lath-graphic');
                 if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottom2, `${vo.visionLath['Name']} (x${vo.numLathsVision})`, 65);
@@ -3548,7 +3593,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 drawLathBlock(vo.numLathsAbove, 'shutter-lath-graphic');
                 if (vo.numLathsAbove > 0) drawAnnotation(currentY, sectionBottom3, `${lath['Name']} (x${vo.numLathsAbove})`, 25);
 
-                // 4. Total Count (Track 3: Offset 105 - Furthest Left)
+                // 4. Total Count (Track 3: Offset 105)
                 drawAnnotation(currentY, bottomLathTopY, `Total Laths: ${numLaths}`, 105);
 
             } else if (numLaths > 0) {
