@@ -3384,7 +3384,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             
             svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
             
-            // CSS for larger text
+            // CSS
             const style = document.createElementNS(svgNS, "style");
             style.textContent = `
                 .dimension-text { font-family: sans-serif; font-size: 12px; fill: #343a40; }
@@ -3419,7 +3419,6 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 svg.appendChild(createElem('line', { x1:x1, y1:y1, x2:x2, y2:y2, class:'leader-line' }));
             };
 
-            // Updated Draw Dimension Line to rotate right-side dimensions
             const drawDimensionLine = (x1, y1, x2, y2, label, orientation = 'horizontal', textSide = 'right') => {
                 svg.appendChild(createElem('line', { x1:x1, y1:y1, x2:x2, y2:y2, class:'dimension-line', 'marker-start':`url(#dim-arrow-${idSuffix})`, 'marker-end':`url(#dim-arrow-${idSuffix})` }));
                 const text = createElem('text', { class:'dimension-text' });
@@ -3431,12 +3430,11 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                     const textY = y1 + (y2 - y1) / 2; let textX; 
                     if (textSide === 'left') { 
                         textX = x1 - 6; 
-                        text.setAttribute('dy', '-0.5em'); // Move away from line
+                        text.setAttribute('dy', '-0.5em'); 
                     } else { 
                         textX = x1 + 6; 
-                        text.setAttribute('dy', '1em'); // Move away from line
+                        text.setAttribute('dy', '1em'); 
                     }
-                    
                     text.setAttribute('x', textX); text.setAttribute('y', textY); 
                     text.setAttribute('text-anchor', 'middle');
                     text.setAttribute('transform', `rotate(-90, ${textX}, ${textY})`);
@@ -3444,22 +3442,18 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 svg.appendChild(text);
             };
 
-            // Updated Annotation for Front View to be closer to shutter
+            // Annotation (Rotated 90deg, Closer to shutter)
             const drawAnnotation = (startY, endY, label) => {
-                // Moved 50% closer: changed offset from 55 to 25
                 const lineX = basePadding.left - 25; 
                 const textX = lineX - 12;
                 svg.appendChild(createElem('line', { x1:lineX, y1:startY, x2:lineX, y2:endY, class:'dimension-line', 'marker-start':`url(#dim-arrow-${idSuffix})`, 'marker-end':`url(#dim-arrow-${idSuffix})` }));
                 
                 const text = createElem('text', { class:'dimension-text' });
                 const middleY = startY + (endY - startY) / 2;
-                
-                text.setAttribute('x', textX);
-                text.setAttribute('y', middleY);
+                text.setAttribute('x', textX); text.setAttribute('y', middleY);
                 text.setAttribute('text-anchor', 'middle');
                 text.setAttribute('transform', `rotate(-90, ${textX}, ${middleY})`);
                 text.textContent = label;
-                
                 svg.appendChild(text);
             };
             
@@ -3502,7 +3496,6 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions; 
                 const scaledMainLathHeight = mainLathHeight * scale; const scaledVisionLathHeight = parseFloat(vo.visionLath['Compressed lath height']) * scale;
-                
                 let sectionBottomY = currentY;
                 for (let i = 0; i < vo.numLathsBelow; i++) {
                     currentY -= scaledMainLathHeight;
@@ -3560,18 +3553,19 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             }
 
             // FRONT VIEW DIMENSIONS
-            const totalWidthDimY = basePadding.top;
-            drawDimensionLine(startX, totalWidthDimY, startX + scaledTotalAxleWidth, totalWidthDimY, `${totalRealAxleWidth.toFixed(0)} mm`, 'horizontal');
+            // (Removed Top Dimension as requested)
+
             const rightDimX = startX + scaledTotalAxleWidth + 20;
             drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Center of Axle`, 'vertical', 'left');
             createLeaderLine(rightDimX, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
             createLeaderLine(rightDimX, bottomY, startX + scaledTotalAxleWidth, bottomY);
 
-            const leftDimX_Outer = basePadding.left - 55;
+            // Left Dimensions (Bottom Lath) - Aligned with Lath Count
+            const leftDimX_Aligned = basePadding.left - 25; 
             if (bottomLathHeight > 0) {
-                drawDimensionLine(leftDimX_Outer, bottomLathTopY, leftDimX_Outer, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
-                createLeaderLine(leftDimX_Outer, bottomLathTopY, lathStartX, bottomLathTopY); 
-                createLeaderLine(leftDimX_Outer, bottomY, lathStartX, bottomY);
+                drawDimensionLine(leftDimX_Aligned, bottomLathTopY, leftDimX_Aligned, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
+                createLeaderLine(leftDimX_Aligned, bottomLathTopY, lathStartX, bottomLathTopY); 
+                createLeaderLine(leftDimX_Aligned, bottomY, lathStartX, bottomY);
             }
 
             // --- SECTION VIEW (SIDE VIEW) ---
@@ -3615,86 +3609,98 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                  safetyCounter++;
             }
 
-            // --- SPIRAL LATH LOGIC (Yellow) ---
+            // --- SPIRAL LATH LOGIC (Yellow with Black Outline) ---
             const coilCenterX = boxLeft + (scaledBoxSize/2);
             const coilCenterY = axleCenterlineY;
             const maxCoilDia = parseFloat(dom['max-coil-diameter'].textContent) || axleDiameter;
             const scaledMaxCoilRadius = (maxCoilDia / 2) * scale;
             
-            const pStartAngle = Math.PI / 6; // 4 o'clock (positive Y is down)
+            const pStartAngle = Math.PI / 6; // 4 o'clock
             const thicknessScale = scaledLathThickness;
             const radialGrowth = scaledMaxCoilRadius - sectionAxleRadius;
             
             if (radialGrowth > 0) {
-                let currentAngle = pStartAngle; // 4 o'clock
+                let currentAngle = pStartAngle; 
                 let currentR = sectionAxleRadius;
-                
-                const step = -0.1; // rad step (CCW)
+                const step = -0.1; // CCW
                 let points = [];
                 points.push(`M ${coilCenterX + currentR * Math.cos(currentAngle)} ${coilCenterY + currentR * Math.sin(currentAngle)}`);
                 
                 while(true) {
                     currentAngle += step;
                     currentR += (Math.abs(step) / (2*Math.PI)) * thicknessScale;
-                    
                     const x = coilCenterX + currentR * Math.cos(currentAngle);
                     const y = coilCenterY + currentR * Math.sin(currentAngle);
                     points.push(`L ${x} ${y}`);
-                    
                     if (currentR >= scaledMaxCoilRadius) {
                         const dx = x - coilCenterX;
                         const dy = y - coilCenterY;
-                        // Stop at roughly 9 o'clock (Left edge)
-                        if (dx < 0 && Math.abs(dy) < 2) {
-                             break;
-                        }
+                        if (dx < 0 && Math.abs(dy) < 2) break; // 9 o'clock
                     }
                     if (points.length > 5000) break; 
                 }
                 
-                // Draw Spiral
-                svg.appendChild(createElem('path', { d: points.join(" "), fill: 'none', stroke: '#ffc107', 'stroke-width': scaledLathThickness, 'stroke-linecap': 'butt' }));
-                
-                // Draw "Dangle"
+                // Dangle logic
                 const lastPoint = points[points.length-1].split(' ');
                 const lx = parseFloat(lastPoint[1]);
                 const ly = parseFloat(lastPoint[2]);
                 const dangleDist = 50 * scale;
                 const dangleTopY = boxBottomY;
+
+                // To create outline effect:
+                // 1. Draw Thick Black Path (Background)
+                const pathD = points.join(" ");
+                svg.appendChild(createElem('path', { d: pathD, fill: 'none', stroke: '#343a40', 'stroke-width': scaledLathThickness + 1, 'stroke-linecap': 'butt' }));
                 
-                svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: '#ffc107', 'stroke-width': scaledLathThickness }));
-                svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2), y: dangleTopY, width: scaledLathThickness, height: dangleDist, fill: '#ffc107', stroke: '#d39e00', 'stroke-width': 1 }));
+                // 2. Draw Connector Line Black
+                svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: '#343a40', 'stroke-width': scaledLathThickness + 1 }));
+
+                // 3. Draw Dangle Rect Black Outline (slightly larger)
+                svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2) - 0.5, y: dangleTopY, width: scaledLathThickness + 1, height: dangleDist + 0.5, fill: '#343a40' }));
+
+                // 4. Draw Inner Yellow Path
+                svg.appendChild(createElem('path', { d: pathD, fill: 'none', stroke: '#ffc107', 'stroke-width': scaledLathThickness - 0.5, 'stroke-linecap': 'butt' }));
+                
+                // 5. Draw Connector Line Yellow
+                svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: '#ffc107', 'stroke-width': scaledLathThickness - 0.5 }));
+
+                // 6. Draw Dangle Rect Yellow
+                svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2), y: dangleTopY, width: scaledLathThickness - 0.5, height: dangleDist, fill: '#ffc107' }));
             }
             
-            // --- SECTION DIMENSIONS ---
+            // --- SECTION DIMENSIONS (Optimized Layout) ---
             
-            // 1. Box Size (Word 'Box' removed)
-            const boxDimX = boxLeft + scaledBoxSize + 20;
-            drawDimensionLine(boxDimX, boxTop, boxDimX, boxBottomY, `${endplateSize.toFixed(0)} mm`, 'vertical', 'right');
-            createLeaderLine(boxLeft + scaledBoxSize, boxTop, boxDimX, boxTop);
-            createLeaderLine(boxLeft + scaledBoxSize, boxBottomY, boxDimX, boxBottomY);
+            // 1. Shared Line for "Endplate Size" and "Height to Underside"
+            const rightSharedLineX = boxLeft + scaledBoxSize + 20;
 
-            // 2. Clear Opening Height
-            const dangleDist = 50 * scale;
-            const clearOpeningY = boxBottomY + dangleDist;
-            const coDimX = boxLeft - 20; 
+            // 1a. Endplate Size (Top half of shared line) - Rotated - Removed "Box"
+            drawDimensionLine(rightSharedLineX, boxTop, rightSharedLineX, boxBottomY, `${endplateSize.toFixed(0)} mm`, 'vertical', 'right');
+            createLeaderLine(boxLeft + scaledBoxSize, boxTop, rightSharedLineX, boxTop);
             
-            drawDimensionLine(coDimX, clearOpeningY, coDimX, bottomY, `Clear Opening Height`, 'vertical', 'left');
-            createLeaderLine(coDimX, clearOpeningY, sectionX + 10, clearOpeningY); 
-            createLeaderLine(coDimX, bottomY, guideX, bottomY);
+            // 1b. Height to Underside (Bottom half of shared line) - Rotated
+            // This is "in line with" Endplate Size as requested (same vertical axis)
+            const heightToUnder = parseFloat(dom.height.value) - (endplateSize/2);
+            drawDimensionLine(rightSharedLineX, boxBottomY, rightSharedLineX, bottomY, `${heightToUnder.toFixed(0)} mm to Underside`, 'vertical', 'right');
+            createLeaderLine(boxLeft + scaledBoxSize, boxBottomY, rightSharedLineX, boxBottomY);
+            createLeaderLine(boxLeft + scaledBoxSize, bottomY, rightSharedLineX, bottomY);
 
-            // 3. Height to Top of Box (Rotated)
-            const farRightDimX = boxDimX + 40;
+            // 2. Height to Top (Far Right) - Rotated
+            const farRightDimX = rightSharedLineX + 30;
             const heightToTop = parseFloat(dom.height.value) + (endplateSize/2);
             drawDimensionLine(farRightDimX, boxTop, farRightDimX, bottomY, `${heightToTop.toFixed(0)} mm to Top`, 'vertical', 'right');
-            createLeaderLine(boxDimX, boxTop, farRightDimX, boxTop);
-            createLeaderLine(boxDimX, bottomY, farRightDimX, bottomY);
+            createLeaderLine(rightSharedLineX, boxTop, farRightDimX, boxTop);
+            createLeaderLine(rightSharedLineX, bottomY, farRightDimX, bottomY);
 
-            // 4. Height to Underside of Box (Rotated)
-            const heightToUnder = parseFloat(dom.height.value) - (endplateSize/2);
-            drawDimensionLine(farRightDimX + 30, boxBottomY, farRightDimX + 30, bottomY, `${heightToUnder.toFixed(0)} mm to Underside`, 'vertical', 'right');
-             createLeaderLine(boxDimX, boxBottomY, farRightDimX + 30, boxBottomY);
-             createLeaderLine(boxDimX, bottomY, farRightDimX + 30, bottomY);
+            // 3. Clear Opening Height (Left Side of Section)
+            // Calculated Value: Height - (Endplate/2) - 50
+            const dangleDist = 50 * scale; // default 50mm hanging
+            const clearOpeningY = boxBottomY + dangleDist;
+            const coDimX = boxLeft - 20; 
+            const calculatedCO = parseFloat(dom.height.value) - (endplateSize/2) - 50;
+
+            drawDimensionLine(coDimX, clearOpeningY, coDimX, bottomY, `${calculatedCO.toFixed(0)} mm Clear Opening`, 'vertical', 'left');
+            createLeaderLine(coDimX, clearOpeningY, sectionX + 10, clearOpeningY); 
+            createLeaderLine(coDimX, bottomY, guideX, bottomY);
 
             return svg;
         }
