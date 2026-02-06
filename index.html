@@ -3358,6 +3358,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             const svgNS = "http://www.w3.org/2000/svg";
             if (!realWidth || !lath || !bottomLath || !axle) { return null; }
             
+            // Dynamic Hangdown Logic
             let hangdownValue = 50; 
             const hangdownKey = Object.keys(bottomLath).find(k => k.toLowerCase().trim() === 'hangdown');
             if (hangdownKey) {
@@ -3372,10 +3373,8 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             const svg = document.createElementNS(svgNS, "svg");
             const svgWidth = 850; 
             
-            // UPDATED PADDING: 
-            // Left increased to 100 for staggered dims
-            // Right reduced (via width calc logic below) to push section view to edge
-            const basePadding = { top: 25, right: 300, bottom: 60, left: 100 }; 
+            // UPDATED PADDING: Left increased to 130 to accommodate 3 layers of dimensions
+            const basePadding = { top: 25, right: 300, bottom: 60, left: 130 }; 
             const topDimClearance = 10; 
             const totalTopPadding = basePadding.top + topDimClearance;
             
@@ -3453,12 +3452,18 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 svg.appendChild(text);
             };
 
-            // Annotation drawing helper with Offset capability for staggering
+            // Enhanced Annotation Helper: Draws dimension line AND leaders back to shutter
             const drawAnnotation = (startY, endY, label, offset = 25) => {
                 const lineX = basePadding.left - offset; 
                 const textX = lineX - 12;
+                
+                // Draw Vertical Dimension Line
                 svg.appendChild(createElem('line', { x1:lineX, y1:startY, x2:lineX, y2:endY, class:'dimension-line', 'marker-start':`url(#dim-arrow-${idSuffix})`, 'marker-end':`url(#dim-arrow-${idSuffix})` }));
                 
+                // Draw Horizontal Leaders back to the shutter edge (lathStartX)
+                createLeaderLine(lineX, startY, lathStartX, startY);
+                createLeaderLine(lineX, endY, lathStartX, endY);
+
                 const text = createElem('text', { class:'dimension-text' });
                 const middleY = startY + (endY - startY) / 2;
                 text.setAttribute('x', textX); text.setAttribute('y', middleY);
@@ -3490,7 +3495,6 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             svg.appendChild(createElem('rect', { x:lathStartX, y:currentY, width:scaledShutterWidth, height:scaledBottomLathHeight, class:'shutter-bottomlath-graphic' }));
             const bottomLathTopY = currentY;
 
-            // Draw Endlocks Function
             const drawEndlocks = (lathY, lathH, leftOffset = 0, style='endlock-graphic') => {
                 const endlockSide = lathH * 0.8; const endlockY = lathY + (lathH - endlockSide) / 2;
                 svg.appendChild(createElem('rect', { x: lathStartX + leftOffset - (style.includes('wind')?scaledWindOffset:scaledCastOffset), y:endlockY, width:(style.includes('wind')?endlockSide*2.5:endlockSide), height:endlockSide, class:style }));
@@ -3505,7 +3509,6 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             const wicketTopY = bottomLathTopY - scaledWicketGap - scaledWicketHeight; 
             const scaledWicketWidth = wicket ? (parseFloat(wicket.Width) || 0) * scale : 0;
 
-            // Helper to draw a block of laths (Unified logic for vision/solid)
             const drawLathBlock = (count, cssClass) => {
                  const scaledH = (cssClass.includes('vision')) ? 
                                   parseFloat(visionOptions.visionLath['Compressed lath height']) * scale : 
@@ -3514,9 +3517,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                  for (let i = 0; i < count; i++) {
                     currentY -= scaledH; 
                     svg.appendChild(createElem('rect', { x:lathStartX, y:currentY, width:scaledShutterWidth, height:scaledH, class:cssClass }));
-                    
                     const leftOffset = (wicket && (currentY + scaledH) > wicketTopY) ? scaledWicketWidth : 0;
-                    
                     if (isWindLath) {
                         const isWindPos = (lathVisualCounter === 2 || lathVisualCounter === 4 || lathVisualCounter === 6 || lathVisualCounter === 8) || (lathVisualCounter > 8 && lathVisualCounter % 8 === 0);
                         if (lathVisualCounter % 2 !== 0 && !isWindPos) drawEndlocks(currentY, scaledH, leftOffset);
@@ -3531,20 +3532,24 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
 
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions; 
+                
+                // 1. Bottom Solid Block (Track 1: Offset 25)
                 const sectionBottom1 = currentY;
                 drawLathBlock(vo.numLathsBelow, 'shutter-lath-graphic');
                 if (vo.numLathsBelow > 0) drawAnnotation(currentY, sectionBottom1, `${lath['Name']} (x${vo.numLathsBelow})`, 25);
                 
+                // 2. Vision Block (Track 2: Offset 65 - Staggered Left)
                 const sectionBottom2 = currentY;
                 drawLathBlock(vo.numLathsVision, 'shutter-vision-lath-graphic');
-                if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottom2, `${vo.visionLath['Name']} (x${vo.numLathsVision})`, 25);
+                if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottom2, `${vo.visionLath['Name']} (x${vo.numLathsVision})`, 65);
                 
+                // 3. Top Solid Block (Track 1: Offset 25)
                 const sectionBottom3 = currentY;
                 drawLathBlock(vo.numLathsAbove, 'shutter-lath-graphic');
                 if (vo.numLathsAbove > 0) drawAnnotation(currentY, sectionBottom3, `${lath['Name']} (x${vo.numLathsAbove})`, 25);
 
-                // Total Annotation Staggered Further Out (60px)
-                drawAnnotation(currentY, bottomLathTopY, `Total Laths: ${numLaths}`, 60);
+                // 4. Total Count (Track 3: Offset 105 - Furthest Left)
+                drawAnnotation(currentY, bottomLathTopY, `Total Laths: ${numLaths}`, 105);
 
             } else if (numLaths > 0) {
                  drawLathBlock(numLaths, 'shutter-lath-graphic');
@@ -3563,15 +3568,12 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             }
 
             // FRONT VIEW DIMENSIONS
-            // (Removed Top Overall Dimension)
-
             const rightDimX = startX + scaledTotalAxleWidth + 20;
             drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Center of Axle`, 'vertical', 'left');
             createLeaderLine(rightDimX, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
             createLeaderLine(rightDimX, bottomY, startX + scaledTotalAxleWidth, bottomY);
 
             // Left Dimensions (Bottom Lath) - Aligned with the 25px offset
-            // We use the same offset (25) as the "inner" vision dimensions
             const leftDimX_Aligned = basePadding.left - 25; 
             if (bottomLathHeight > 0) {
                 drawDimensionLine(leftDimX_Aligned, bottomLathTopY, leftDimX_Aligned, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
@@ -3586,7 +3588,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             const boxTop = endplateTopY;
             const boxBottomY = boxTop + scaledBoxSize;
             
-            // Wall Line - Fix: y1 starts at boxTop to remove upper line
+            // Wall Line
             svg.appendChild(createElem('line', { x1: boxLeft, y1: boxTop, x2: boxLeft, y2: bottomY, stroke: '#343a40', 'stroke-width': 2 }));
             
             // Draw Box
@@ -3695,6 +3697,8 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
 
             return svg;
         }
+
+
 		function switchTab(targetTabId) {
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
         tabButtons.forEach(b => b.classList.remove('active'));
