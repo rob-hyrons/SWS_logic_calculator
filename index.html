@@ -1430,7 +1430,7 @@ function updateAllCalculations() {
             updateChainCalculations();
         }
         
-        function updateChainCalculations() {
+  function updateChainCalculations() {
             const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
             const barrelTeeth = parseInt(dom.barrelTeeth.value) || 0;
             const chainPitch = parseFloat(dom.chainPitch.value) || 0;
@@ -1442,7 +1442,7 @@ function updateAllCalculations() {
                      const el = dom[id]; if(el) el.textContent = '0.0'; 
                  });
                  dom['chain-safety-factor'].classList.remove('warning-text', 'option-pass');
-                 drawChainGraphic(0, 0, 0, 0, 0, 0);
+                 drawChainGraphic(0, 0, 0, 0, 0, 0, 0);
                  return;
             }
 
@@ -1489,11 +1489,18 @@ function updateAllCalculations() {
 
             const motorDriveshaft = parseFloat(dom['motor-driveshaft-dia'].textContent) || 0;
             const sprocketDia = parseFloat(dom.sprocketDiameter.value) || 0;
+            
+            // NEW: Get Axle Diameter for graphic
+            let axleDia = 0;
+            const selectedAxleIndex = dom.axleType.value;
+            if (selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
+                 axleDia = parseFloat(axleData[selectedAxleIndex].Diameter) || 0;
+            }
 
-            drawChainGraphic(motorTeeth, barrelTeeth, chainPitch, sprocketDia, plateWheelDia, motorDriveshaft);
+            drawChainGraphic(motorTeeth, barrelTeeth, chainPitch, sprocketDia, plateWheelDia, motorDriveshaft, axleDia);
         }
 
-        function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWheelDia, driveshaftDia) {
+function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWheelDia, driveshaftDia, axleDia) {
             const container = dom['chain-graphic-container']; container.innerHTML = '';
             if (!motorTeeth || !barrelTeeth || !pitch) return;
 
@@ -1575,21 +1582,55 @@ function updateAllCalculations() {
                 svg.appendChild(textDS);
             }
 
-            const barrelCenter = document.createElementNS(svgNS, 'circle');
-            barrelCenter.setAttribute('cx', c2x); barrelCenter.setAttribute('cy', c2y);
-            barrelCenter.setAttribute('r', 3);
-            barrelCenter.setAttribute('fill', '#495057');
-            svg.appendChild(barrelCenter);
+            // Draw Axle on Barrel (Large Gear)
+            if (axleDia > 0) {
+                 const rAxle = (axleDia / 2) * scale;
+                 
+                 // Axle Circle
+                 const axleCircle = document.createElementNS(svgNS, 'circle');
+                 axleCircle.setAttribute('cx', c2x); axleCircle.setAttribute('cy', c2y);
+                 axleCircle.setAttribute('r', rAxle);
+                 axleCircle.setAttribute('fill', '#e9ecef');
+                 axleCircle.setAttribute('stroke', '#495057');
+                 axleCircle.setAttribute('stroke-width', '1.5');
+                 svg.appendChild(axleCircle);
 
+                 // Axle Label
+                 const labelY = c2y - r2 - 35; // Put label roughly above
+                 // Leader Line
+                 const line = document.createElementNS(svgNS, 'line');
+                 line.setAttribute('x1', c2x); line.setAttribute('y1', c2y - rAxle);
+                 line.setAttribute('x2', c2x + 20); line.setAttribute('y2', labelY + 5);
+                 line.setAttribute('class', 'leader-line');
+                 svg.appendChild(line);
+
+                 const textAxle = document.createElementNS(svgNS, 'text');
+                 textAxle.setAttribute('x', c2x + 25); textAxle.setAttribute('y', labelY);
+                 textAxle.setAttribute('class', 'graph-data-label');
+                 textAxle.setAttribute('text-anchor', 'start');
+                 textAxle.textContent = `Ø${axleDia} Axle`;
+                 svg.appendChild(textAxle);
+            } else {
+                 // Fallback center dot if no axle
+                 const barrelCenter = document.createElementNS(svgNS, 'circle');
+                 barrelCenter.setAttribute('cx', c2x); barrelCenter.setAttribute('cy', c2y);
+                 barrelCenter.setAttribute('r', 3);
+                 barrelCenter.setAttribute('fill', '#495057');
+                 svg.appendChild(barrelCenter);
+            }
+
+            // Chain Logic corrected for alignment
             if (d > Math.abs(r2 - r1)) {
                 const alpha = Math.asin((r2 - r1) / d);
-                const t1x_t = c1x + r1 * Math.sin(alpha);
+                // Shift tangent points left by using minus for sin(alpha) when large gear is on right
+                const t1x_t = c1x - r1 * Math.sin(alpha);
                 const t1y_t = c1y - r1 * Math.cos(alpha);
-                const t1x_b = c1x + r1 * Math.sin(alpha); 
+                const t1x_b = c1x - r1 * Math.sin(alpha); 
                 const t1y_b = c1y + r1 * Math.cos(alpha);
-                const t2x_t = c2x + r2 * Math.sin(alpha);
+                
+                const t2x_t = c2x - r2 * Math.sin(alpha);
                 const t2y_t = c2y - r2 * Math.cos(alpha);
-                const t2x_b = c2x + r2 * Math.sin(alpha);
+                const t2x_b = c2x - r2 * Math.sin(alpha);
                 const t2y_b = c2y + r2 * Math.cos(alpha);
                 
                 const path = document.createElementNS(svgNS, 'path');
@@ -1647,7 +1688,8 @@ function updateAllCalculations() {
             sub2a.textContent = `Ø${pdBarrel.toFixed(1)} mm`;
             svg.appendChild(sub2a);
 
-            const drawDim = (cx, cy, r) => {
+            // Updated Dimension drawer to include text
+            const drawDim = (cx, cy, r, labelText) => {
                 const lineY = cy - r - 10;
                 const line = document.createElementNS(svgNS, 'line');
                 line.setAttribute('x1', cx - r); line.setAttribute('y1', lineY);
@@ -1663,13 +1705,22 @@ function updateAllCalculations() {
                 l1.setAttribute('class', 'leader-line'); svg.appendChild(l1);
                 
                 const l2 = document.createElementNS(svgNS, 'line');
-                l2.setAttribute('x1', cx + r); l2.setAttribute('y1', cy);
+                l2.setAttribute('x1', cx + r); l1.setAttribute('y1', cy);
                 l2.setAttribute('x2', cx + r); l2.setAttribute('y2', lineY);
                 l2.setAttribute('class', 'leader-line'); svg.appendChild(l2);
+
+                if (labelText) {
+                    const txt = document.createElementNS(svgNS, 'text');
+                    txt.setAttribute('x', cx); txt.setAttribute('y', lineY - 5);
+                    txt.setAttribute('class', 'dim-text-force-diagram'); // Reuse style
+                    txt.setAttribute('text-anchor', 'middle');
+                    txt.textContent = labelText;
+                    svg.appendChild(txt);
+                }
             };
 
-            drawDim(c1x, c1y, r1);
-            drawDim(c2x, c2y, r2);
+            drawDim(c1x, c1y, r1, `Ø${pdMotor.toFixed(1)}`);
+            drawDim(c2x, c2y, r2, `Ø${pdBarrel.toFixed(1)}`);
 
             container.appendChild(svg);
         }
