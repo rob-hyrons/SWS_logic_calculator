@@ -284,6 +284,7 @@
         }
     </style>
 </head>
+
 <body>
     <img src="https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/swslogo.svg" alt="SWS Logo" id="logo-image">
     <div class="container">
@@ -332,6 +333,8 @@
                     <div class="form-group" data-admin-label="File Import Status">
                          <div id="import-status">Attempting to load data from repository...</div>
                     </div>
+                    
+                    <!-- Row 1: Width & Width Type -->
                     <div class="form-row">
                         <div class="form-group form-col" data-admin-label="Input Width">
                             <label for="width">Input Width (mm)</label>
@@ -347,10 +350,12 @@
                             </select>
                         </div>
                     </div>
+
+                    <!-- Row 2: Lath Type and Curtain Height -->
                     <div class="form-row">
-                        <div class="form-group form-col" data-admin-label="Guide Type">
-                            <label for="guideType">Guide Type</label>
-                            <select id="guideType" disabled>
+                        <div class="form-group form-col" data-admin-label="Lath Type">
+                            <label for="lathType">Lath Type</label>
+                            <select id="lathType" disabled>
                                 <option value="">-- Waiting for file import --</option>
                             </select>
                         </div>
@@ -359,14 +364,16 @@
                             <input type="number" id="height" placeholder="e.g., 4000">
                         </div>
                     </div>
-                     <div class="form-group" data-admin-label="Additional Axle Width">
-                        <label for="additionalLength">Additional Axle Width (Total, mm)</label>
-                        <input type="number" id="additionalLength" placeholder="e.g., 100" value="20">
+
+                    <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
+                        <img id="lathImageDisplay" src="" alt="Lath Image" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
                     </div>
+
+                    <!-- Row 3: Guide Type and Endlock Type -->
                     <div class="form-row">
-                        <div class="form-group form-col" data-admin-label="Lath Type">
-                            <label for="lathType">Lath Type</label>
-                            <select id="lathType" disabled>
+                        <div class="form-group form-col" data-admin-label="Guide Type">
+                            <label for="guideType">Guide Type</label>
+                            <select id="guideType" disabled>
                                 <option value="">-- Waiting for file import --</option>
                             </select>
                         </div>
@@ -377,11 +384,30 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-group" data-admin-label="Custom Lath Option">
-                        <label for="useCustomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
-                            <input type="checkbox" id="useCustomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Use Custom Lath
-                        </label>
+
+                    <!-- Row 4: Bottom Lath Type (Above checkboxes) -->
+                    <div class="form-group" data-admin-label="Bottom Lath Type">
+                        <label for="bottomLathType">Bottom Lath Type</label>
+                        <select id="bottomLathType" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
                     </div>
+
+                    <!-- Row 5: Checkboxes for Custom Lath & Powder Coated -->
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Custom Lath Option">
+                            <label for="useCustomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="useCustomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Use Custom Lath
+                            </label>
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Powder Coated Option">
+                            <label for="powderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+0.5 kg/m²)
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Custom Lath Hidden Options -->
                     <div id="custom-lath-options" data-admin-label="Custom Lath Weight" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
                         <div class="form-group">
                             <label for="customLathWeight">Custom Lath Weight (kg/m²)</label>
@@ -394,32 +420,22 @@
                             <small style="font-size: 0.8em; color: #555;">If a value is entered here, it will override the calculated 'Curtain Weight (for Torque)'.</small>
                         </div>
                     </div>
-                    <div id="lath-image-container" style="margin-top: 1em; margin-bottom: 1.5em; text-align: center; display: none;">
-                        <img id="lathImageDisplay" src="" alt="Lath Image" style="max-width: 100%; max-height: 100px; border-radius: 4px; border: 1px solid #ccc;">
-                    </div>
-                    <div class="form-group" data-admin-label="Powder Coated Option">
-                        <label for="powderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
-                            <input type="checkbox" id="powderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">Powder Coated (+0.5 kg/m²)
-                        </label>
-                    </div>
-                    <div class="form-group" data-admin-label="Bottom Lath Type">
-                        <label for="bottomLathType">Bottom Lath Type</label>
-                        <select id="bottomLathType" disabled>
-                            <option value="">-- Waiting for file import --</option>
-                        </select>
-                    </div>
                     
-                    <div class="form-group" data-admin-label="Sloping Bottom Lath Option">
-                        <label for="isSlopingBottomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
-                            <input type="checkbox" id="isSlopingBottomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Sloping Bottom Lath
-                        </label>
+                    <!-- Row 6: Checkboxes for Sloping Bottom & Add Vision -->
+                    <div class="form-row">
+                        <div class="form-group form-col" data-admin-label="Sloping Bottom Lath Option">
+                            <label for="isSlopingBottomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="isSlopingBottomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Sloping Bottom Lath
+                            </label>
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Add Vision Slats Option">
+                            <label for="addVision" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="addVision" style="width: auto; margin-right: 8px; vertical-align: middle;">Add Vision Slats
+                            </label>
+                        </div>
                     </div>
-                    
-                    <div class="form-group" data-admin-label="Add Vision Slats Option">
-                        <label for="addVision" style="display: inline-block; font-weight: 500; cursor: pointer;">
-                            <input type="checkbox" id="addVision" style="width: auto; margin-right: 8px; vertical-align: middle;">Add Vision Slats
-                        </label>
-                    </div>
+
+                    <!-- Vision Slat Hidden Options -->
                     <div id="vision-slat-options" data-admin-label="Vision Slat Details" style="display: none; padding-left: 20px; border-left: 3px solid #e9ecef; margin-bottom: 1.5em; margin-top: -1em;">
                         <div class="form-group">
                             <label for="visionLathType">Vision Lath Type</label>
@@ -442,17 +458,23 @@
                         </div>
                     </div>
 
+                    <!-- Row 7: Additional Axle Width (Below Checkboxes) -->
+                    <div class="form-group" data-admin-label="Additional Axle Width">
+                        <label for="additionalLength">Additional Axle Width (Total, mm)</label>
+                        <input type="number" id="additionalLength" placeholder="e.g., 100" value="20">
+                    </div>
+
                     <div class="results">
                         <h3>Shutter Details</h3>
-						<p>Curtain Width (Calculated): <span id="calculated-curtain-width">0</span> mm</p>
-						<p>Clear Opening (Calculated): <span id="calculated-clear-opening">0</span> mm</p>
-						<p>Overall Width (Calculated): <span id="calculated-overall-width">0</span> mm</p>
-						<hr>
+                        <p>Curtain Width (Calculated): <span id="calculated-curtain-width">0</span> mm</p>
+                        <p>Clear Opening (Calculated): <span id="calculated-clear-opening">0</span> mm</p>
+                        <p>Overall Width (Calculated): <span id="calculated-overall-width">0</span> mm</p>
+                        <hr>
                         <p>Total Shutter Weight: <span id="weight-kg">0.00</span> kgs</p>
                         <p>Curtain Weight (for Torque): <span id="torque-weight-kg">0.00</span> kgs</p>
                         <p>Total Endlock Weight: <span id="endlock-weight">0.00</span> kgs</p>
                         <p>Total Curtain Area (Material): <span id="curtain-area">0.00</span> m²</p>
-						<p>Curtain Area to Lift (Coverage): <span id="lifted-curtain-area">0.00</span> m²</p>
+                        <p>Curtain Area to Lift (Coverage): <span id="lifted-curtain-area">0.00</span> m²</p>
                         <p>Total Applied Friction: <span id="total-applied-friction">0</span> %</p>
                         <p id="vision-area-m2-para" style="display: none;">Total Vision Area: <span id="vision-area-m2">0.00</span> m²</p>
                         <p id="vision-percentage-para" style="display: none;">Overall Vision Percentage: <span id="vision-percentage">0.00</span> %</p>
@@ -523,66 +545,69 @@
                         <p id="bearing-warning" style="display:none; color: #d93025; font-weight: bold; margin-top:5px;">⚠️ Warning: Load exceeds bearing capacity!</p>
                     </div>
                     <div id="recommendation-box"></div> 
-					<div id="weld-check-container" class="results" style="margin-top: 2em; border-left-color: #e83e8c;">
-						<h3 style="color: #c92a7a;">Axle Shaft Weld Strength</h3>
-						<div class="form-row">
-							<div class="form-group form-col">
-								<label>Smallest Shaft Diameter</label>
-								<input type="text" id="weld-shaft-dia" readonly style="background-color: #e9ecef; font-weight: bold;" value="0 mm">
-								<small style="color: #555;">(Worst case of Motor, Brake, or Bearing)</small>
-							</div>
-							<div class="form-group form-col">
-								<label>Endplate Disc Thickness</label>
-								<input type="text" id="weld-plate-thickness" readonly style="background-color: #e9ecef; font-weight: bold;" value="0 mm">
-								<small style="color: #555;">5mm (≤139mm OD) or 8mm (>139mm OD)</small>
-							</div>
-						</div>
-						
-						<div class="form-row">
-							<div class="form-group form-col">
-								<label>Operating Torque (Max)</label>
-								<input type="text" id="weld-applied-torque" readonly style="background-color: #e9ecef;" value="0 Nm">
-							</div>
-							<div class="form-group form-col">
-								<label>Weld Torque Capacity</label>
-								<input type="text" id="weld-capacity-torque" readonly style="background-color: #e9ecef;" value="0 Nm">
-							</div>
-						</div>
+                    <div id="weld-check-container" class="results" style="margin-top: 2em; border-left-color: #e83e8c;">
+                        <h3 style="color: #c92a7a;">Axle Shaft Weld Strength</h3>
+                        <div class="form-row">
+                            <div class="form-group form-col">
+                                <label>Smallest Shaft Diameter</label>
+                                <input type="text" id="weld-shaft-dia" readonly style="background-color: #e9ecef; font-weight: bold;" value="0 mm">
+                                <small style="color: #555;">(Worst case of Motor, Brake, or Bearing)</small>
+                            </div>
+                            <div class="form-group form-col">
+                                <label>Endplate Disc Thickness</label>
+                                <input type="text" id="weld-plate-thickness" readonly style="background-color: #e9ecef; font-weight: bold;" value="0 mm">
+                                <small style="color: #555;">5mm (≤139mm OD) or 8mm (>139mm OD)</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group form-col">
+                                <label>Operating Torque (Max)</label>
+                                <input type="text" id="weld-applied-torque" readonly style="background-color: #e9ecef;" value="0 Nm">
+                            </div>
+                            <div class="form-group form-col">
+                                <label>Weld Torque Capacity</label>
+                                <input type="text" id="weld-capacity-torque" readonly style="background-color: #e9ecef;" value="0 Nm">
+                            </div>
+                        </div>
 
-						<p>Weld Perimeter: <span id="weld-perimeter">0.0</span> mm</p>
-						<p>Max Tangential Force (Shear): <span id="weld-max-force">0</span> N</p>
-						<p>Weld Status: <span id="weld-status" style="font-weight: bold;">N/A</span></p>
+                        <p>Weld Perimeter: <span id="weld-perimeter">0.0</span> mm</p>
+                        <p>Max Tangential Force (Shear): <span id="weld-max-force">0</span> N</p>
+                        <p>Weld Status: <span id="weld-status" style="font-weight: bold;">N/A</span></p>
 
-						<div id="weld-graphic-container" class="graph-container" style="height: 500px; border: 1px solid #e9ecef; border-radius: 4px; background-color: white; margin-top: 1em;"></div>
-					</div>
+                        <div id="weld-graphic-container" class="graph-container" style="height: 500px; border: 1px solid #e9ecef; border-radius: 4px; background-color: white; margin-top: 1em;"></div>
+                    </div>
 
-</div>
                 </div>
 
-                <!-- Motor Tab -->
+                
+				<!-- Motor Tab -->
                 <div id="motor-content" class="tab-pane">
                     <h2>Motor & Torque Analysis</h2>
+                    
+                    <!-- Moved to be the first dropdown -->
+                    <div class="form-group" data-admin-label="Motor Mounting Type">
+                        <label for="motorMountingType">Motor Mounting Type</label>
+                        <select id="motorMountingType" disabled>
+                            <option value="">-- Waiting for file import --</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group" data-admin-label="Motor Usage Type">
                         <label for="motorUsageFilter">Motor Usage Type</label>
                         <select id="motorUsageFilter" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                     <div class="form-group" data-admin-label="Motor Manufacturer">
+                    <div class="form-group" data-admin-label="Motor Manufacturer">
                         <label for="motorManufacturerFilter">Motor Manufacturer</label>
                         <select id="motorManufacturerFilter" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
-                     <div class="form-group" data-admin-label="Motor Voltage">
+                    <div class="form-group" data-admin-label="Motor Voltage">
                         <label for="motorVoltageFilter">Motor Voltage</label>
                         <select id="motorVoltageFilter" disabled>
-                            <option value="">-- Waiting for file import --</option>
-                        </select>
-                    </div>
-                    <div class="form-group" data-admin-label="Motor Mounting Type">
-                        <label for="motorMountingType">Motor Mounting Type</label>
-                        <select id="motorMountingType" disabled>
                             <option value="">-- Waiting for file import --</option>
                         </select>
                     </div>
@@ -596,7 +621,9 @@
                         <label for="friction">Lath Baseline Friction Allowance (%)</label>
                         <input type="number" id="friction" value="10" title="Automatically updated from Lath data. Can be overridden.">
                     </div>
+                    
                     <div id="torque-graph-container" class="graph-container" style="height: 280px;"></div>
+                    
                     <div class="results">
                         <h3>Torque Calculation</h3>
                         <p>Max Required Torque: <span id="max-torque">0.0</span> Nm</p>
@@ -773,56 +800,56 @@
                 </div>
 
                 <!-- Sloping Bottom Lath Tab -->
-				<div id="slope-content" class="tab-pane">
-					<h2>Sloping Bottom Lath Design</h2>
-					
-					<div class="form-row">
-						 <div class="form-group form-col">
-							<label for="slopeMaterial">Material</label>
-							<select id="slopeMaterial">
-								<option value="7850" selected>Steel (7850 kg/m³)</option>
-								<option value="2700">Aluminium (2700 kg/m³)</option>
-							</select>
-						</div>
-					</div>
-					
-					<div class="form-row">
-						 <div class="form-group form-col">
-							<label for="slopeLeftHeight">Left Height (mm)</label>
-							<input type="number" id="slopeLeftHeight" min="69" max="400" value="100">
-						</div>
-						<div class="form-group form-col">
-							<label for="slopeRightHeight">Right Height (mm)</label>
-							<input type="number" id="slopeRightHeight" min="69" max="400" value="200">
-						</div>
-					</div>
-					 <div class="form-row">
-						 <div class="form-group form-col">
-							<label for="slopeFoldLength">Fold Length (mm)</label>
-							<input type="number" id="slopeFoldLength" min="25" value="30">
-							<small>Top & Bottom folds (Default 30mm, Min 25mm)</small>
-						</div>
-						<div class="form-group form-col">
-							 <label for="slopeThickness">Sheet Thickness (mm)</label>
-							<input type="number" id="slopeThickness" value="1.5" step="0.1">
-						</div>
-					</div>
+                <div id="slope-content" class="tab-pane">
+                    <h2>Sloping Bottom Lath Design</h2>
+                    
+                    <div class="form-row">
+                         <div class="form-group form-col">
+                            <label for="slopeMaterial">Material</label>
+                            <select id="slopeMaterial">
+                                <option value="7850" selected>Steel (7850 kg/m³)</option>
+                                <option value="2700">Aluminium (2700 kg/m³)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                         <div class="form-group form-col">
+                            <label for="slopeLeftHeight">Left Height (mm)</label>
+                            <input type="number" id="slopeLeftHeight" min="69" max="400" value="100">
+                        </div>
+                        <div class="form-group form-col">
+                            <label for="slopeRightHeight">Right Height (mm)</label>
+                            <input type="number" id="slopeRightHeight" min="69" max="400" value="200">
+                        </div>
+                    </div>
+                     <div class="form-row">
+                         <div class="form-group form-col">
+                            <label for="slopeFoldLength">Fold Length (mm)</label>
+                            <input type="number" id="slopeFoldLength" min="25" value="30">
+                            <small>Top & Bottom folds (Default 30mm, Min 25mm)</small>
+                        </div>
+                        <div class="form-group form-col">
+                             <label for="slopeThickness">Sheet Thickness (mm)</label>
+                            <input type="number" id="slopeThickness" value="1.5" step="0.1">
+                        </div>
+                    </div>
 
-					<div class="results" style="border-left-color: #dc3545; margin-bottom: 1.5em;">
-						<h3 style="color: #dc3545;">Section Details</h3>
-						<p>Calculated Weight: <span id="slope-weight" style="font-weight: bold; font-size: 1.2em;">0.00</span> kg</p>
-						<p style="font-size: 0.9em; color: #555;">(This dead weight is automatically added to the bottom of the curtain for torque/lift calculations)</p>
-					</div>
+                    <div class="results" style="border-left-color: #dc3545; margin-bottom: 1.5em;">
+                        <h3 style="color: #dc3545;">Section Details</h3>
+                        <p>Calculated Weight: <span id="slope-weight" style="font-weight: bold; font-size: 1.2em;">0.00</span> kg</p>
+                        <p style="font-size: 0.9em; color: #555;">(This dead weight is automatically added to the bottom of the curtain for torque/lift calculations)</p>
+                    </div>
 
-					<h3>Front View</h3>
-					<div id="slope-front-view" class="sloping-graphic-container" style="height: 300px;"></div>
-					
-					<h3>Section View (End Profile)</h3>
-					<div id="slope-section-view" class="sloping-graphic-container" style="height: 300px;"></div>
+                    <h3>Front View</h3>
+                    <div id="slope-front-view" class="sloping-graphic-container" style="height: 300px;"></div>
+                    
+                    <h3>Section View (End Profile)</h3>
+                    <div id="slope-section-view" class="sloping-graphic-container" style="height: 300px;"></div>
 
-					<h3>Unfolded Plan View (Manufacturing)</h3>
-					<div id="slope-unfolded-view" class="sloping-graphic-container" style="height: 350px;"></div>
-				</div>
+                    <h3>Unfolded Plan View (Manufacturing)</h3>
+                    <div id="slope-unfolded-view" class="sloping-graphic-container" style="height: 350px;"></div>
+                </div>
 
                 <!-- Admin Tab -->
                 <div id="admin-content" class="tab-pane">
@@ -855,7 +882,6 @@
                         <div id="input-controls-container" class="admin-controls"></div>
                     </div>
 
-                    <!-- NEW: AXLE CALCULATION SETTINGS -->
                     <div class="admin-section">
                         <h3>Axle Calculation Settings</h3>
                         <div class="form-group">
@@ -900,7 +926,6 @@
 
                         <h4>2. Select Shutter Configuration</h4>
                         <div class="form-row">
-                            <!-- UPDATED: Primary Lath -->
                             <div class="form-group form-col">
                                 <label for="reportLathType">Primary Lath Type</label>
                                 <select id="reportLathType">
@@ -908,13 +933,11 @@
                                 </select>
                                 <small style="color:#666;">Used up to the width limit below.</small>
                             </div>
-                            <!-- NEW: Switch Limit -->
                             <div class="form-group form-col">
                                 <label for="reportLathLimit">Switch Width (mm)</label>
                                 <input type="number" id="reportLathLimit" placeholder="e.g. 4000">
                                 <small style="color:#666;">Width to switch to Secondary Lath.</small>
                             </div>
-                            <!-- NEW: Secondary Lath -->
                             <div class="form-group form-col">
                                 <label for="reportLathType2">Secondary Lath Type</label>
                                 <select id="reportLathType2">
@@ -924,7 +947,6 @@
                             </div>
                         </div>
                         
-                        <!-- NEW: Report Specific Powder Coating Option -->
                         <div class="form-group" style="margin-bottom: 1em;">
                             <label for="reportPowderCoated" style="display: inline-block; font-weight: 500; cursor: pointer;">
                                 <input type="checkbox" id="reportPowderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">
@@ -947,7 +969,6 @@
                             </div>
                         </div>
 
-                        <!-- NEW: Collar Override Section -->
                         <h4>Optional: Axle Collar Specific Override</h4>
                         <div class="form-row" style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #e9ecef;">
                             <div class="form-group form-col">
@@ -1008,6 +1029,7 @@
             </div>
         </div>
     </div>
+
     
     <script>
         let lathData = [], axleData = [], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData = [], endlockData = [], guideData = [], chainDriveData = [], bearingData = [];
@@ -1112,16 +1134,24 @@ const dom = {};
             }
         });
 
-        // --- MANUAL AXLE OVERRIDE LISTENER ---
-        if (dom.axleType) {
-            dom.axleType.addEventListener('change', (e) => {
-                if (e.target.value !== "") {
-                    // Force the index to an Integer to ensure math comparisons work
-                    userSelectedAxleIndex = parseInt(e.target.value, 10);
-                    updateAllCalculations();
-                }
-            });
+// --- MANUAL AXLE OVERRIDE LISTENER ---
+if (dom.axleType) {
+    dom.axleType.addEventListener('change', (e) => {
+        if (e.target.value !== "") {
+            userSelectedAxleIndex = parseInt(e.target.value, 10);
+            updateAllCalculations();
         }
+    });
+}
+
+// --- ADD THIS NEW SECTION HERE: MANUAL ENDPLATE OVERRIDE LISTENER ---
+if (dom.endplateSelector) {
+    dom.endplateSelector.addEventListener('change', () => {
+        // This ensures the Inputs page widths and plan graphic 
+        // update when you pick a different endplate size/offset
+        updateAllCalculations();
+    });
+}
         
 // Sloping Lath Toggle
 if (dom.isSlopingBottomLath) {
@@ -1584,40 +1614,56 @@ if (dom.dxfButton) {
             return selectedLath;
         }
 
-        function getCalculatedWidths() {
-            const inputWidth = parseFloat(dom.width.value) || 0;
-            const widthType = dom.widthType.value;
-            const selectedGuideIndex = dom.guideType.value;
-            let curtainWidth = 0, clearOpening = 0, overallWidth = 0;
+function getCalculatedWidths() {
+    const inputWidth = parseFloat(dom.width.value) || 0;
+    const widthType = dom.widthType.value;
+    const selectedGuideIndex = dom.guideType.value;
+    const selectedEndplateIndex = dom.endplateSelector.value;
+    
+    let curtainWidth = 0, clearOpening = 0, overallWidth = 0;
+    let epOffset = 0;
+    let epSize = 0;
 
-            if (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) {
-                const guide = guideData[selectedGuideIndex];
-                const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
-                const widthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
-                const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
-                const guideWidth = parseFloat(guide[widthKey]) || 0;
+    // 1. Get Endplate Specs (Offset and Size) from current selection
+    if (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) {
+        const ep = currentFilteredEndplates[selectedEndplateIndex];
+        const offsetKey = Object.keys(ep).find(k => k.toLowerCase().trim() === 'offset');
+        const sizeKey = Object.keys(ep).find(k => k.toLowerCase().trim() === 'size');
+        epOffset = offsetKey ? (parseFloat(ep[offsetKey]) || 0) : 0;
+        epSize = sizeKey ? (parseFloat(ep[sizeKey]) || 0) : 0;
+    }
 
-                if (widthType === 'curtainWidth') {
-                    curtainWidth = inputWidth;
-                    clearOpening = curtainWidth - (2 * guidePenetration);
-                    overallWidth = clearOpening + (2 * guideWidth);
-                } else if (widthType === 'clearOpening') {
-                    clearOpening = inputWidth;
-                    curtainWidth = clearOpening + (2 * guidePenetration);
-                    overallWidth = clearOpening + (2 * guideWidth);
-                } else if (widthType === 'overall') {
-                    overallWidth = inputWidth;
-                    clearOpening = overallWidth - (2 * guideWidth);
-                    curtainWidth = clearOpening + (2 * guidePenetration);
-                }
-            } else {
-                curtainWidth = inputWidth; clearOpening = inputWidth; overallWidth = inputWidth;
-            }
-            dom['calculated-curtain-width'].textContent = curtainWidth.toFixed(0);
-            dom['calculated-clear-opening'].textContent = clearOpening.toFixed(0);
-            dom['calculated-overall-width'].textContent = overallWidth.toFixed(0);
-            return { curtainWidth, clearOpening, overallWidth };
+    if (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) {
+        const guide = guideData[selectedGuideIndex];
+        const penetrationKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'penetration');
+        const widthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
+        const guidePenetration = parseFloat(guide[penetrationKey]) || 0;
+        const guideWidth = parseFloat(guide[widthKey]) || 0;
+
+        // Logic based on Width Type selection
+        if (widthType === 'overall') {
+            overallWidth = inputWidth;
+            clearOpening = overallWidth - (2 * guideWidth) - (2 * epOffset);
+            curtainWidth = clearOpening + (2 * guidePenetration);
+        } else if (widthType === 'clearOpening') {
+            clearOpening = inputWidth;
+            overallWidth = clearOpening + (2 * guideWidth) + (2 * epOffset);
+            curtainWidth = clearOpening + (2 * guidePenetration);
+        } else if (widthType === 'curtainWidth') {
+            curtainWidth = inputWidth;
+            clearOpening = curtainWidth - (2 * guidePenetration);
+            overallWidth = clearOpening + (2 * guideWidth) + (2 * epOffset);
         }
+    } else {
+        curtainWidth = inputWidth; clearOpening = inputWidth; overallWidth = inputWidth;
+    }
+
+    dom['calculated-curtain-width'].textContent = curtainWidth.toFixed(0);
+    dom['calculated-clear-opening'].textContent = clearOpening.toFixed(0);
+    dom['calculated-overall-width'].textContent = overallWidth.toFixed(0);
+    
+    return { curtainWidth, clearOpening, overallWidth, epOffset, epSize };
+}
 		
 		function syncSummaryForPrint() {
     // Helper to get text from a dropdown safely
@@ -1648,91 +1694,222 @@ if (dom.dxfButton) {
     }
 }
 
+// this will filter the Dropdown of lath type based on the max with allowed for the lath type.
+
+
+function filterLathDropdownByWidth(curtainWidth) {
+    if (!dom.lathType || lathData.length === 0) return;
+    
+    let currentlySelectedValue = dom.lathType.value;
+    let previousSelectedName = "";
+    
+    if (currentlySelectedValue !== "" && lathData[currentlySelectedValue]) {
+        const nameKey = Object.keys(lathData[currentlySelectedValue]).find(k => k.toLowerCase().trim() === 'name') || 'Name';
+        previousSelectedName = lathData[currentlySelectedValue][nameKey];
+    }
+
+    dom.lathType.innerHTML = '<option value="">-- Select an option --</option>';
+
+    lathData.forEach((lath, index) => {
+        const maxWidthKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'max width');
+        const maxWidth = maxWidthKey ? parseFloat(lath[maxWidthKey]) : 0;
+
+        if (maxWidth === 0 || curtainWidth <= maxWidth) {
+            const option = document.createElement('option');
+            option.value = index;
+            const nameKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'name') || 'Name';
+            option.textContent = lath[nameKey];
+            dom.lathType.appendChild(option);
+        }
+    });
+
+    let matchFound = false;
+    for (let i = 0; i < dom.lathType.options.length; i++) {
+        if (dom.lathType.options[i].textContent === previousSelectedName) {
+            dom.lathType.selectedIndex = i;
+            matchFound = true;
+            break;
+        }
+    }
+
+    if (!matchFound && !dom.useCustomLath.checked && dom.lathType.options.length > 1) {
+        dom.lathType.selectedIndex = 1;
+        const selectedLath = lathData[dom.lathType.value];
+        if (selectedLath && selectedLath['Friction %'] !== undefined) {
+            dom.friction.value = selectedLath['Friction %'];
+        }
+    }
+}
+
+function filterBottomLathDropdown(selectedLathIndex) {
+    if (!dom.bottomLathType || !bottomLathData || bottomLathData.length === 0) return;
+    
+    // 1. Find the "Lath type" header from the selected primary lath
+    let targetHeader = "";
+    if (selectedLathIndex !== "" && lathData[selectedLathIndex]) {
+        const lath = lathData[selectedLathIndex];
+        const typeKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'lath type');
+        if (typeKey) {
+            targetHeader = String(lath[typeKey]).trim(); 
+        }
+    }
+
+    // 2. Save the current selection NAME so we don't lose it during the refresh
+    let previousSelectedName = "";
+    if (dom.bottomLathType.value !== "" && bottomLathData[dom.bottomLathType.value]) {
+        const oldNameKey = Object.keys(bottomLathData[dom.bottomLathType.value]).find(k => k.toLowerCase().includes('bottom lath name'));
+        previousSelectedName = bottomLathData[dom.bottomLathType.value][oldNameKey];
+    }
+    
+    // 3. Clear the dropdown
+    dom.bottomLathType.innerHTML = '<option value="">-- Select an option --</option>';
+
+    bottomLathData.forEach((bLath, index) => {
+        // Robust lookup for the "Bottom lath name" column
+        const nameKey = Object.keys(bLath).find(k => k.toLowerCase().trim() === 'bottom lath name');
+        const bLathName = bLath[nameKey];
+
+        // CRITICAL: Skip any row that doesn't have an actual name (prevents "Bottom Lath 13" etc)
+        if (!bLathName || String(bLathName).trim() === "" || String(bLathName).includes("undefined")) {
+            return; 
+        }
+
+        let isAllowed = false;
+        if (targetHeader === "") {
+            isAllowed = true; // Show all if no lath type filter is active
+        } else {
+            // Check the column matching the Lath Type (e.g., "75mm lath")
+            const bLathColKey = Object.keys(bLath).find(k => k.trim().toLowerCase() === targetHeader.toLowerCase());
+            if (bLathColKey) {
+                const cellValue = String(bLath[bLathColKey]).toLowerCase().trim();
+                if (cellValue === 'yes' || cellValue === 'y') isAllowed = true;
+            }
+        }
+
+        if (isAllowed) {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = bLathName;
+            dom.bottomLathType.appendChild(option);
+        }
+    });
+
+    // 4. Restore selection if the name still exists in the filtered list
+    if (previousSelectedName) {
+        for (let i = 0; i < dom.bottomLathType.options.length; i++) {
+            if (dom.bottomLathType.options[i].textContent === previousSelectedName) {
+                dom.bottomLathType.selectedIndex = i;
+                return;
+            }
+        }
+    }
+    
+    // Fallback: If nothing is selected, default to the first valid item
+    if (dom.bottomLathType.options.length > 1) {
+        dom.bottomLathType.selectedIndex = 1;
+    }
+}
 
 function updateAllCalculations() {
-            if (lathData.length === 0) { return; };
-            const calculatedWidths = getCalculatedWidths();
-            const curtainWidth = calculatedWidths.curtainWidth;
-            const effectiveLath = getLathWithCustomWeight();
-            const lathImageContainer = document.getElementById('lath-image-container');
-            const lathImageDisplay = document.getElementById('lathImageDisplay');
-            
-            if (effectiveLath) {
-                const selectedLathName = effectiveLath['Name'];
-                if (lathImageMap.has(selectedLathName)) {
-                    lathImageDisplay.src = lathImageMap.get(selectedLathName);
-                    lathImageContainer.style.display = dom.useCustomLath.checked ? 'none' : 'block';
-                } else { lathImageContainer.style.display = 'none'; }
-            } else { lathImageContainer.style.display = 'none'; }
+    if (lathData.length === 0) { return; };
+    
+    const calculatedWidths = getCalculatedWidths();
+    const curtainWidth = calculatedWidths.curtainWidth;
+    
+    // 1. DYNAMIC FILTERS
+    filterLathDropdownByWidth(curtainWidth);
+    filterBottomLathDropdown(dom.lathType.value);
+    
+    const effectiveLath = getLathWithCustomWeight();
+    
+    // 2. IMAGE DISPLAY LOGIC
+    const lathImageContainer = document.getElementById('lath-image-container');
+    const lathImageDisplay = document.getElementById('lathImageDisplay');
+    if (effectiveLath) {
+        const selectedLathName = effectiveLath['Name'];
+        if (lathImageMap.has(selectedLathName)) {
+            lathImageDisplay.src = lathImageMap.get(selectedLathName);
+            lathImageContainer.style.display = dom.useCustomLath.checked ? 'none' : 'block';
+        } else { lathImageContainer.style.display = 'none'; }
+    } else { lathImageContainer.style.display = 'none'; }
 
-            const visionLathImageContainer = document.getElementById('vision-lath-image-container');
-            const visionLathImageDisplay = document.getElementById('visionLathImageDisplay');
-            if (dom.addVision.checked) {
-                const selectedVisionLathIndex = dom.visionLathType.value;
-                 if (selectedVisionLathIndex && lathData[selectedVisionLathIndex]) {
-                    const selectedVisionLathName = lathData[selectedVisionLathIndex]['Name'];
-                    if (lathImageMap.has(selectedVisionLathName)) {
-                        visionLathImageDisplay.src = lathImageMap.get(selectedVisionLathName);
-                        visionLathImageContainer.style.display = 'block';
-                    } else { visionLathImageContainer.style.display = 'none'; }
-                } else { visionLathImageContainer.style.display = 'none'; }
+    const visionLathImageContainer = document.getElementById('vision-lath-image-container');
+    const visionLathImageDisplay = document.getElementById('visionLathImageDisplay');
+    if (dom.addVision.checked) {
+        const selectedVisionLathIndex = dom.visionLathType.value;
+         if (selectedVisionLathIndex && lathData[selectedVisionLathIndex]) {
+            const selectedVisionLathName = lathData[selectedVisionLathIndex]['Name'];
+            if (lathImageMap.has(selectedVisionLathName)) {
+                visionLathImageDisplay.src = lathImageMap.get(selectedVisionLathName);
+                visionLathImageContainer.style.display = 'block';
             } else { visionLathImageContainer.style.display = 'none'; }
+        } else { visionLathImageContainer.style.display = 'none'; }
+    } else { visionLathImageContainer.style.display = 'none'; }
 
-            const widthWarningDiv = dom['width-warning'];
-            if (effectiveLath) {
-                const maxWidthKey = Object.keys(effectiveLath).find(k => k.toLowerCase().trim() === 'max width');
-                const maxWidth = maxWidthKey ? parseFloat(effectiveLath[maxWidthKey]) : 0;
-                if (maxWidth > 0 && curtainWidth > maxWidth && !dom.useCustomLath.checked) {
-                    widthWarningDiv.textContent = `Warning: Calculated curtain width (${curtainWidth.toFixed(0)} mm) exceeds the maximum of ${maxWidth} mm for this lath type.`;
-                    widthWarningDiv.style.display = 'block';
-                } else { widthWarningDiv.style.display = 'none'; }
-            } else { widthWarningDiv.style.display = 'none'; }
-            
-            if (axleData.length === 0 || safetyBrakeData.length === 0) {
-                drawDeflectionGraphic(0, 0); drawAxleCrossSection(null); calculateSafetyBrakeSelection(); drawShutterGraphic(); return;
-            };
-            
-            const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
-            const estCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, null, curtainWidth);
-            const { bestAxle: tempAxle } = findAndSetBestAxle(estCurtainProps.totalWeight, curtainWidth, false);
+    // 3. WIDTH VALIDATION WARNING
+    const widthWarningDiv = dom['width-warning'];
+    if (effectiveLath) {
+        const maxWidthKey = Object.keys(effectiveLath).find(k => k.toLowerCase().trim() === 'max width');
+        const maxWidth = maxWidthKey ? parseFloat(effectiveLath[maxWidthKey]) : 0;
+        if (maxWidth > 0 && curtainWidth > maxWidth && !dom.useCustomLath.checked) {
+            widthWarningDiv.textContent = `Warning: Calculated curtain width (${curtainWidth.toFixed(0)} mm) exceeds the maximum of ${maxWidth} mm for this lath type.`;
+            widthWarningDiv.style.display = 'block';
+        } else { widthWarningDiv.style.display = 'none'; }
+    } else { widthWarningDiv.style.display = 'none'; }
+    
+    // 4. CORE CALCULATIONS
+    if (axleData.length === 0 || safetyBrakeData.length === 0) {
+        drawDeflectionGraphic(0, 0); drawAxleCrossSection(null); calculateSafetyBrakeSelection(); drawShutterGraphic(); return;
+    };
+    
+    const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+    const floorToAxleCenter = parseFloat(dom.height.value) || 0;
+    const bottomLathHeight = selectedBottomLath ? (parseFloat(selectedBottomLath['BLath height']) || 0) : 0;
+    const travelHeight = floorToAxleCenter - bottomLathHeight;
 
-            const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, tempAxle, curtainWidth);
-            const { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
-            visionCalcs = visionData;
+    // Preliminary run to get rough weight for axle selection
+    const estCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, null, curtainWidth);
+    const { bestAxle: tempAxle } = findAndSetBestAxle(estCurtainProps.totalWeight, curtainWidth, false);
 
-            // FIX: Calculate Motor/Coil Diameter BEFORE Endplate Recommendation so maxCoilDiameter is set
-            calculateMotorRecommendation(torqueWeight, effectiveLath, tempAxle, travelHeight, curtainWidth);
-            calculateEndplateRecommendation(); 
-            calculateSafetyBrakeSelection();
+    // Final run with estimated axle for radius accuracy
+    const finalCurtainProps = calculateCurtainProperties(effectiveLath, selectedBottomLath, tempAxle, curtainWidth);
+    const { totalWeight, torqueWeight, fullCurtainLength, visionData, endlockOffsets } = finalCurtainProps;
+    visionCalcs = visionData;
 
-            const { deflection, totalLength, bestAxle } = findAndSetBestAxle(totalWeight, curtainWidth, true);
-            drawDeflectionGraphic(totalLength, deflection);
-            
-            const selectedEndplateIndex = dom.endplateSelector.value;
-            const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
-            
-            const selectedGuideIndex = dom.guideType.value;
-            const selectedGuide = (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) ? guideData[selectedGuideIndex] : null;
+    // MOTOR & TORQUE (Sets maxCoilDiameter globally)
+    calculateMotorRecommendation(torqueWeight, effectiveLath, tempAxle, travelHeight, curtainWidth);
+    
+    // ENDPLATE (Requires maxCoilDiameter)
+    calculateEndplateRecommendation(); 
+    
+    // SAFETY BRAKE
+    calculateSafetyBrakeSelection();
 
-            drawShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), effectiveLath, selectedBottomLath, bestAxle, selectedEndplate, selectedGuide, visionData, endlockOffsets);
-            
-            drawTopDownWidthGraphic(calculatedWidths, selectedGuide, effectiveLath, parseFloat(dom.additionalLength.value));
-            
-            updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
-            
-            updateChainCalculations();
-			
-			updateWeldCalculations();
-            
-            if (dom.isSlopingBottomLath.checked) {
-                drawSlopingLathGraphics();
-				syncSummaryForPrint(); 
-            }
-				
-        // --- POPULATE PDF SUMMARY PAGE ---
+    // AXLE DEFLECTION (Visual version)
+    const { deflection, totalLength, bestAxle } = findAndSetBestAxle(totalWeight, curtainWidth, true);
+    drawDeflectionGraphic(totalLength, deflection);
+    
+    // 5. GRAPHICS & TAB UPDATES
+    const selectedEndplateIndex = dom.endplateSelector.value;
+    const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
+    
+    const selectedGuideIndex = dom.guideType.value;
+    const selectedGuide = (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) ? guideData[selectedGuideIndex] : null;
+
+    drawShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), effectiveLath, selectedBottomLath, bestAxle, selectedEndplate, selectedGuide, visionData, endlockOffsets);
+    drawTopDownWidthGraphic(calculatedWidths, selectedGuide, effectiveLath, parseFloat(dom.additionalLength.value));
+    updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
+    updateChainCalculations();
+    updateWeldCalculations();
+    
+    if (dom.isSlopingBottomLath.checked) {
+        drawSlopingLathGraphics();
+    }
+
+    // 6. POPULATE PDF SUMMARY & PRINT PAGE
+    syncSummaryForPrint(); 
+        
     const getSelText = (el) => el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : "None Selected";
-
-    // Fill the summary spans for the PDF
     if (document.getElementById('p-width')) document.getElementById('p-width').textContent = dom.width.value || "0";
     if (document.getElementById('p-width-type')) document.getElementById('p-width-type').textContent = getSelText(dom.widthType);
     if (document.getElementById('p-height')) document.getElementById('p-height').textContent = dom.height.value || "0";
@@ -1742,18 +1919,29 @@ function updateAllCalculations() {
     
     const shapeInput = document.querySelector('input[name="axleShape"]:checked');
     if (document.getElementById('p-axle-shape')) document.getElementById('p-axle-shape').textContent = shapeInput ? shapeInput.nextElementSibling.textContent : "Circular";
-    
     if (document.getElementById('p-pc')) document.getElementById('p-pc').textContent = dom.powderCoated.checked ? "Yes" : "No";
-		}
+}
 
     // --- SLOPING BOTTOM LATH VISUALIZATIONS ---
 	
 	
-	function getSlopingBottomData() {
+	// --- UPDATED SLOPING BOTTOM LATH DATA LOGIC ---
+function getSlopingBottomData() {
     const slopeCheck = document.getElementById('isSlopingBottomLath');
     if (!slopeCheck || !slopeCheck.checked) {
-        return { weight: 0, maxH: 0, minH: 0, leftH: 0, rightH: 0, foldL: 0, thickness: 0 };
+        return { weight: 0, maxH: 0, minH: 0, leftH: 0, rightH: 0, foldL: 0, thickness: 0, type: 'C section' };
     }
+
+    // Identify Sloping Type from the Bottom Lath Data
+    const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+    let slopingType = 'C section'; // Default fallback
+    if (selectedBottomLath) {
+        const typeKey = Object.keys(selectedBottomLath).find(k => k.toLowerCase().trim() === 'sloping type');
+        if (typeKey && selectedBottomLath[typeKey]) {
+            slopingType = selectedBottomLath[typeKey].toString().trim();
+        }
+    }
+
     const width = parseFloat(document.getElementById('calculated-curtain-width').textContent) || 0;
     const leftH = parseFloat(document.getElementById('slopeLeftHeight').value) || 0;
     const rightH = parseFloat(document.getElementById('slopeRightHeight').value) || 0;
@@ -1762,17 +1950,29 @@ function updateAllCalculations() {
     const density = parseFloat(document.getElementById('slopeMaterial').value) || 7850;
 
     const faceArea = width * (leftH + rightH) / 2;
-    const foldsArea = width * foldL * 2;
-    const totalAreaM2 = (faceArea + foldsArea) / 1000000;
-    const volumeM3 = totalAreaM2 * (thickness / 1000);
-    const weight = volumeM3 * density;
+    let totalAreaM2 = 0;
+
+    // Weight Logic based on Type
+    if (slopingType === 'L section') {
+        // Face area + 1 bottom fold
+        totalAreaM2 = (faceArea + (width * foldL)) / 1000000;
+    } else if (slopingType === '2 plates') {
+        // Face area doubled, no folds
+        totalAreaM2 = (faceArea * 2) / 1000000;
+    } else { 
+        // Standard C section: Face area + 2 folds
+        totalAreaM2 = (faceArea + (width * foldL * 2)) / 1000000;
+    }
+
+    const weight = totalAreaM2 * (thickness / 1000) * density;
     const maxH = Math.max(leftH, rightH);
     const minH = Math.min(leftH, rightH);
 
-    return { weight, maxH, minH, leftH, rightH, foldL, thickness };
+    return { weight, maxH, minH, leftH, rightH, foldL, thickness, type: slopingType };
 }
 
- function drawSlopingLathGraphics() {
+// --- UPDATED SLOPING BOTTOM LATH GRAPHICS ---
+function drawSlopingLathGraphics() {
     let width = parseFloat(dom['calculated-curtain-width'].textContent) || 3000;
     const slopingData = getSlopingBottomData();
     if(dom['slope-weight']) {
@@ -1783,6 +1983,7 @@ function updateAllCalculations() {
     let rightH = Math.max(69, Math.min(400, parseFloat(dom.slopeRightHeight.value) || 200));
     let foldL = Math.max(25, parseFloat(dom.slopeFoldLength.value) || 30);
     let thickness = parseFloat(dom.slopeThickness.value) || 1.5;
+    const sType = slopingData.type;
 
     const svgNS = "http://www.w3.org/2000/svg";
     const createEl = (type, attrs) => {
@@ -1808,7 +2009,7 @@ function updateAllCalculations() {
         svg.appendChild(t);
     };
 
-    // 1. FRONT VIEW (Skipped here, kept identical to your previous base block logic)
+    // 1. FRONT VIEW
     const frontContainer = dom['slope-front-view']; frontContainer.innerHTML = '';
     const fSvg = createEl('svg', {viewBox:'0 0 600 300', width:'100%', height:'100%'});
     const defs = createEl('defs', {});
@@ -1821,13 +2022,21 @@ function updateAllCalculations() {
     const wScaled = width * scale; const lhScaled = leftH * scale; const rhScaled = rightH * scale;
 
     const polyPoints = `${pad},${pad} ${pad + wScaled},${pad} ${pad + wScaled},${pad + rhScaled} ${pad},${pad + lhScaled}`;
-    fSvg.appendChild(createEl('polygon', {points:polyPoints, fill:'#e9ecef', stroke:'#333', 'stroke-width':2}));
+    fSvg.appendChild(createEl('polygon', {points:polyPoints, fill:'#e9ecef', stroke:'#333', 'stroke-width':(sType === '2 plates' ? 4 : 2)}));
+    
+    // Annotation for 2 Plates
+    if (sType === '2 plates') {
+        const infoText = createEl('text', {x: pad + wScaled/2, y: pad + Math.max(lhScaled, rhScaled) + 25, 'text-anchor':'middle', 'font-family':'sans-serif', 'font-size':'12px', 'fill':'#d93025', 'font-weight':'bold'});
+        infoText.textContent = "STYLE: 2 x REINFORCING PLATES (MIRRORED)";
+        fSvg.appendChild(infoText);
+    }
+
     createDim(fSvg, pad, pad - 20, pad + wScaled, pad - 20, `Width: ${width} mm`);
     createDim(fSvg, pad - 20, pad, pad - 20, pad + lhScaled, `LH: ${leftH}`);
     createDim(fSvg, pad + wScaled + 20, pad, pad + wScaled + 20, pad + rhScaled, `RH: ${rightH}`);
     frontContainer.appendChild(fSvg);
 
-    // 2. SECTION VIEW (3mm Internal Radii)
+    // 2. SECTION VIEW
     const sectContainer = dom['slope-section-view']; sectContainer.innerHTML = '';
     const sSvg = createEl('svg', {viewBox:'0 0 300 300', width:'100%', height:'100%'});
     sSvg.appendChild(defs.cloneNode(true));
@@ -1836,143 +2045,178 @@ function updateAllCalculations() {
     const foldW = foldL * sScale;
     const faceH = 150; 
     const thick = thickness * sScale;
-    const ir = 3 * sScale; // 3mm internal radius
+    const ir = 3 * sScale; 
     const er = ir + thick;
     const sCx = 150 - foldW/2; 
     const sCy = 150 - faceH/2;
 
-    const p1 = `${sCx + foldW},${sCy}`;
-    const p2 = `${sCx + er},${sCy}`;
-    const arc1 = `A ${er} ${er} 0 0 0 ${sCx} ${sCy + er}`;
-    const p3 = `${sCx},${sCy + faceH - er}`;
-    const arc2 = `A ${er} ${er} 0 0 0 ${sCx + er} ${sCy + faceH}`;
-    const p4 = `${sCx + foldW},${sCy + faceH}`;
-    const p5 = `${sCx + foldW},${sCy + faceH - thick}`;
-    const p6 = `${sCx + er},${sCy + faceH - thick}`;
-    const arc3 = `A ${ir} ${ir} 0 0 1 ${sCx + thick} ${sCy + faceH - er}`;
-    const p7 = `${sCx + thick},${sCy + er}`;
-    const arc4 = `A ${ir} ${ir} 0 0 1 ${sCx + er} ${sCy + thick}`;
-    const p8 = `${sCx + foldW},${sCy + thick}`;
+    let sectionPath = "";
 
-    const sectionPath = `M ${p1} L ${p2} ${arc1} L ${p3} ${arc2} L ${p4} L ${p5} L ${p6} ${arc3} L ${p7} ${arc4} L ${p8} Z`;
-    sSvg.appendChild(createEl('path', {d:sectionPath, fill:'#adb5bd', stroke:'#343a40'}));
-    
-    // Draw 3mm Radius Arrow
-    const arcCenterX = sCx + er; const arcCenterY = sCy + er;
-    const a45 = Math.PI / 4;
-    const tgtX = arcCenterX - ir * Math.cos(a45); const tgtY = arcCenterY - ir * Math.sin(a45);
-    const startX = tgtX + 45; const startY = tgtY + 30;
-    
-    const leader = createEl('line', {x1: startX, y1: startY, x2: tgtX, y2: tgtY, stroke: '#d93025', 'stroke-width': '1.5', 'marker-end': 'url(#arrow)'});
-    sSvg.appendChild(leader);
-    const rText = createEl('text', {x: startX + 5, y: startY + 5, 'font-family': 'sans-serif', 'font-size': '12px', 'fill': '#d93025', 'font-weight': 'bold'});
-    rText.textContent = "R3 (Internal)";
-    sSvg.appendChild(rText);
+    if (sType === 'C section') {
+        const p1 = `${sCx + foldW},${sCy}`;
+        const p2 = `${sCx + er},${sCy}`;
+        const arc1 = `A ${er} ${er} 0 0 0 ${sCx} ${sCy + er}`;
+        const p3 = `${sCx},${sCy + faceH - er}`;
+        const arc2 = `A ${er} ${er} 0 0 0 ${sCx + er} ${sCy + faceH}`;
+        const p4 = `${sCx + foldW},${sCy + faceH}`;
+        const p5 = `${sCx + foldW},${sCy + faceH - thick}`;
+        const p6 = `${sCx + er},${sCy + faceH - thick}`;
+        const arc3 = `A ${ir} ${ir} 0 0 1 ${sCx + thick} ${sCy + faceH - er}`;
+        const p7 = `${sCx + thick},${sCy + er}`;
+        const arc4 = `A ${ir} ${ir} 0 0 1 ${sCx + er} ${sCy + thick}`;
+        const p8 = `${sCx + foldW},${sCy + thick}`;
+        sectionPath = `M ${p1} L ${p2} ${arc1} L ${p3} ${arc2} L ${p4} L ${p5} L ${p6} ${arc3} L ${p7} ${arc4} L ${p8} Z`;
+    } else if (sType === 'L section') {
+        const p1 = `${sCx},${sCy}`;
+        const p2 = `${sCx + thick},${sCy}`;
+        const p3 = `${sCx + thick},${sCy + faceH - er}`;
+        const arc1 = `A ${ir} ${ir} 0 0 0 ${sCx + er} ${sCy + faceH - thick}`;
+        const p4 = `${sCx + foldW},${sCy + faceH - thick}`;
+        const p5 = `${sCx + foldW},${sCy + faceH}`;
+        const p6 = `${sCx + er},${sCy + faceH}`;
+        const arc2 = `A ${er} ${er} 0 0 1 ${sCx},${sCy + faceH - er}`;
+        sectionPath = `M ${p1} L ${p2} L ${p3} ${arc1} L ${p4} L ${p5} L ${p6} ${arc2} Z`;
+    } else if (sType === '2 plates') {
+        // Draw two parallel vertical plates
+        const p1 = `${sCx},${sCy} L ${sCx + thick},${sCy} L ${sCx + thick},${sCy + faceH} L ${sCx},${sCy + faceH} Z`;
+        const p2 = `${sCx + 30},${sCy} L ${sCx + 30 + thick},${sCy} L ${sCx + 30 + thick},${sCy + faceH} L ${sCx + 30},${sCy + faceH} Z`;
+        sectionPath = `M ${p1} M ${p2}`;
+        createDim(sSvg, sCx, sCy - 20, sCx + 30 + thick, sCy - 20, `2 x Side Plates`);
+    }
 
-    createDim(sSvg, sCx, sCy - 20, sCx + foldW, sCy - 20, `Top Fold: ${foldL}mm`);
-    createDim(sSvg, sCx - 20, sCy, sCx - 20, sCy + faceH, `Variable Height`);
+    sSvg.appendChild(createEl('path', {d:sectionPath, fill:'#adb5bd', stroke:'#343a40', 'stroke-width':1}));
+    
+    if (sType !== '2 plates') {
+        createDim(sSvg, sCx, sCy - 20, sCx + foldW, sCy - 20, `${sType === 'L section' ? 'Bottom Fold Only' : 'Top & Bottom Folds'}`);
+    }
+    
     sectContainer.appendChild(sSvg);
 
-    // 3. UNFOLDED VIEW (Plan / Flat Pattern)
+    // 3. UNFOLDED VIEW
     const planContainer = dom['slope-unfolded-view']; planContainer.innerHTML = '';
     const pSvg = createEl('svg', {viewBox:'0 0 600 350', width:'100%', height:'100%'});
     pSvg.appendChild(defs.cloneNode(true));
 
-    const pScale = Math.min((600 - 2*pad) / width, (350 - 2*pad) / (Math.max(leftH, rightH) + (2 * foldL)));
-    const wP = width * pScale; const fP = foldL * pScale;
-    const lhP = leftH * pScale; const rhP = rightH * pScale;
-    const y1_L = pad + fP; const y1_R = pad + fP;
-    const y2_L = y1_L + lhP; const y2_R = y1_R + rhP;
-    const y3_L = y2_L + fP; const y3_R = y2_R + fP;
-    
-    const planPath = `M ${pad},${pad} L ${pad + wP},${pad} L ${pad + wP},${y3_R} L ${pad},${y3_L} Z`;
-    pSvg.appendChild(createEl('path', {d:planPath, fill:'#fff', stroke:'#333', 'stroke-width':2}));
-    pSvg.appendChild(createEl('path', {d:`M ${pad},${y1_L} L ${pad + wP},${y1_R}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
-    pSvg.appendChild(createEl('path', {d:`M ${pad},${y2_L} L ${pad + wP},${y2_R}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
-    
-    // Overall Outer Dimensions
-    createDim(pSvg, pad, pad - 20, pad + wP, pad - 20, `Overall Cut Width: ${width} mm`);
-    createDim(pSvg, pad - 30, pad, pad - 30, y3_L, `Total Cut H (L): ${leftH + 2*foldL}mm`);
-    createDim(pSvg, pad + wP + 45, pad, pad + wP + 45, y3_R, `Total Cut H (R): ${rightH + 2*foldL}mm`);
+    // For "2 plates", we just show one template but mark it "x 2"
+    let totalUnfoldedH_L = leftH;
+    let totalUnfoldedH_R = rightH;
+    if (sType === 'C section') {
+        totalUnfoldedH_L += (2 * foldL);
+        totalUnfoldedH_R += (2 * foldL);
+    } else if (sType === 'L section') {
+        totalUnfoldedH_L += foldL;
+        totalUnfoldedH_R += foldL;
+    }
 
-    // Individual fold markers right side
-    const dimX = pad + wP + 15;
-    createDim(pSvg, dimX, pad, dimX, y1_R, `${foldL}`, '#0056b3');
-    createDim(pSvg, dimX, y1_R, dimX, y2_R, `${rightH}`, '#0056b3');
-    createDim(pSvg, dimX, y2_R, dimX, y3_R, `${foldL}`, '#0056b3');
+    const pScale = Math.min((600 - 2*pad) / width, (350 - 2*pad) / Math.max(totalUnfoldedH_L, totalUnfoldedH_R));
+    const wP = width * pScale; 
+    const fP = foldL * pScale;
+    const lhP = leftH * pScale; 
+    const rhP = rightH * pScale;
+    
+    let yStart = pad;
+    let points = "";
+
+    if (sType === 'C section') {
+        points = `M ${pad},${pad} L ${pad+wP},${pad} L ${pad+wP},${pad+fP+rhP+fP} L ${pad},${pad+fP+lhP+fP} Z`;
+        pSvg.appendChild(createEl('path', {d:points, fill:'#fff', stroke:'#333', 'stroke-width':2}));
+        pSvg.appendChild(createEl('path', {d:`M ${pad},${pad+fP} L ${pad + wP},${pad+fP}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
+        pSvg.appendChild(createEl('path', {d:`M ${pad},${pad+fP+lhP} L ${pad + wP},${pad+fP+rhP}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
+    } else if (sType === 'L section') {
+        points = `M ${pad},${pad} L ${pad+wP},${pad} L ${pad+wP},${pad+rhP+fP} L ${pad},${pad+lhP+fP} Z`;
+        pSvg.appendChild(createEl('path', {d:points, fill:'#fff', stroke:'#333', 'stroke-width':2}));
+        pSvg.appendChild(createEl('path', {d:`M ${pad},${pad+lhP} L ${pad + wP},${pad+rhP}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
+    } else {
+        points = `M ${pad},${pad} L ${pad+wP},${pad} L ${pad+wP},${pad+rhP} L ${pad},${pad+lhP} Z`;
+        pSvg.appendChild(createEl('path', {d:points, fill:'#fff', stroke:'#333', 'stroke-width':2}));
+        const x2Label = createEl('text', {x: pad + wP/2, y: pad + Math.max(lhP, rhP) + 35, 'text-anchor':'middle', 'font-family':'sans-serif', 'font-size':'14px', 'fill':'#000', 'font-weight':'bold'});
+        x2Label.textContent = "QUANTITY: 2 OFF";
+        pSvg.appendChild(x2Label);
+    }
+
+    createDim(pSvg, pad, pad - 20, pad + wP, pad - 20, `Cut Width: ${width} mm`);
+    createDim(pSvg, pad - 30, pad, pad - 30, pad + (pScale * totalUnfoldedH_L), `H: ${totalUnfoldedH_L}mm`);
+    createDim(pSvg, pad + wP + 30, pad, pad + wP + 30, pad + (pScale * totalUnfoldedH_R), `H: ${totalUnfoldedH_R}mm`);
 
     planContainer.appendChild(pSvg);
 }
         
-  function updateChainCalculations() {
-            const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
-            const barrelTeeth = parseInt(dom.barrelTeeth.value) || 0;
-            const chainPitch = parseFloat(dom.chainPitch.value) || 0;
-            const maxTorqueRequired = parseFloat(dom['max-torque'].textContent) || 0;
-            const plateWheelDia = parseFloat(dom.plateWheelDiameter.value) || 0;
+function updateChainCalculations() {
+    // 1. Get required values from the DOM
+    // We use the textContent from the "max-torque" result and the value from the plate wheel diameter input
+    const maxTorqueBarrel = parseFloat(dom['max-torque'].textContent) || 0;
+    const plateWheelDia = parseFloat(dom.plateWheelDiameter.value) || 0;
+    const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
+    const barrelTeeth = parseInt(dom.barrelTeeth.value) || 0;
+    const chainPitch = parseFloat(dom.chainPitch.value) || 12.7;
 
-            if (motorTeeth <= 0 || barrelTeeth <= 0 || maxTorqueRequired <= 0) {
-                 ['chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-tension-n', 'chain-breaking-load-n'].forEach(id => { 
-                     const el = dom[id]; if(el) el.textContent = '0.0'; 
-                 });
-                 dom['chain-safety-factor'].classList.remove('warning-text', 'option-pass');
-                 drawChainGraphic(0, 0, 0, 0, 0, 0, 0);
-                 return;
-            }
+    // 2. Safety Check: If data is missing, reset displays and exit
+    if (maxTorqueBarrel <= 0 || plateWheelDia <= 0 || motorTeeth <= 0 || barrelTeeth <= 0) {
+        ['chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension-n', 'chain-tension', 'chain-breaking-load-n', 'chain-safety-factor'].forEach(id => { 
+            if(dom[id]) dom[id].textContent = id.includes('ratio') ? '1 : 1.0' : (id.includes('factor') ? 'N/A' : '0.0'); 
+        });
+        if(dom['chain-safety-factor']) dom['chain-safety-factor'].className = "";
+        drawChainGraphic(0, 0, 0, 0, 0, 0, 0);
+        return;
+    }
 
-            const ratio = barrelTeeth / motorTeeth;
-            dom['chain-ratio'].textContent = `1 : ${ratio.toFixed(2)}`;
-            dom['chain-torque-barrel'].textContent = maxTorqueRequired.toFixed(1);
-            const motorTorque = maxTorqueRequired / ratio;
-            dom['chain-torque-motor'].textContent = motorTorque.toFixed(1);
+    // 3. Gear Ratio & Motor Torque
+    const ratio = barrelTeeth / motorTeeth;
+    const motorTorque = maxTorqueBarrel / ratio;
 
-            let tensionN = 0;
-            if (plateWheelDia > 0) {
-                const radiusM = (plateWheelDia / 2) / 1000;
-                tensionN = maxTorqueRequired / radiusM;
-            }
-            
-            const tensionKg = tensionN / 9.81;
+    dom['chain-ratio'].textContent = `1 : ${ratio.toFixed(2)}`;
+    dom['chain-torque-barrel'].textContent = maxTorqueBarrel.toFixed(1);
+    dom['chain-torque-motor'].textContent = motorTorque.toFixed(1);
 
-            dom['chain-tension-n'].textContent = tensionN.toFixed(1);
-            dom['chain-tension'].textContent = tensionKg.toFixed(1);
+    // 4. CALCULATE CHAIN TENSION (Newtons)
+    // Formula: Tension (N) = Torque (Nm) / Radius (m)
+    // Radius (m) = (Diameter (mm) / 2) / 1000
+    const radiusM = (plateWheelDia / 2) / 1000;
+    const tensionN = maxTorqueBarrel / radiusM;
+    const tensionKg = tensionN / 9.81;
 
-            let safetyFactor = 0;
-            let breakStrainN = 0;
-            if (dom.chainSizeDisplay.dataset.breakingStrain) {
-                breakStrainN = parseFloat(dom.chainSizeDisplay.dataset.breakingStrain);
-            }
+    dom['chain-tension-n'].textContent = tensionN.toFixed(1);
+    dom['chain-tension'].textContent = tensionKg.toFixed(1);
 
-            dom['chain-breaking-load-n'].textContent = breakStrainN > 0 ? breakStrainN.toFixed(0) : 'N/A';
-            
-            if (breakStrainN > 0 && tensionN > 0) {
-                safetyFactor = breakStrainN / tensionN;
-                dom['chain-safety-factor'].textContent = safetyFactor.toFixed(2);
-                
-                if (safetyFactor < 6.0) { 
-                     dom['chain-safety-factor'].classList.add('warning-text');
-                     dom['chain-safety-factor'].classList.remove('option-pass');
-                     dom['chain-safety-factor'].textContent += " (FAIL < 6:1)";
-                } else {
-                     dom['chain-safety-factor'].classList.remove('warning-text');
-                     dom['chain-safety-factor'].classList.add('option-pass');
-                }
-            } else {
-                dom['chain-safety-factor'].textContent = 'N/A';
-            }
+    // 5. SAFETY FACTOR ANALYSIS
+    let breakingStrainN = 0;
+    if (dom.chainSizeDisplay.dataset.breakingStrain) {
+        breakingStrainN = parseFloat(dom.chainSizeDisplay.dataset.breakingStrain);
+    }
 
-            const motorDriveshaft = parseFloat(dom['motor-driveshaft-dia'].textContent) || 0;
-            const sprocketDia = parseFloat(dom.sprocketDiameter.value) || 0;
-            
-            // NEW: Get Axle Diameter for graphic
-            let axleDia = 0;
-            const selectedAxleIndex = dom.axleType.value;
-            if (selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
-                 axleDia = parseFloat(axleData[selectedAxleIndex].Diameter) || 0;
-            }
-
-            drawChainGraphic(motorTeeth, barrelTeeth, chainPitch, sprocketDia, plateWheelDia, motorDriveshaft, axleDia);
+    dom['chain-breaking-load-n'].textContent = breakingStrainN > 0 ? breakingStrainN.toFixed(0) : '0';
+    
+    const safetyFactorEl = dom['chain-safety-factor'];
+    if (breakingStrainN > 0 && tensionN > 0) {
+        const safetyFactor = breakingStrainN / tensionN;
+        safetyFactorEl.textContent = safetyFactor.toFixed(2);
+        
+        // Target is > 6.0 as requested
+        if (safetyFactor < 6.0) { 
+            safetyFactorEl.className = "warning-text"; // Red
+            safetyFactorEl.textContent += " (FAIL < 6:1)";
+        } else {
+            safetyFactorEl.className = "option-pass"; // Green
+            safetyFactorEl.textContent += " (PASS)";
         }
+    } else {
+        safetyFactorEl.textContent = 'N/A';
+        safetyFactorEl.className = "";
+    }
+
+    // 6. Update Graphics
+    const motorDriveshaft = parseFloat(dom['motor-driveshaft-dia'].textContent) || 0;
+    const sprocketDia = parseFloat(dom.sprocketDiameter.value) || 0;
+    let axleDia = 0;
+    const selectedAxleIndex = dom.axleType.value;
+    if (selectedAxleIndex !== "" && axleData[selectedAxleIndex]) {
+         axleDia = parseFloat(axleData[selectedAxleIndex].Diameter) || 0;
+    }
+
+    drawChainGraphic(motorTeeth, barrelTeeth, chainPitch, sprocketDia, plateWheelDia, motorDriveshaft, axleDia);
+}
+
+
 
 function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWheelDia, driveshaftDia, axleDia) {
             const container = dom['chain-graphic-container']; container.innerHTML = '';
@@ -2624,110 +2868,108 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
         }
 
         function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight, curtainWidth) {
-            if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
-                ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
-                lastTorqueProfile = []; maxCoilDiameter = 0; drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
-                dom.motorSelector.innerHTML = '<option>-- First select a mounting type --</option>';
-                dom.motorSelector.disabled = true; updateSelectedMotorInfo(); return;
-            }
-            
-            const collarSize = parseFloat(dom.collarSize.value) || 0;
-            const axleCoilDiameter = getEffectiveCoilDiameter(axle);
-            const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
-            calculatedRotations = calculateTotalRevolutions(travelHeight, effectiveStartDiameter, parseFloat(lath['Thickness']));
-            dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
-            
-            const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
-            maxCoilDiameter = finalCoilDiameter;
+    if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
+        ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
+        lastTorqueProfile = []; maxCoilDiameter = 0; drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+        dom.motorSelector.innerHTML = '<option>-- First select a mounting type --</option>';
+        dom.motorSelector.disabled = true; updateSelectedMotorInfo(); return;
+    }
+    
+    const collarSize = parseFloat(dom.collarSize.value) || 0;
+    const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+    const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
+    calculatedRotations = calculateTotalRevolutions(travelHeight, effectiveStartDiameter, parseFloat(lath['Thickness']));
+    dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
+    
+    const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
+    maxCoilDiameter = finalCoilDiameter;
 
-            let baselineFriction = parseFloat(dom.friction.value) || 0;
-            let additionalFriction = 0;
-            
-            if (parseFloat(dom.height.value) >= 7000) {
-                additionalFriction += 5;
-            }
+    let baselineFriction = parseFloat(dom.friction.value) || 0;
+    let additionalFriction = 0;
+    if (parseFloat(dom.height.value) >= 7000) additionalFriction += 5;
 
-            let isHighPerformance = false;
-            const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
-            if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
-                isHighPerformance = true;
-            }
-            if (isHighPerformance) {
-                additionalFriction += 5;
-            }
-            
-            const totalAppliedFriction = baselineFriction + additionalFriction;
-            dom['total-applied-friction'].textContent = totalAppliedFriction;
-            const frictionMultiplier = 1 + (totalAppliedFriction / 100);
+    let isHighPerformance = false;
+    const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
+    if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
+        isHighPerformance = true;
+    }
+    if (isHighPerformance) additionalFriction += 5;
+    
+    const totalAppliedFriction = baselineFriction + additionalFriction;
+    dom['total-applied-friction'].textContent = totalAppliedFriction;
+    const frictionMultiplier = 1 + (totalAppliedFriction / 100);
 
-            lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
-            drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
-            
-            const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
-            dom['max-torque'].textContent = requiredTorque.toFixed(1);
-            dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
+    lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
+    drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+    
+    const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
+    dom['max-torque'].textContent = requiredTorque.toFixed(1);
+    dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
 
-            const selectedMountType = dom.motorMountingType.value;
-            const selectedVoltage = dom.motorVoltageFilter.value;
-            const selectedManufacturer = dom.motorManufacturerFilter.value;
-            const selectedUsage = dom.motorUsageFilter.value;
-            const selectedMO = dom.motorManualOverrideFilter.value;
+    const selectedMountType = dom.motorMountingType.value;
+    const selectedVoltage = dom.motorVoltageFilter.value;
+    const selectedManufacturer = dom.motorManufacturerFilter.value;
+    const selectedUsage = dom.motorUsageFilter.value;
+    const selectedMO = dom.motorManualOverrideFilter.value;
 
-            let voltageKey = '', manufacturerKey = '', usageKey = '', moKey = '';
-            if (motorData.length > 0) {
-                voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
-                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
-                usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
-                moKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manual override');
-            }
-            currentFilteredMotors = motorData.filter(motor => {
-                const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
-                const motorVoltages = String(motor[voltageKey] || '').split('/').map(v => v.trim());
-                const voltageMatch = !selectedVoltage || !voltageKey || motorVoltages.includes(selectedVoltage);
-                const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
-                const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
-                const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
-                return mountMatch && voltageMatch && manufacturerMatch && usageMatch && moMatch;
-            });
-            
-            const select = dom.motorSelector; 
-            const previousValue = select.value;
-            
-            select.innerHTML = ''; select.disabled = false;
-            if (currentFilteredMotors.length === 0) {
-                select.innerHTML = '<option value="">-- No motors for this type --</option>';
-                updateSelectedMotorInfo(); return;
-            }
-            
-            let recommendedMotorIndexInFilteredList = -1;
-            currentFilteredMotors.forEach((motor, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                const motorTorqueMin = parseFloat(motor['Torque (Nm) min']);
-                const motorTorqueMax = parseFloat(motor['Torque (Nm) max']);
-                option.textContent = `${motor['Name']} (${motorTorqueMin}-${motorTorqueMax} Nm)`;
-                const passesTest = requiredTorque >= motorTorqueMin && requiredTorque <= motorTorqueMax;
-                if (passesTest) {
-                    option.classList.add('option-pass');
-                    if (recommendedMotorIndexInFilteredList === -1) { recommendedMotorIndexInFilteredList = index; }
-                } else {
-                    option.classList.add('option-fail'); 
-                }
-                select.appendChild(option);
-            });
-
-            if (previousValue !== "" && currentFilteredMotors[previousValue]) {
-                select.value = previousValue;
-            } else if (recommendedMotorIndexInFilteredList !== -1) { 
-                select.value = recommendedMotorIndexInFilteredList; 
-            } else {
-                const noMotorOption = document.createElement('option');
-                noMotorOption.value = ""; noMotorOption.textContent = "-- No suitable motor found --";
-                noMotorOption.selected = true; noMotorOption.disabled = true;
-                select.prepend(noMotorOption);
-            }
-            updateSelectedMotorInfo();
+    let voltageKey = '', manufacturerKey = '', usageKey = '', moKey = '';
+    if (motorData.length > 0) {
+        voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
+        manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+        usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
+        moKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manual override');
+    }
+    currentFilteredMotors = motorData.filter(motor => {
+        const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
+        const motorVoltages = String(motor[voltageKey] || '').split('/').map(v => v.trim());
+        const voltageMatch = !selectedVoltage || !voltageKey || motorVoltages.includes(selectedVoltage);
+        const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
+        const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
+        const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
+        return mountMatch && voltageMatch && manufacturerMatch && usageMatch && moMatch;
+    });
+    
+    const select = dom.motorSelector; 
+    const previousValue = select.value;
+    
+    select.innerHTML = ''; select.disabled = false;
+    if (currentFilteredMotors.length === 0) {
+        select.innerHTML = '<option value="">-- No motors for this type --</option>';
+        updateSelectedMotorInfo(); return;
+    }
+    
+    let recommendedMotorIndexInFilteredList = -1;
+    currentFilteredMotors.forEach((motor, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        const motorTorqueMin = parseFloat(motor['Torque (Nm) min']) || 0;
+        const motorTorqueMax = parseFloat(motor['Torque (Nm) max']) || 0;
+        
+        // --- ADDED .toFixed(1) TO DROPDOWN TEXT ---
+        option.textContent = `${motor['Name']} (${motorTorqueMin.toFixed(1)}-${motorTorqueMax.toFixed(1)} Nm)`;
+        
+        const passesTest = requiredTorque >= motorTorqueMin && requiredTorque <= motorTorqueMax;
+        if (passesTest) {
+            option.classList.add('option-pass');
+            if (recommendedMotorIndexInFilteredList === -1) { recommendedMotorIndexInFilteredList = index; }
+        } else {
+            option.classList.add('option-fail'); 
         }
+        select.appendChild(option);
+    });
+
+    if (previousValue !== "" && currentFilteredMotors[previousValue]) {
+        select.value = previousValue;
+    } else if (recommendedMotorIndexInFilteredList !== -1) { 
+        select.value = recommendedMotorIndexInFilteredList; 
+    } else {
+        const noMotorOption = document.createElement('option');
+        noMotorOption.value = ""; noMotorOption.textContent = "-- No suitable motor found --";
+        noMotorOption.selected = true; noMotorOption.disabled = true;
+        select.prepend(noMotorOption);
+    }
+    updateSelectedMotorInfo();
+}
         
         function updateSelectedSafetyBrakeInfo() {
             calculateSafetyBrakeSelection();
@@ -2739,161 +2981,150 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
             }
         }
 
-        function updateSelectedMotorInfo() {
-            const selectedMotorIndex = dom.motorSelector.value;
-            const resetChainInfo = () => {
-                 dom.motorTeeth.value = "";
-                 dom.barrelTeeth.value = "";
-                 dom.sprocketDiameter.value = "";
-                 dom.plateWheelDiameter.value = "";
-                 dom.chainSizeDisplay.value = "";
-                 dom.chainSizeDisplay.dataset.breakingStrain = 0;
-            };
+function updateSelectedMotorInfo() {
+    const selectedMotorIndex = dom.motorSelector.value;
+    const safetyBrakeTabBtn = document.querySelector('.tab-button[data-tab="safety-brake-content"]');
+    
+    const resetChainInfo = () => {
+         dom.motorTeeth.value = "";
+         dom.barrelTeeth.value = "";
+         dom.sprocketDiameter.value = "";
+         dom.plateWheelDiameter.value = "";
+         dom.chainSizeDisplay.value = "";
+         dom.chainSizeDisplay.dataset.breakingStrain = 0;
+    };
 
-            if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
-                 ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour','opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
-                 dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); 
-                 dom['motor-image-container'].style.display = 'none';
-                 dom.motorImageDisplay.src = '';
-                 dom['motor-limit-turns'].textContent = 'N/A';
-                 dom['motor-limit-warning'].style.display = 'none';
-                 resetChainInfo();
-                 updateChainCalculations();
-                 return;
-            }
+    if (selectedMotorIndex === "" || !currentFilteredMotors[selectedMotorIndex]) {
+         ['motor-name','motor-torque','motor-rpm','motor-driveshaft-dia','motor-cycles-per-hour','opening-time', 'power-consumed', 'motor-name-inputs', 'motor-torque-inputs'].forEach(id => { dom[id].textContent = 'N/A'; });
+         dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text'); 
+         dom['motor-image-container'].style.display = 'none';
+         dom['motor-limit-turns'].textContent = 'N/A';
+         dom['motor-limit-warning'].style.display = 'none';
+         resetChainInfo();
+         updateChainCalculations();
+         return;
+    }
 
-            const selectedMotor = currentFilteredMotors[selectedMotorIndex];
-            const motorTorqueMin = parseFloat(selectedMotor['Torque (Nm) min']);
-            const motorTorqueMax = parseFloat(selectedMotor['Torque (Nm) max']);
-            const motorRPM = parseFloat(selectedMotor['RPM']);
-            const motorWattage = parseFloat(selectedMotor['Wattage']);
-            const dsKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
-            const cyclesKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'cycles per hour');
-
-            dom['motor-name'].textContent = selectedMotor['Name'];
-            dom['motor-torque'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`; 
-            dom['motor-rpm'].textContent = (motorRPM || 0).toFixed(2);
-            
-            let displayShaft = dsKey ? selectedMotor[dsKey] : 'N/A';
-            const selectedBrakeIndex = dom.safetyBrakeSelector.value;
-            if (selectedBrakeIndex !== "") {
-                const dsVal = parseFloat(dom['safety-brake-driveshaft'].textContent);
-                if (!isNaN(dsVal)) {
-                     const motorOptions = String(displayShaft).split('/').map(s => s.trim());
-                     if (motorOptions.includes(String(dsVal))) {
-                         displayShaft = `${dsVal} mm (Matched to Brake)`;
-                     }
-                }
-            }
-            dom['motor-driveshaft-dia'].textContent = displayShaft;
-            dom['motor-name-inputs'].textContent = selectedMotor['Name'];
-            dom['motor-torque-inputs'].textContent = `${motorTorqueMin} - ${motorTorqueMax}`;
-            
-            const motorName = selectedMotor['Name'];
-            const motorImgContainer = dom['motor-image-container'];
-            const motorImgDisplay = dom['motorImageDisplay'];
-            if (motorImageMap.has(motorName)) {
-                motorImgDisplay.src = motorImageMap.get(motorName);
-                motorImgContainer.style.display = 'block';
-            } else {
-                motorImgDisplay.src = '';
-                motorImgContainer.style.display = 'none';
-            }
-
-            let openingTimeSec = 0;
-            if (motorRPM > 0 && calculatedRotations > 0) {
-                openingTimeSec = (calculatedRotations / motorRPM) * 60;
-                const usageType = (selectedMotor['Usage type'] || '').toLowerCase();
-                if (usageType.includes('high') || usageType.includes('hi ') || usageType.includes('speed')) {
-                    openingTimeSec += 2;
-                }
-                dom['opening-time'].textContent = openingTimeSec.toFixed(1);
-            } else { dom['opening-time'].textContent = '0'; }
-            
-            if (motorWattage > 0 && openingTimeSec > 0) {
-                const cycleTimeSec = openingTimeSec * 2;
-                const wattHours = (motorWattage * cycleTimeSec) / 3600;
-                const kiloWattHours = wattHours / 1000;
-                dom['power-consumed'].textContent = `${kiloWattHours.toFixed(4)} kWh`;
-            } else { dom['power-consumed'].textContent = 'N/A'; }
-            
-            const requiredTorque = parseFloat(dom['max-torque'].textContent);
-            if (requiredTorque < motorTorqueMin || requiredTorque > motorTorqueMax) {
-                dom['motor-torque-line'].classList.add('warning-text'); dom['motor-torque-line-inputs'].classList.add('warning-text');
-            } else {
-                dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
-            }
-            
-            const limitTurnKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'limit turn');
-            const limitTurnVal = limitTurnKey ? parseFloat(selectedMotor[limitTurnKey]) : 0;
-            const limitTurnEl = dom['motor-limit-turns'];
-            const limitWarnEl = dom['motor-limit-warning'];
-
-            if (limitTurnVal > 0) {
-                const neededTurns = calculatedRotations;
-                const percentUsed = (neededTurns / limitTurnVal) * 100;
-                limitTurnEl.textContent = `${limitTurnVal.toFixed(2)} (${percentUsed.toFixed(0)}% used)`;
-                
-                if (neededTurns > limitTurnVal) {
-                    limitWarnEl.style.display = 'block';
-                    limitTurnEl.classList.add('warning-text');
-                } else {
-                    limitWarnEl.style.display = 'none';
-                    limitTurnEl.classList.remove('warning-text');
-                }
-            } else {
-                limitTurnEl.textContent = 'N/A';
-                limitWarnEl.style.display = 'none';
-                limitTurnEl.classList.remove('warning-text');
-            }
-
-            // START: NEW CPH LOGIC
-            const standardCPH = cyclesKey ? parseFloat(selectedMotor[cyclesKey]) : 0;
-            let finalCPH = standardCPH;
-            if (limitTurnVal > 0 && calculatedRotations > 0) {
-                // If rotations < 50% of limit, double CPH.
-                if (calculatedRotations < (limitTurnVal * 0.5)) {
-                    finalCPH = standardCPH * 2;
-                }
-            }
-            dom['motor-cycles-per-hour'].textContent = finalCPH > 0 ? finalCPH.toFixed(1) : 'N/A';
-            // END: NEW CPH LOGIC
-
-            if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
-                let motorNameClean = selectedMotor['Name'];
-                motorNameClean = motorNameClean.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
-
-                const chainSpecs = chainDriveData.find(row => {
-                    const rowDesc = row['Motor Description'];
-                    if (!rowDesc) return false;
-                    const descClean = rowDesc.toString().trim().toLowerCase();
-                    return descClean.includes(motorNameClean) || motorNameClean.includes(descClean);
-                });
-
-                if (chainSpecs) {
-                    dom.motorTeeth.value = chainSpecs['Sprocket teeth'] || "";
-                    dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; 
-                    dom.sprocketDiameter.value = chainSpecs['Sprocket diameter'] || "";
-                    dom.plateWheelDiameter.value = chainSpecs['Platewheel Diameter'] || "";
-                    const chainSizeKey = Object.keys(chainSpecs).find(k => k.toLowerCase().includes('chain size'));
-                    dom.chainSizeDisplay.value = chainSizeKey ? chainSpecs[chainSizeKey] : "Unknown";
-                    dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain in newtons']) || 0;
-                } else {
-                    resetChainInfo();
-                    dom.chainSizeDisplay.value = "Specs not found in data";
-                }
-            } else {
-                resetChainInfo();
-            }
-            updateChainCalculations();
-            
-            const axleIdx = dom.axleType.value;
-            if(axleIdx !== "" && axleData[axleIdx]) {
-                const collarSize = parseFloat(dom.collarSize.value) || 0;
-                drawAxleCrossSection(axleData[axleIdx], collarSize);
-            }
-            calculateSafetyBrakeSelection();
+    const selectedMotor = currentFilteredMotors[selectedMotorIndex];
+    
+    // --- NEW: TOGGLE SAFETY BRAKE TAB VISIBILITY ---
+    // Look for the specific column (handling the spelling "saftey")
+    const brakeKey = Object.keys(selectedMotor).find(k => k.toLowerCase().includes('requires additional saftey brake'));
+    const needsBrakeValue = brakeKey ? String(selectedMotor[brakeKey]).toLowerCase().trim() : "yes";
+    
+    if (needsBrakeValue === "no") {
+        if (safetyBrakeTabBtn) safetyBrakeTabBtn.style.display = 'none';
+        // If the user is currently on the Safety Brake tab, kick them back to the Motor tab
+        if (document.getElementById('safety-brake-content').classList.contains('active')) {
+            switchTab('motor-content');
         }
+    } else {
+        if (safetyBrakeTabBtn) safetyBrakeTabBtn.style.display = 'block';
+    }
+    // ----------------------------------------------
+
+    const motorTorqueMin = parseFloat(selectedMotor['Torque (Nm) min']) || 0;
+    const motorTorqueMax = parseFloat(selectedMotor['Torque (Nm) max']) || 0;
+    const motorRPM = parseFloat(selectedMotor['RPM']) || 0;
+    const motorWattage = parseFloat(selectedMotor['Wattage']);
+    const dsKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
+    const cyclesKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'cycles per hour');
+
+    dom['motor-name'].textContent = selectedMotor['Name'];
+    dom['motor-torque'].textContent = `${motorTorqueMin.toFixed(1)} - ${motorTorqueMax.toFixed(1)}`; 
+    dom['motor-rpm'].textContent = motorRPM.toFixed(1);
+    
+    let displayShaft = dsKey ? selectedMotor[dsKey] : 'N/A';
+    if (!isNaN(parseFloat(displayShaft)) && isFinite(displayShaft)) {
+        displayShaft = parseFloat(displayShaft).toFixed(1);
+    }
+
+    const selectedBrakeIndex = dom.safetyBrakeSelector.value;
+    if (selectedBrakeIndex !== "") {
+        const dsVal = parseFloat(dom['safety-brake-driveshaft'].textContent);
+        if (!isNaN(dsVal)) {
+             const motorOptions = String(displayShaft).split('/').map(s => s.trim());
+             if (motorOptions.includes(String(dsVal.toFixed(1))) || motorOptions.includes(String(dsVal))) {
+                 displayShaft = `${dsVal.toFixed(1)} mm (Matched to Brake)`;
+             }
+        }
+    }
+    dom['motor-driveshaft-dia'].textContent = displayShaft;
+    dom['motor-name-inputs'].textContent = selectedMotor['Name'];
+    dom['motor-torque-inputs'].textContent = `${motorTorqueMin.toFixed(1)} - ${motorTorqueMax.toFixed(1)}`;
+    
+    const motorName = selectedMotor['Name'];
+    if (motorImageMap.has(motorName)) {
+        dom['motorImageDisplay'].src = motorImageMap.get(motorName);
+        dom['motor-image-container'].style.display = 'block';
+    } else {
+        dom['motor-image-container'].style.display = 'none';
+    }
+
+    let openingTimeSec = 0;
+    if (motorRPM > 0 && calculatedRotations > 0) {
+        openingTimeSec = (calculatedRotations / motorRPM) * 60;
+        const usageType = (selectedMotor['Usage type'] || '').toLowerCase();
+        if (usageType.includes('high') || usageType.includes('hi ') || usageType.includes('speed')) {
+            openingTimeSec += 2;
+        }
+        dom['opening-time'].textContent = openingTimeSec.toFixed(1);
+    } else { dom['opening-time'].textContent = '0'; }
+    
+    if (motorWattage > 0 && openingTimeSec > 0) {
+        const cycleTimeSec = openingTimeSec * 2;
+        const wattHours = (motorWattage * cycleTimeSec) / 3600;
+        dom['power-consumed'].textContent = `${(wattHours / 1000).toFixed(4)} kWh`;
+    } else { dom['power-consumed'].textContent = 'N/A'; }
+    
+    const requiredTorque = parseFloat(dom['max-torque'].textContent);
+    if (requiredTorque < motorTorqueMin || requiredTorque > motorTorqueMax) {
+        dom['motor-torque-line'].classList.add('warning-text'); dom['motor-torque-line-inputs'].classList.add('warning-text');
+    } else {
+        dom['motor-torque-line'].classList.remove('warning-text'); dom['motor-torque-line-inputs'].classList.remove('warning-text');
+    }
+    
+    const limitTurnKey = Object.keys(selectedMotor).find(k => k.toLowerCase().trim() === 'limit turn');
+    const limitTurnVal = limitTurnKey ? parseFloat(selectedMotor[limitTurnKey]) : 0;
+
+    if (limitTurnVal > 0) {
+        const percentUsed = (calculatedRotations / limitTurnVal) * 100;
+        dom['motor-limit-turns'].textContent = `${limitTurnVal.toFixed(1)} (${percentUsed.toFixed(0)}% used)`;
+        if (calculatedRotations > limitTurnVal) {
+            dom['motor-limit-warning'].style.display = 'block';
+            dom['motor-limit-turns'].classList.add('warning-text');
+        } else {
+            dom['motor-limit-warning'].style.display = 'none';
+            dom['motor-limit-turns'].classList.remove('warning-text');
+        }
+    } else {
+        dom['motor-limit-turns'].textContent = 'N/A';
+        dom['motor-limit-warning'].style.display = 'none';
+    }
+
+    const standardCPH = cyclesKey ? parseFloat(selectedMotor[cyclesKey]) : 0;
+    let finalCPH = standardCPH;
+    if (limitTurnVal > 0 && calculatedRotations > 0 && calculatedRotations < (limitTurnVal * 0.5)) {
+        finalCPH = standardCPH * 2;
+    }
+    dom['motor-cycles-per-hour'].textContent = finalCPH > 0 ? finalCPH.toFixed(1) : 'N/A';
+
+    if (selectedMotor['Mounting type'] === 'Chain drive' && chainDriveData.length > 0) {
+        let motorNameClean = selectedMotor['Name'].replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+        const chainSpecs = chainDriveData.find(row => (row['Motor Description'] || '').toString().trim().toLowerCase().includes(motorNameClean));
+        if (chainSpecs) {
+            dom.motorTeeth.value = chainSpecs['Sprocket teeth'] || "";
+            dom.barrelTeeth.value = chainSpecs['Plate wheel'] || ""; 
+            dom.sprocketDiameter.value = chainSpecs['Sprocket diameter'] || "";
+            dom.plateWheelDiameter.value = chainSpecs['Platewheel Diameter'] || "";
+            const chainSizeKey = Object.keys(chainSpecs).find(k => k.toLowerCase().includes('chain size'));
+            dom.chainSizeDisplay.value = chainSizeKey ? chainSpecs[chainSizeKey] : "Unknown";
+            dom.chainSizeDisplay.dataset.breakingStrain = parseFloat(chainSpecs['Chain Breaking Strain in newtons']) || 0;
+        } else { resetChainInfo(); }
+    } else { resetChainInfo(); }
+    updateChainCalculations();
+    updateWeldCalculations();
+}
         
         function updateSelectedWicketInfo() {
             const selectedIndex = dom.wicketDoorSelector.value;
@@ -3947,153 +4178,168 @@ function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomL
         }
 
 function drawTopDownWidthGraphic(calculatedWidths, guide, lath, additionalLength) {
-            const container = dom['width-graphic-container']; 
-            container.innerHTML = '';
-            const { curtainWidth, clearOpening, overallWidth } = calculatedWidths;
-            if (!guide || !lath || !curtainWidth || curtainWidth <= 0) { return; }
-            const guideWidthKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'width');
-            const guideWidthVal = parseFloat(guide[guideWidthKey]) || 50; 
-            const lathThickness = parseFloat(lath['Thickness']) || 14;
+    const container = dom['width-graphic-container']; 
+    container.innerHTML = '';
+    const { curtainWidth, clearOpening, overallWidth, epOffset, epSize } = calculatedWidths;
+    if (!guide || !lath || !curtainWidth || curtainWidth <= 0) { return; }
+    
+    const guideWidthVal = parseFloat(guide[Object.keys(guide).find(k => k.toLowerCase().trim() === 'width')]) || 50; 
+    const lathThickness = parseFloat(lath['Thickness']) || 14;
 
-            const svgNS = "http://www.w3.org/2000/svg"; 
-            const svg = document.createElementNS(svgNS, "svg");
-            const svgWidth = 850; 
-            const svgHeight = 180; 
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+    const svgNS = "http://www.w3.org/2000/svg"; 
+    const svg = document.createElementNS(svgNS, "svg");
+    const svgWidth = 850; 
+    const svgHeight = 400; 
+    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
 
-            const defs = document.createElementNS(svgNS, 'defs');
-            const marker = document.createElementNS(svgNS, 'marker'); 
-            marker.setAttribute('id', 'dim-arrow-width-graphic'); 
-            marker.setAttribute('viewBox', '0 0 10 10'); 
-            marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); 
-            marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); 
-            marker.setAttribute('orient', 'auto-start-reverse');
-            const arrowPath = document.createElementNS(svgNS, 'path'); 
-            arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); 
-            arrowPath.setAttribute('fill', '#343a40'); 
-            marker.appendChild(arrowPath); 
-            defs.appendChild(marker); 
-            svg.appendChild(defs);
+    const defs = document.createElementNS(svgNS, 'defs');
+    const marker = document.createElementNS(svgNS, 'marker'); 
+    marker.setAttribute('id', 'dim-arrow-width-graphic'); 
+    marker.setAttribute('viewBox', '0 0 10 10'); 
+    marker.setAttribute('refX', '5'); marker.setAttribute('refY', '5'); 
+    marker.setAttribute('markerWidth', '4'); marker.setAttribute('markerHeight', '4'); 
+    marker.setAttribute('orient', 'auto-start-reverse');
+    const arrowPath = document.createElementNS(svgNS, 'path'); 
+    arrowPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z'); 
+    arrowPath.setAttribute('fill', '#343a40'); 
+    marker.appendChild(arrowPath); 
+    defs.appendChild(marker); 
+    svg.appendChild(defs);
 
-            // UPDATED PADDING: Left 100 (matches front view), Right 50
-            const padding = { left: 100, right: 50, top: 30 };
-            
-            const totalRealAxleWidth = curtainWidth + (additionalLength || 0);
-            // Calculate scale based on the Front View's available width logic
-            const frontViewRightPadding = 300; // From the base graphic function below
-            const availableWidth = svgWidth - padding.left - frontViewRightPadding; 
-            const scale = availableWidth / totalRealAxleWidth;
+    const padding = { left: 130, right: 130, top: 40 };
+    const availableWidth = svgWidth - padding.left - padding.right; 
+    const scale = availableWidth / overallWidth;
 
-            const scaledShutterWidth = curtainWidth * scale;
-            const scaledTotalAxleWidth = totalRealAxleWidth * scale;
-            
-            const lathStartX = padding.left + (scaledTotalAxleWidth - scaledShutterWidth) / 2;
-            
-            const scaledGuideWidth = guideWidthVal * scale; 
-            const scaledGap = 20 * scale; 
-            const visualLathHeight = Math.max(lathThickness * scale, 4); 
-            const graphicTopY = padding.top;
-            
-            const curtain = document.createElementNS(svgNS, 'rect'); 
-            curtain.setAttribute('x', lathStartX); 
-            curtain.setAttribute('y', graphicTopY); 
-            curtain.setAttribute('width', scaledShutterWidth); 
-            curtain.setAttribute('height', visualLathHeight); 
-            curtain.setAttribute('fill', '#ced4da');
-            curtain.setAttribute('stroke', '#adb5bd');
-            curtain.setAttribute('stroke-width', '1');
-            svg.appendChild(curtain);
+    const scaledShutterWidth = curtainWidth * scale;
+    const scaledOffset = epOffset * scale;
+    const scaledEpSize = epSize * scale;
+    const scaledGuideWidth = guideWidthVal * scale; 
+    const scaledLathThick = lathThickness * scale;
+    const scaledCO = clearOpening * scale;
 
-            const endCapWidth = 5; 
-            const leftEndCap = document.createElementNS(svgNS, 'rect'); 
-            leftEndCap.setAttribute('x', lathStartX); 
-            leftEndCap.setAttribute('y', graphicTopY); 
-            leftEndCap.setAttribute('width', endCapWidth); 
-            leftEndCap.setAttribute('height', visualLathHeight); 
-            leftEndCap.setAttribute('fill', 'black'); 
-            svg.appendChild(leftEndCap);
+    const centerX = svgWidth / 2;
+    const topY = padding.top;
+    const bottomY = topY + scaledEpSize; 
+    
+    const ovStartX = centerX - (availableWidth / 2);
+    const ovEndX = centerX + (availableWidth / 2);
+    const leftBackOfGuideX = ovStartX + scaledOffset;
+    const rightBackOfGuideX = ovEndX - scaledOffset;
+    const lathStartX = centerX - (scaledShutterWidth / 2);
 
-            const rightEndCap = document.createElementNS(svgNS, 'rect'); 
-            rightEndCap.setAttribute('x', lathStartX + scaledShutterWidth - endCapWidth); 
-            rightEndCap.setAttribute('y', graphicTopY); 
-            rightEndCap.setAttribute('width', endCapWidth); 
-            rightEndCap.setAttribute('height', visualLathHeight); 
-            rightEndCap.setAttribute('fill', 'black'); 
-            svg.appendChild(rightEndCap);
+    // --- 1. DRAW GUIDES (At the Top) ---
+    const guideOpeningSize = scaledLathThick + (6 * scale); 
 
-            const guideStyle = { fill: 'none', stroke: '#6c757d', 'stroke-width': '2' };
-            const guideOpeningSize = visualLathHeight + 6; 
-            const guideY = graphicTopY - (guideOpeningSize - visualLathHeight) / 2;
-            
-            const leftWebX = lathStartX - scaledGap;
-            const leftOpeningX = leftWebX + scaledGuideWidth; 
-            const leftGuidePath = document.createElementNS(svgNS, 'path'); 
-            leftGuidePath.setAttribute('d', `M ${leftOpeningX},${guideY} L ${leftWebX},${guideY} L ${leftWebX},${guideY + guideOpeningSize} L ${leftOpeningX},${guideY + guideOpeningSize}`); 
-            Object.keys(guideStyle).forEach(key => leftGuidePath.setAttribute(key, guideStyle[key])); 
-            svg.appendChild(leftGuidePath);
+    const leftGuide = document.createElementNS(svgNS, 'path'); 
+    leftGuide.setAttribute('d', `M ${leftBackOfGuideX + scaledGuideWidth},${topY} L ${leftBackOfGuideX},${topY} L ${leftBackOfGuideX},${topY + guideOpeningSize} L ${leftBackOfGuideX + scaledGuideWidth},${topY + guideOpeningSize}`); 
+    leftGuide.setAttribute('fill', 'none');
+    leftGuide.setAttribute('stroke', '#6c757d');
+    leftGuide.setAttribute('stroke-width', '2');
+    svg.appendChild(leftGuide);
 
-            const rightWebX = lathStartX + scaledShutterWidth + scaledGap;
-            const rightOpeningX = rightWebX - scaledGuideWidth; 
-            const rightGuidePath = document.createElementNS(svgNS, 'path'); 
-            rightGuidePath.setAttribute('d', `M ${rightOpeningX},${guideY} L ${rightWebX},${guideY} L ${rightWebX},${guideY + guideOpeningSize} L ${rightOpeningX},${guideY + guideOpeningSize}`); 
-            Object.keys(guideStyle).forEach(key => rightGuidePath.setAttribute(key, guideStyle[key])); 
-            svg.appendChild(rightGuidePath);
+    const rightGuide = document.createElementNS(svgNS, 'path'); 
+    rightGuide.setAttribute('d', `M ${rightBackOfGuideX - scaledGuideWidth},${topY} L ${rightBackOfGuideX},${topY} L ${rightBackOfGuideX},${topY + guideOpeningSize} L ${rightBackOfGuideX - scaledGuideWidth},${topY + guideOpeningSize}`); 
+    rightGuide.setAttribute('fill', 'none');
+    rightGuide.setAttribute('stroke', '#6c757d');
+    rightGuide.setAttribute('stroke-width', '2');
+    svg.appendChild(rightGuide);
 
-            const drawDim = (yOffset, startX, endX, label, value) => {
-                const lineY = graphicTopY + guideOpeningSize + yOffset; 
-                const tickHeight = 8; 
-				const textGap = 5;
-                const line = document.createElementNS(svgNS, 'line'); 
-                line.setAttribute('x1', startX); line.setAttribute('y1', lineY); 
-                line.setAttribute('x2', endX); line.setAttribute('y2', lineY); 
-                line.setAttribute('class', 'dimension-line'); 
-                line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); 
-                line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); 
-                svg.appendChild(line);
+    // --- 2. DRAW CURTAIN (Aligned centrally in the Guide opening at the Top) ---
+    const curtainY = topY + (guideOpeningSize / 2) - (scaledLathThick / 2);
+    const curtain = document.createElementNS(svgNS, 'rect'); 
+    curtain.setAttribute('x', lathStartX); 
+    curtain.setAttribute('y', curtainY); 
+    curtain.setAttribute('width', scaledShutterWidth); 
+    curtain.setAttribute('height', scaledLathThick); 
+    curtain.setAttribute('fill', '#ced4da');
+    curtain.setAttribute('stroke', '#adb5bd');
+    svg.appendChild(curtain);
 
-                const tick1 = document.createElementNS(svgNS, 'line'); 
-                tick1.setAttribute('x1', startX); tick1.setAttribute('y1', lineY); 
-                tick1.setAttribute('x2', startX); tick1.setAttribute('y2', lineY - tickHeight); 
-                tick1.setAttribute('class', 'dimension-tick'); 
-                svg.appendChild(tick1);
+    // --- 3. DRAW ENDPLATES (Yellow) ---
+    const leftEp = document.createElementNS(svgNS, 'rect');
+    leftEp.setAttribute('x', ovStartX);
+    leftEp.setAttribute('y', topY);
+    leftEp.setAttribute('width', scaledOffset);
+    leftEp.setAttribute('height', scaledEpSize);
+    leftEp.setAttribute('fill', '#ffc107');
+    leftEp.setAttribute('stroke', '#d39e00');
+    svg.appendChild(leftEp);
 
-                const tick2 = document.createElementNS(svgNS, 'line'); 
-                tick2.setAttribute('x1', endX); tick2.setAttribute('y1', lineY); 
-                tick2.setAttribute('x2', endX); tick2.setAttribute('y2', lineY - tickHeight); 
-                tick2.setAttribute('class', 'dimension-tick'); 
-                svg.appendChild(tick2);
+    const rightEp = document.createElementNS(svgNS, 'rect');
+    rightEp.setAttribute('x', rightBackOfGuideX);
+    rightEp.setAttribute('y', topY);
+    rightEp.setAttribute('width', scaledOffset);
+    rightEp.setAttribute('height', scaledEpSize);
+    rightEp.setAttribute('fill', '#ffc107');
+    rightEp.setAttribute('stroke', '#d39e00');
+    svg.appendChild(rightEp);
 
-                const labelText = document.createElementNS(svgNS, 'text'); 
-                labelText.textContent = label; 
-                labelText.setAttribute('class', 'width-graphic-label'); 
-                labelText.setAttribute('x', startX + (endX - startX) / 2); 
-                labelText.setAttribute('y', lineY - textGap); 
-                svg.appendChild(labelText);
+    // --- 4. DIMENSION HELPER (Updated for Solid Lines and Offset labels) ---
+    const drawDim = (yOffset, startX, endX, label, value, textPos = 'center') => {
+        const lineY = bottomY + yOffset; 
+        
+        // Leader Lines (Changed to Solid)
+        const lead1 = document.createElementNS(svgNS, 'line');
+        lead1.setAttribute('x1', startX); lead1.setAttribute('y1', bottomY);
+        lead1.setAttribute('x2', startX); lead1.setAttribute('y2', lineY + 5);
+        lead1.setAttribute('stroke', '#343a40'); lead1.setAttribute('stroke-width', '0.8');
+        svg.appendChild(lead1);
 
-                const valueText = document.createElementNS(svgNS, 'text'); 
-                valueText.textContent = `(${value.toFixed(0)} mm)`; 
-                valueText.setAttribute('class', 'width-graphic-value'); 
-                valueText.setAttribute('x', startX + (endX - startX) / 2); 
-                valueText.setAttribute('y', lineY + textGap + 10); 
-                svg.appendChild(valueText);
-            };
+        const lead2 = document.createElementNS(svgNS, 'line');
+        lead2.setAttribute('x1', endX); lead2.setAttribute('y1', bottomY);
+        lead2.setAttribute('x2', endX); lead2.setAttribute('y2', lineY + 5);
+        lead2.setAttribute('stroke', '#343a40'); lead2.setAttribute('stroke-width', '0.8');
+        svg.appendChild(lead2);
 
-            const axleCenter = padding.left + (scaledTotalAxleWidth / 2);
-            
-            const scaledClearOpening = clearOpening * scale;
-            const scaledOverallWidth = overallWidth * scale;
-            drawDim(30, lathStartX, lathStartX + scaledShutterWidth, 'Curtain Width', curtainWidth);
-            
-            const coStartX = axleCenter - (scaledClearOpening / 2);
-            const coEndX = axleCenter + (scaledClearOpening / 2);
-            drawDim(65, coStartX, coEndX, 'Clear Opening', clearOpening);
-            
-            const ovStartX = axleCenter - (scaledOverallWidth / 2);
-            const ovEndX = axleCenter + (scaledOverallWidth / 2);
-            drawDim(100, ovStartX, ovEndX, 'Overall Width', overallWidth);
-            
-            container.appendChild(svg);
+        // Dimension Line
+        const line = document.createElementNS(svgNS, 'line'); 
+        line.setAttribute('x1', startX); line.setAttribute('y1', lineY); 
+        line.setAttribute('x2', endX); line.setAttribute('y2', lineY); 
+        line.setAttribute('stroke', '#343a40');
+        line.setAttribute('marker-start', 'url(#dim-arrow-width-graphic)'); 
+        line.setAttribute('marker-end', 'url(#dim-arrow-width-graphic)'); 
+        svg.appendChild(line);
+
+        // Text Label (Moved UP above the line)
+        const labelText = document.createElementNS(svgNS, 'text'); 
+        labelText.textContent = label + ` (${value.toFixed(0)} mm)`; 
+        labelText.setAttribute('class', 'width-graphic-value'); 
+        labelText.setAttribute('font-weight', 'bold');
+        labelText.setAttribute('font-family', 'sans-serif');
+        labelText.setAttribute('font-size', '13px');
+        
+        if (textPos === 'left') {
+            labelText.setAttribute('x', startX - 45); // Increased distance
+            labelText.setAttribute('text-anchor', 'end');
+            labelText.setAttribute('y', lineY + 4); // Keep side labels centered to line
+        } else if (textPos === 'right') {
+            labelText.setAttribute('x', endX + 45); // Increased distance
+            labelText.setAttribute('text-anchor', 'start');
+            labelText.setAttribute('y', lineY + 4); // Keep side labels centered to line
+        } else {
+            labelText.setAttribute('x', startX + (endX - startX) / 2); 
+            labelText.setAttribute('text-anchor', 'middle');
+            labelText.setAttribute('y', lineY - 8); // Moved UP above line
         }
+        svg.appendChild(labelText);
+    };
+
+    // --- 5. RENDER DIMENSIONS ---
+    
+    // OFFSETS
+    if (epOffset > 0) {
+        drawDim(25, ovStartX, leftBackOfGuideX, 'Offset', epOffset, 'left');
+        drawDim(25, rightBackOfGuideX, ovEndX, 'Offset', epOffset, 'right');
+    }
+
+    // DIMENSION STACK
+    drawDim(60, centerX - (scaledCO / 2), centerX + (scaledCO / 2), 'Clear Opening', clearOpening);
+    drawDim(95, lathStartX, lathStartX + scaledShutterWidth, 'Curtain Width', curtainWidth);
+    drawDim(130, ovStartX, ovEndX, 'Overall Width (Reveal)', overallWidth);
+    
+    container.appendChild(svg);
+}
+
 
 function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, options = {}, idSuffix = 'default') {
             const svgNS = "http://www.w3.org/2000/svg";
