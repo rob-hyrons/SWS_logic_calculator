@@ -19,14 +19,18 @@
         #logo-image {
             position: absolute; top: 2em; right: 2em; width: 10vw; max-width: 150px; height: auto; z-index: 10;
         }
+        /* INCREASED MAX WIDTH TO 1400px */
         .container {
             background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%; max-width: 1000px; display: flex; flex-direction: row; align-items: stretch;
+            width: 100%; max-width: 1400px; display: flex; flex-direction: row; align-items: stretch;
         }
         .content-area {
             padding: 2em; flex-grow: 1; border-left: 1px solid #dee2e6;
         }
-        h1 { color: #1a1a1a; text-align: center; margin-bottom: 1em; }
+        h1 { color: #1a1a1a; margin-bottom: 0.5em; }
+        .header-controls {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 1em;
+        }
         .form-group { margin-bottom: 1.5em; }
         .form-row { display: flex; gap: 1.5em; }
         .form-col { flex: 1; }
@@ -66,6 +70,8 @@
         .tab-button:nth-child(6) { background-color: #e0f7fa; }
         .tab-button:nth-child(7) { background-color: #fff8e1; }
         .tab-button:nth-child(8) { background-color: #e9ecef; }
+        .tab-button.sloping-tab { background-color: #ffebee; }
+        .tab-button.sloping-tab.active { background-color: #ffcdd2; border-left-color: #d32f2f; }
         
         .tab-button.active:nth-child(1) { background-color: #cce5ff; }
         .tab-button.active:nth-child(2) { background-color: #d1e7dd; }
@@ -89,23 +95,35 @@
             display: none; margin-top: 1em; padding: 1em; background-color: #fffbe6;
             border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08; font-weight: bold;
         }
+        
+        /* Updated Graphic Containers to be Full Width on Inputs Page */
         .graph-container { margin-top: 1.5em; width: 100%; }
-        #axle-cross-section-container {
+        
+        /* Specific override for the main shutter graphics to allow full width */
+        #shutter-graphic-container, #width-graphic-container {
+            width: 100%; 
+            max-width: 100%; /* Removing the 450px restriction */
+            margin-left: auto; margin-right: auto;
+            border: 1px solid #e9ecef; border-radius: 4px; background-color: #f8f9fa;
+            overflow: hidden; /* Contains the SVG */
+        }
+        
+        /* Other smaller graphs can stay restrained */
+        #axle-cross-section-container, #torque-graph-container, #deflection-graphic-container {
             width: 100%; max-width: 900px; margin-left: 0; margin-right: auto;
         }
         #endplate-graphic-container, #chain-graphic-container {
             min-width: 450px; max-width: 550px; margin-left: auto; margin-right: auto;
         }
+
         .calculation-explainer {
             margin-top: 2em; padding: 1em; background-color: #e9ecef; border: 1px solid #ced4da;
             border-radius: 6px; font-family: monospace; font-size: 0.9em; line-height: 1.6;
         }
-        .calculation-explainer h4 { margin-top: 0; color: #495057; }
-        .calculation-explainer span { font-weight: bold; color: #0056b3; }
         
         /* SVG Styles */
         .beam-path { stroke: #adb5bd; stroke-width: 2; fill: none; }
-        .deflected-path { stroke: #007bff; stroke-width: 4; fill: none; transition: d 0.3s ease-out; }
+        .deflected-path { stroke: #007bff; stroke-width: 4; fill: none; }
         .deflected-path.warning { stroke: #d93025; }
         .graph-text { font-family: sans-serif; font-size: 12px; fill: #343a40; text-anchor: middle; }
         .axis-line { stroke: #ced4da; stroke-width: 1; }
@@ -123,10 +141,7 @@
         .option-pass { color: #1e8e3e; font-weight: bold; }
         .option-fail { color: #d93025; }
 
-        #shutter-graphic-container, #wicket-graphic-container, #width-graphic-container {
-            margin-top: 1.5em; width: 100%; border: 1px solid #e9ecef; border-radius: 4px; background-color: #f8f9fa;
-        }
-        /* Chain Graphic Styles */
+        /* Graphic Element Styles */
         .sprocket-wheel { fill: #e9ecef; stroke: #495057; stroke-width: 1; }
         .sprocket-tooth { fill: #6c757d; }
         .chain-path { fill: none; stroke: #343a40; stroke-width: 6; stroke-dasharray: 6,4; stroke-linecap: round; }
@@ -152,13 +167,29 @@
         .width-graphic-label { font-family: sans-serif; font-size: 14px; fill: #343a40; text-anchor: middle; }
         .width-graphic-value { font-family: sans-serif; font-size: 10px; fill: #555; text-anchor: middle; }
         .dimension-tick { stroke: #343a40; stroke-width: 1; }
-
-        .print-container { display: flex; gap: 10px; justify-content: flex-end; }
-        #printButton {
-            padding: 0.8em 1.5em; font-size: 0.9em; font-weight: 600; color: white;
-            background-color: #007bff; border: none; border-radius: 5px; cursor: pointer;
+        
+        .sloping-graphic-container {
+             width: 100%; border: 1px solid #e9ecef; border-radius: 4px; background-color: #fff; margin-bottom: 2em;
         }
+
+        .print-container { display: flex; gap: 10px; }
+        #printButton, #dxfButton {
+            padding: 0.8em 1.5em; font-size: 0.9em; font-weight: 600; color: white;
+            border: none; border-radius: 5px; cursor: pointer;
+        }
+        #printButton { background-color: #007bff; }
         #printButton:hover { background-color: #0056b3; }
+        #dxfButton { background-color: #28a745; }
+        #dxfButton:hover { background-color: #218838; }
+
+        /* Zoom Controls */
+        .zoom-controls {
+            display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; align-items: center;
+        }
+        .zoom-btn {
+            background: #e9ecef; border: 1px solid #ced4da; padding: 5px 15px; cursor: pointer; font-weight: bold; border-radius: 4px;
+        }
+        .zoom-btn:hover { background: #dee2e6; }
 
         /* Admin Page Styles */
         .admin-section {
@@ -210,24 +241,46 @@
             background-color: #007bff; color: white; font-weight: 600;
         }
 
+        /* Ensure the summary is hidden on the live web screen */
+        .print-only-section { display: none; }
+
         @media print {
-            body { font-family: Arial, sans-serif; background-color: #fff; padding: 0; margin: 0; }
+            body { font-family: Arial, sans-serif; background-color: #fff; padding: 0 !important; margin: 0 !important; }
             @page { size: A4; margin: 15mm; }
-            .tabs, .form-group, .print-container, .calculation-explainer, hr, #import-status, #recommendation-box, #admin-content, #logo-image { display: none !important; }
-            .tab-pane { display: block !important; padding-top: 1em; }
-            .hide-in-print { display: none !important; }
-            .page-break-before-print { page-break-before: always; }
-            .container { display: block; box-shadow: none; border: none; width: 100%; max-width: 100%; padding: 0; }
-            .content-area { padding: 0; border-left: none; }
-            * { color: #000 !important; }
-            h1 { font-size: 20pt; text-align: center !important; border: none; margin-bottom: 1.5em; }
+            
+            /* Show the Summary on Page 1 */
+            .print-only-section { display: block !important; margin-bottom: 30px; }
+            #print-header-summary { display: block !important; }
+
+            /* Hide Navigation and UI */
+            .tabs, .form-group, .form-row, .print-container, .zoom-controls, .calculation-explainer, 
+            hr, #import-status, #recommendation-box, #admin-content, #logo-image, 
+            button { 
+                display: none !important; 
+            }
+
+            .container { display: block; box-shadow: none; border: none; width: 100%; max-width: 100%; }
+            .content-area { padding: 0; border: none; }
+            .tab-pane { 
+                display: block !important; 
+                page-break-after: always; 
+                visibility: visible !important; 
+                margin-top: 20px;
+            }
+
+            body.hide-wicket-print #wicket-content { display: none !important; }
+            body.hide-slope-print #slope-content { display: none !important; }
+
+            .results { border: 1px solid #ccc; page-break-inside: avoid; padding: 15px; }
+            svg { width: 100% !important; max-height: 900px; page-break-inside: avoid; }
+            h1 { font-size: 20pt; text-align: center; }
             h2 { font-size: 15pt; border-bottom: 2px solid #ccc; padding-bottom: 4px; margin-top: 1.5em; margin-bottom: 1em; }
-            .tab-pane > h2:first-of-type { margin-top: 0; }
-            .results { border: 1px solid #ccc; border-left: none; page-break-inside: avoid; margin-top: 1em; padding: 1em; }
-            .graph-container, #shutter-graphic-container, #wicket-graphic-container, #width-graphic-container { width: 100% !important; max-width: 450px; margin-left: auto; margin-right: auto; page-break-inside: avoid; }
-            #lath-image-container, #vision-lath-image-container, #safety-brake-image-container, #motor-image-container { page-break-inside: avoid; text-align: center; padding: 1em 0; }
-            #lath-image-container img, #vision-lath-image-container img, #safety-brake-image-container img, #motor-image-container img { max-height: 80px; }
-            svg { width: 100% !important; }
+            
+            /* Ensure graphics expand on print */
+            #shutter-graphic-container, #width-graphic-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
         }
     </style>
 </head>
@@ -242,15 +295,35 @@
             <button class="tab-button" data-tab="safety-brake-content">Safety Brake</button>
             <button class="tab-button" data-tab="wicket-content">Wicket Door</button>
             <button class="tab-button" data-tab="chain-content">Chain</button>
+            <button class="tab-button sloping-tab" data-tab="slope-content" style="display:none;" id="slope-tab-btn">Sloping Bottom</button>
             <button class="tab-button" data-tab="admin-content">Admin</button>
         </div>
         <div class="content-area">
-            <h1>Complete Shutter Calculator</h1>
             
-			<div class="print-container" style="gap: 10px;">
-				<button id="dxfButton" style="padding: 0.8em 1.5em; font-size: 0.9em; font-weight: 600; color: white; background-color: #28a745; border: none; border-radius: 5px; cursor: pointer;">Download CAD (.dxf)</button>
-				<button id="printButton">Print Report to PDF</button>
-			</div>
+            <div class="header-controls">
+                <h1>Complete Shutter Calculator</h1>
+                <!-- Explicit Buttons for PDF and DXF -->
+                <div class="print-container">
+                     <button id="dxfButton">Download DXF</button>
+                     <button id="printButton">Print / Save PDF</button>
+                </div>
+            </div>
+            
+            <!-- This section only appears in the PDF/Print -->
+            <div id="print-header-summary" class="print-only-section">
+                <h2 style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px;">Project Specification Summary</h2>
+                <div class="results" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; border-left: 8px solid #28a745; background: #fff;">
+                    <p><strong>Input Width:</strong> <span id="p-width">0</span> mm</p>
+                    <p><strong>Width Type:</strong> <span id="p-width-type">-</span></p>
+                    <p><strong>Curtain Height:</strong> <span id="p-height">0</span> mm</p>
+                    <p><strong>Lath Type:</strong> <span id="p-lath">-</span></p>
+                    <p><strong>Bottom Lath:</strong> <span id="p-bottom-lath">-</span></p>
+                    <p><strong>Guide Type:</strong> <span id="p-guide">-</span></p>
+                    <p><strong>Axle Shape:</strong> <span id="p-axle-shape">-</span></p>
+                    <p><strong>Powder Coated:</strong> <span id="p-pc">No</span></p>
+                    <p id="p-slope-row" style="display:none; grid-column: span 2;"><strong>Sloping Bottom Lath:</strong> Yes (<span id="p-slope-weight">0</span> kg)</p>
+                </div>
+            </div>
 
             <div class="tab-content">
                 <!-- Inputs Tab -->
@@ -336,6 +409,12 @@
                         </select>
                     </div>
                     
+                    <div class="form-group" data-admin-label="Sloping Bottom Lath Option">
+                        <label for="isSlopingBottomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                            <input type="checkbox" id="isSlopingBottomLath" style="width: auto; margin-right: 8px; vertical-align: middle;">Sloping Bottom Lath
+                        </label>
+                    </div>
+                    
                     <div class="form-group" data-admin-label="Add Vision Slats Option">
                         <label for="addVision" style="display: inline-block; font-weight: 500; cursor: pointer;">
                             <input type="checkbox" id="addVision" style="width: auto; margin-right: 8px; vertical-align: middle;">Add Vision Slats
@@ -386,6 +465,15 @@
                         <p>Selected Motor: <span id="motor-name-inputs">N/A</span></p>
                         <p id="motor-torque-line-inputs">Motor Torque Range: <span id="motor-torque-inputs">0</span> Nm</p>
                     </div>
+
+                    <!-- Zoom Controls for Graphic -->
+                    <div class="zoom-controls">
+                        <label>Graphic Scale: </label>
+                        <button class="zoom-btn" onclick="adjustZoom(-10)">-</button>
+                        <button class="zoom-btn" onclick="adjustZoom(10)">+</button>
+                        <span id="zoom-level-text">100%</span>
+                    </div>
+
                     <div id="shutter-graphic-container"></div>
                     <div id="width-graphic-container" class="graph-container"></div>
                 </div>
@@ -434,8 +522,7 @@
                         <p>Bearing Capacity: <span id="bearing-capacity">N/A</span></p>
                         <p id="bearing-warning" style="display:none; color: #d93025; font-weight: bold; margin-top:5px;">⚠️ Warning: Load exceeds bearing capacity!</p>
                     </div>
-                    <div id="recommendation-box"></div> <!-- Close this div here -->
-					<!-- START OF NEW WELD CALCULATION HTML -->
+                    <div id="recommendation-box"></div> 
 					<div id="weld-check-container" class="results" style="margin-top: 2em; border-left-color: #e83e8c;">
 						<h3 style="color: #c92a7a;">Axle Shaft Weld Strength</h3>
 						<div class="form-row">
@@ -468,7 +555,6 @@
 
 						<div id="weld-graphic-container" class="graph-container" style="height: 500px; border: 1px solid #e9ecef; border-radius: 4px; background-color: white; margin-top: 1em;"></div>
 					</div>
-					<!-- END OF NEW WELD CALCULATION HTML -->
 
 </div>
                 </div>
@@ -686,6 +772,58 @@
                     <div id="chain-graphic-container" class="graph-container" style="height: 300px; border: 1px solid #e9ecef; border-radius: 4px; background-color: white;"></div>
                 </div>
 
+                <!-- Sloping Bottom Lath Tab -->
+				<div id="slope-content" class="tab-pane">
+					<h2>Sloping Bottom Lath Design</h2>
+					
+					<div class="form-row">
+						 <div class="form-group form-col">
+							<label for="slopeMaterial">Material</label>
+							<select id="slopeMaterial">
+								<option value="7850" selected>Steel (7850 kg/m³)</option>
+								<option value="2700">Aluminium (2700 kg/m³)</option>
+							</select>
+						</div>
+					</div>
+					
+					<div class="form-row">
+						 <div class="form-group form-col">
+							<label for="slopeLeftHeight">Left Height (mm)</label>
+							<input type="number" id="slopeLeftHeight" min="69" max="400" value="100">
+						</div>
+						<div class="form-group form-col">
+							<label for="slopeRightHeight">Right Height (mm)</label>
+							<input type="number" id="slopeRightHeight" min="69" max="400" value="200">
+						</div>
+					</div>
+					 <div class="form-row">
+						 <div class="form-group form-col">
+							<label for="slopeFoldLength">Fold Length (mm)</label>
+							<input type="number" id="slopeFoldLength" min="25" value="30">
+							<small>Top & Bottom folds (Default 30mm, Min 25mm)</small>
+						</div>
+						<div class="form-group form-col">
+							 <label for="slopeThickness">Sheet Thickness (mm)</label>
+							<input type="number" id="slopeThickness" value="1.5" step="0.1">
+						</div>
+					</div>
+
+					<div class="results" style="border-left-color: #dc3545; margin-bottom: 1.5em;">
+						<h3 style="color: #dc3545;">Section Details</h3>
+						<p>Calculated Weight: <span id="slope-weight" style="font-weight: bold; font-size: 1.2em;">0.00</span> kg</p>
+						<p style="font-size: 0.9em; color: #555;">(This dead weight is automatically added to the bottom of the curtain for torque/lift calculations)</p>
+					</div>
+
+					<h3>Front View</h3>
+					<div id="slope-front-view" class="sloping-graphic-container" style="height: 300px;"></div>
+					
+					<h3>Section View (End Profile)</h3>
+					<div id="slope-section-view" class="sloping-graphic-container" style="height: 300px;"></div>
+
+					<h3>Unfolded Plan View (Manufacturing)</h3>
+					<div id="slope-unfolded-view" class="sloping-graphic-container" style="height: 350px;"></div>
+				</div>
+
                 <!-- Admin Tab -->
                 <div id="admin-content" class="tab-pane">
                     <h2>Admin Controls</h2>
@@ -882,80 +1020,163 @@
         let userSelectedAxleIndex = null;
         let visionCalcs = null; 
         
-        const dom = {};
-        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'axleType', 'friction', 'import-status', 
-         'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph', 
-         'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
-         'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm', 
-         'motor-driveshaft-dia', 'motor-cycles-per-hour',
-         'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
-         'safety-brake-torque', 'safety-brake-name', 'safety-brake-motor-torque',
-         'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
-         'curtain-height-extended', 'curtain-height-compressed', 'endplateSelector', 'matSteel', 'matAluminium', 'endplate-name', 'endplate-size',
-         'endplate-material', 'max-coil-diameter', 'prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height',
-         'width-warning', 'curtain-area', 'lifted-curtain-area', 'printButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
-         'wicket-graphic-container', 'laths-at-wicket', 'wicket-lath-height', 'wicket-max-torque', 'wicket-torque-graph-container',
-         'addVision', 'vision-slat-options', 'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'axle-safety-factor', 'power-consumed',
-         'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity', 
-         'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force', 
-         'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
-         'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
-         'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
-         'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
-         'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixity',
-         'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch', 
-         'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
-         'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction',
-         'motor-image-container', 'motorImageDisplay', 'motor-limit-turns', 'motor-limit-warning',
-         'bearing-name', 'bearing-capacity', 'bearing-warning',
-         'safety-brake-max-speed', 'actual-barrel-speed', 'safety-brake-speed-warning', 'weld-shaft-dia', 'weld-plate-thickness', 'weld-applied-torque', 'weld-capacity-torque', 'weld-perimeter', 'weld-max-force', 'weld-status', 'weld-graphic-container',
-        ].forEach(id => dom[id] = document.getElementById(id));
-        
-        const tabButtons = document.querySelectorAll('.tab-button');
-        
-        ['width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'bottomLathType', 'lathType', 'matSteel', 'matAluminium',
-         'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 'endlockType',
-         'useCustomLath', 'customLathWeight', 'customTorqueWeight', 'axleFixity', 'chainPitch'
+const dom = {};
+        [
+            'width', 'widthType', 'guideType', 'additionalLength', 'height', 'lathType', 'bottomLathType', 'friction', 'import-status',
+            'total-axle-length', 'weight-kg', 'axle-deflection', 'deflection-ratio', 'ratio-paragraph',
+            'recommendation-box', 'deflection-graphic-container', 'torque-graph-container', 'lath-count', 'laths-to-lift',
+            'max-torque', 'total-revolutions', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'motorSelector', 'motor-name', 'motor-torque', 'motor-rpm',
+            'motor-driveshaft-dia', 'motor-cycles-per-hour', 'axleType', // axleType now correctly mapped
+            'opening-time', 'motor-torque-line', 'axle-weight', 'axle-material-grade', 'moment-of-inertia', 'total-deflection-weight',
+            'safety-brake-torque', 'safety-brake-name', 'safety-brake-motor-torque',
+            'safetyBrakeSelector', 'shutter-graphic-container', 'safety-brake-driveshaft',
+            'curtain-height-extended', 'curtain-height-compressed', 'endplateSelector', 'matSteel', 'matAluminium', 'endplate-name', 'endplate-size',
+            'endplate-material', 'max-coil-diameter', 'prev-endplate-name', 'prev-endplate-height', 'next-endplate-name', 'next-endplate-height',
+            'width-warning', 'curtain-area', 'lifted-curtain-area', 'printButton', 'dxfButton', 'wicketDoorSelector', 'wicket-door-name', 'wicket-door-height', 'wicket-door-width',
+            'wicket-graphic-container', 'laths-at-wicket', 'wicket-lath-height', 'wicket-max-torque', 'wicket-torque-graph-container',
+            'addVision', 'vision-slat-options', 'visionLathType', 'visionStartHeight', 'visionPanelHeight', 'axle-safety-factor', 'power-consumed',
+            'powderCoated', 'axle-cross-section-container', 'visionLathImageDisplay', 'safety-brake-capacity',
+            'safety-brake-image-container', 'safetyBrakeImageDisplay', 'endplate-graphic-container', 'endplate-downward-force',
+            'endplate-pullout-force', 'endplate-force-diagram-container', 'includeDeflectionInSizing', 'effective-coil-para', 'effective-coil-diameter', 'collarSize',
+            'vision-percentage', 'vision-percentage-para', 'vision-area-m2', 'vision-area-m2-para', 'endlockType', 'endlock-weight',
+            'admin-content', 'tab-content', 'importCsvButton', 'shapeCircular', 'shapeOctagonal', 'collar-size-group', 'torque-weight-kg',
+            'useCustomLath', 'custom-lath-options', 'customLathWeight', 'customTorqueWeight', 'max-torque-inputs', 'motor-name-inputs', 'motor-torque-inputs', 'motor-torque-line-inputs',
+            'width-graphic-container', 'calculated-curtain-width', 'calculated-clear-opening', 'calculated-overall-width', 'axleFixity',
+            'reportLathType', 'reportLathLimit', 'reportLathType2', 'chainSizeDisplay', 'motorTeeth', 'barrelTeeth', 'chainPitch',
+            'chain-ratio', 'chain-torque-barrel', 'chain-torque-motor', 'chain-tension', 'chain-breaking-load', 'chain-safety-factor', 'chain-graphic-container',
+            'sprocketDiameter', 'plateWheelDiameter', 'chain-tension-n', 'chain-breaking-load-n', 'total-applied-friction',
+            'motor-image-container', 'motorImageDisplay', 'motor-limit-turns', 'motor-limit-warning',
+            'bearing-name', 'bearing-capacity', 'bearing-warning',
+            'safety-brake-max-speed', 'actual-barrel-speed', 'safety-brake-speed-warning', 'weld-shaft-dia', 'weld-plate-thickness', 'weld-applied-torque', 'weld-capacity-torque', 'weld-perimeter', 'weld-max-force', 'weld-status', 'weld-graphic-container',
+            'isSlopingBottomLath', 'slope-tab-btn', 'slope-content',
+            'slopeLeftHeight', 'slopeRightHeight', 'slopeFoldLength', 'slopeThickness',
+            'slope-front-view', 'slope-section-view', 'slope-unfolded-view', 'slopeMaterial', 'slope-weight'
         ].forEach(id => {
-            if (dom[id]) dom[id].addEventListener('input', () => {
-                userSelectedAxleIndex = null; 
-                if (id === 'useCustomLath') {
-                    const isChecked = dom.useCustomLath.checked;
-                    dom['custom-lath-options'].style.display = isChecked ? 'block' : 'none';
-                    dom.lathType.disabled = isChecked;
-                }
-                if (id === 'lathType' && lathData.length > 0) {
-                    const selectedLath = lathData[dom.lathType.value];
-                    if (selectedLath) {
-                        if (selectedLath['Friction %'] !== undefined) {
+            const el = document.getElementById(id);
+            if (el) dom[id] = el;
+        });
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => switchTab(button.dataset.tab));
+        });
+
+        // ZOOM LOGIC FOR INPUTS GRAPHIC
+        let currentZoom = 100;
+        function adjustZoom(amount) {
+            currentZoom += amount;
+            if (currentZoom < 30) currentZoom = 30; // Minimum zoom
+            if (currentZoom > 200) currentZoom = 200; // Maximum zoom
+            
+            // Adjust Shutter Graphic Container
+            const shutterContainer = document.getElementById('shutter-graphic-container');
+            const widthContainer = document.getElementById('width-graphic-container');
+            const zoomText = document.getElementById('zoom-level-text');
+
+            if(shutterContainer) shutterContainer.style.width = currentZoom + "%";
+            if(widthContainer) widthContainer.style.width = currentZoom + "%";
+            if(zoomText) zoomText.innerText = currentZoom + "%";
+        }
+
+        // --- MAIN INPUT LISTENER ---
+        [
+            'width', 'widthType', 'guideType', 'additionalLength', 'height', 'friction', 
+            'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 
+            'motorUsageFilter', 'motorManualOverrideFilter', 'bottomLathType', 'lathType', 
+            'matSteel', 'matAluminium', 'visionLathType', 'visionStartHeight', 
+            'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 
+            'endlockType', 'useCustomLath', 'customLathWeight', 'customTorqueWeight', 
+            'axleFixity', 'chainPitch', 'slopeLeftHeight', 'slopeRightHeight', 
+            'slopeFoldLength', 'slopeThickness', 'slopeMaterial', 'shapeCircular', 'shapeOctagonal'
+        ].forEach(id => {
+            if (dom[id]) {
+                dom[id].addEventListener('input', () => {
+                    // Reset manual axle ONLY if shape or weight-bearing dimensions change
+                    if (['width', 'height', 'widthType', 'lathType', 'bottomLathType', 'shapeCircular', 'shapeOctagonal', 'powderCoated', 'useCustomLath', 'customLathWeight'].includes(id)) {
+                        userSelectedAxleIndex = null;
+                    }
+
+                    if (id === 'useCustomLath') {
+                        dom['custom-lath-options'].style.display = dom.useCustomLath.checked ? 'block' : 'none';
+                        dom.lathType.disabled = dom.useCustomLath.checked;
+                    }
+                    
+                    if (id === 'lathType' && lathData.length > 0) {
+                        const selectedLath = lathData[dom.lathType.value];
+                        if (selectedLath && selectedLath['Friction %'] !== undefined) {
                             dom.friction.value = selectedLath['Friction %'];
                         }
                     }
+                    updateAllCalculations();
+                });
+            }
+        });
+
+        // --- MANUAL AXLE OVERRIDE LISTENER ---
+        if (dom.axleType) {
+            dom.axleType.addEventListener('change', (e) => {
+                if (e.target.value !== "") {
+                    // Force the index to an Integer to ensure math comparisons work
+                    userSelectedAxleIndex = parseInt(e.target.value, 10);
+                    updateAllCalculations();
                 }
-                updateAllCalculations();
             });
-        });
+        }
+        
+// Sloping Lath Toggle
+if (dom.isSlopingBottomLath) {
+    dom.isSlopingBottomLath.addEventListener('change', () => {
+         const showSlope = dom.isSlopingBottomLath.checked;
+         if (dom['slope-tab-btn']) {
+             // We use removeProperty to let CSS control the display (flex) or set explicit none
+             if (showSlope) {
+                 dom['slope-tab-btn'].style.display = 'block'; 
+             } else {
+                 dom['slope-tab-btn'].style.display = 'none';
+             }
+         }
+         // If we hide the tab while we are on it, switch back to inputs
+         if (!showSlope && document.getElementById('slope-content').classList.contains('active')) {
+             switchTab('inputs-content');
+         }
+         updateAllCalculations();
+    });
+}
+// Add Vision Slats Toggle
+if (dom.addVision) {
+    dom.addVision.addEventListener('change', () => {
+        // Show or hide the input options
+        dom['vision-slat-options'].style.display = dom.addVision.checked ? 'block' : 'none';
+        // Trigger a recalculation
+        updateAllCalculations();
+    });
+}
 
-        dom.addVision.addEventListener('change', () => {
-            dom['vision-slat-options'].style.display = dom.addVision.checked ? 'block' : 'none';
-            updateAllCalculations();
-        });
+// Print to PDF Button Logic
+if (dom.printButton) {
+    dom.printButton.addEventListener('click', () => {
+        // 1. Force a sync of data to the summary labels
+        syncSummaryForPrint();
 
-        ['shapeCircular', 'shapeOctagonal'].forEach(id => {
-            if (dom[id]) dom[id].addEventListener('change', handleShapeChange);
-        });
+        // 2. Check logic for conditional pages
+        const wicketActive = dom.wicketDoorSelector.value !== "";
+        const slopeActive = dom.isSlopingBottomLath.checked;
 
-        dom.motorSelector.addEventListener('change', updateSelectedMotorInfo);
-        dom.endplateSelector.addEventListener('change', updateSelectedEndplateInfo);
-        tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-        dom.safetyBrakeSelector.addEventListener('input', updateSelectedSafetyBrakeInfo);
-        dom.axleType.addEventListener('input', handleAxleOverride);
-        dom.wicketDoorSelector.addEventListener('input', updateSelectedWicketInfo);
-        dom.printButton.addEventListener('click', () => {
-            window.print();
-        });
-		document.getElementById('dxfButton').addEventListener('click', downloadDXF);
-        dom.importCsvButton.addEventListener('click', handleCsvImport);
+        // 3. Apply classes to body for CSS visibility control
+        document.body.classList.toggle('hide-wicket-print', !wicketActive);
+        document.body.classList.toggle('hide-slope-print', !slopeActive);
+
+        // 4. Trigger print
+        window.print(); 
+    });
+}
+
+// DXF Button Logic
+if (dom.dxfButton) {
+    dom.dxfButton.addEventListener('click', () => {
+        downloadDXF();
+    });
+}
 
         function updatePrintStyles() {
             document.querySelectorAll('.tab-pane').forEach(pane => {
@@ -1035,11 +1256,17 @@
             updateAllCalculations();
         }
 
-        function handleAxleOverride() {
-            if (dom.axleType.value !== "") {
-                userSelectedAxleIndex = dom.axleType.value; 
-                updateAllCalculations(); 
-            }
+// 1. Manually add axleType to the dom object so the listener can find it
+        dom.axleType = document.getElementById('axleType');
+        
+        // 2. Attach the listener directly (Removed the uncalled function wrapper)
+        if (dom.axleType) {
+            dom.axleType.addEventListener('change', () => {
+                if (dom.axleType.value !== "") {
+                    userSelectedAxleIndex = dom.axleType.value;
+                    updateAllCalculations();
+                }
+            });
         }
         
         async function processExcelFile(fileData) {
@@ -1391,6 +1618,36 @@
             dom['calculated-overall-width'].textContent = overallWidth.toFixed(0);
             return { curtainWidth, clearOpening, overallWidth };
         }
+		
+		function syncSummaryForPrint() {
+    // Helper to get text from a dropdown safely
+    const getSelText = (el) => (el && el.selectedIndex >= 0) ? el.options[el.selectedIndex].text : "Not Selected";
+
+    // Standard Inputs
+    document.getElementById('p-width').textContent = dom.width.value || "0";
+    document.getElementById('p-width-type').textContent = getSelText(dom.widthType);
+    document.getElementById('p-height').textContent = dom.height.value || "0";
+    document.getElementById('p-lath').textContent = dom.useCustomLath.checked ? "Custom Weight" : getSelText(dom.lathType);
+    document.getElementById('p-bottom-lath').textContent = getSelText(dom.bottomLathType);
+    document.getElementById('p-guide').textContent = getSelText(dom.guideType);
+    
+    // Axle Shape
+    const shape = document.querySelector('input[name="axleShape"]:checked');
+    document.getElementById('p-axle-shape').textContent = shape ? (shape.value.charAt(0).toUpperCase() + shape.value.slice(1)) : "Circular";
+    
+    // Powder Coating
+    document.getElementById('p-pc').textContent = dom.powderCoated.checked ? "Yes (+0.5 kg/m²)" : "No";
+
+    // Sloping Lath Row
+    const slopeRow = document.getElementById('p-slope-row');
+    if (dom.isSlopingBottomLath.checked) {
+        slopeRow.style.display = "block";
+        document.getElementById('p-slope-weight').textContent = document.getElementById('slope-weight').textContent;
+    } else {
+        slopeRow.style.display = "none";
+    }
+}
+
 
 function updateAllCalculations() {
             if (lathData.length === 0) { return; };
@@ -1465,9 +1722,187 @@ function updateAllCalculations() {
             
             updateChainCalculations();
 			
-			    updateWeldCalculations();
+			updateWeldCalculations();
+            
+            if (dom.isSlopingBottomLath.checked) {
+                drawSlopingLathGraphics();
+				syncSummaryForPrint(); 
+            }
 				
+        // --- POPULATE PDF SUMMARY PAGE ---
+    const getSelText = (el) => el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : "None Selected";
+
+    // Fill the summary spans for the PDF
+    if (document.getElementById('p-width')) document.getElementById('p-width').textContent = dom.width.value || "0";
+    if (document.getElementById('p-width-type')) document.getElementById('p-width-type').textContent = getSelText(dom.widthType);
+    if (document.getElementById('p-height')) document.getElementById('p-height').textContent = dom.height.value || "0";
+    if (document.getElementById('p-lath')) document.getElementById('p-lath').textContent = getSelText(dom.lathType);
+    if (document.getElementById('p-bottom-lath')) document.getElementById('p-bottom-lath').textContent = getSelText(dom.bottomLathType);
+    if (document.getElementById('p-guide')) document.getElementById('p-guide').textContent = getSelText(dom.guideType);
+    
+    const shapeInput = document.querySelector('input[name="axleShape"]:checked');
+    if (document.getElementById('p-axle-shape')) document.getElementById('p-axle-shape').textContent = shapeInput ? shapeInput.nextElementSibling.textContent : "Circular";
+    
+    if (document.getElementById('p-pc')) document.getElementById('p-pc').textContent = dom.powderCoated.checked ? "Yes" : "No";
+		}
+
+    // --- SLOPING BOTTOM LATH VISUALIZATIONS ---
+	
+	
+	function getSlopingBottomData() {
+    const slopeCheck = document.getElementById('isSlopingBottomLath');
+    if (!slopeCheck || !slopeCheck.checked) {
+        return { weight: 0, maxH: 0, minH: 0, leftH: 0, rightH: 0, foldL: 0, thickness: 0 };
+    }
+    const width = parseFloat(document.getElementById('calculated-curtain-width').textContent) || 0;
+    const leftH = parseFloat(document.getElementById('slopeLeftHeight').value) || 0;
+    const rightH = parseFloat(document.getElementById('slopeRightHeight').value) || 0;
+    const foldL = parseFloat(document.getElementById('slopeFoldLength').value) || 0;
+    const thickness = parseFloat(document.getElementById('slopeThickness').value) || 0;
+    const density = parseFloat(document.getElementById('slopeMaterial').value) || 7850;
+
+    const faceArea = width * (leftH + rightH) / 2;
+    const foldsArea = width * foldL * 2;
+    const totalAreaM2 = (faceArea + foldsArea) / 1000000;
+    const volumeM3 = totalAreaM2 * (thickness / 1000);
+    const weight = volumeM3 * density;
+    const maxH = Math.max(leftH, rightH);
+    const minH = Math.min(leftH, rightH);
+
+    return { weight, maxH, minH, leftH, rightH, foldL, thickness };
+}
+
+ function drawSlopingLathGraphics() {
+    let width = parseFloat(dom['calculated-curtain-width'].textContent) || 3000;
+    const slopingData = getSlopingBottomData();
+    if(dom['slope-weight']) {
+        dom['slope-weight'].textContent = slopingData.weight.toFixed(2);
+    }
+    
+    let leftH = Math.max(69, Math.min(400, parseFloat(dom.slopeLeftHeight.value) || 100));
+    let rightH = Math.max(69, Math.min(400, parseFloat(dom.slopeRightHeight.value) || 200));
+    let foldL = Math.max(25, parseFloat(dom.slopeFoldLength.value) || 30);
+    let thickness = parseFloat(dom.slopeThickness.value) || 1.5;
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const createEl = (type, attrs) => {
+        const el = document.createElementNS(svgNS, type);
+        for(const key in attrs) el.setAttribute(key, attrs[key]);
+        return el;
+    };
+
+    const createDim = (svg, x1, y1, x2, y2, text, color='#333', offset=0) => {
+        const line = createEl('line', {x1, y1, x2, y2, stroke:color, 'stroke-width':1, 'marker-start':'url(#arrow)', 'marker-end':'url(#arrow)'});
+        svg.appendChild(line);
+        const midX = (x1+x2)/2; const midY = (y1+y2)/2;
+        const isVertical = Math.abs(x1 - x2) < 1;
+        
+        const t = createEl('text', {x:midX, y:midY, 'text-anchor':'middle', 'font-family':'sans-serif', 'font-size':'11px', 'fill': color, 'font-weight': 'bold'});
+        if (isVertical) {
+            t.setAttribute('transform', `rotate(-90, ${midX}, ${midY})`);
+            t.setAttribute('dy', offset ? String(offset) : '-5');
+        } else {
+            t.setAttribute('dy', '-5');
         }
+        t.textContent = text;
+        svg.appendChild(t);
+    };
+
+    // 1. FRONT VIEW (Skipped here, kept identical to your previous base block logic)
+    const frontContainer = dom['slope-front-view']; frontContainer.innerHTML = '';
+    const fSvg = createEl('svg', {viewBox:'0 0 600 300', width:'100%', height:'100%'});
+    const defs = createEl('defs', {});
+    const marker = createEl('marker', {id:'arrow', viewBox:'0 0 10 10', refX:5, refY:5, markerWidth:6, markerHeight:6, orient:'auto-start-reverse'});
+    marker.appendChild(createEl('path', {d:'M0,0 L10,5 L0,10 z', fill:'#333'}));
+    defs.appendChild(marker); fSvg.appendChild(defs);
+
+    const pad = 50; const availW = 600 - 2*pad; const availH = 300 - 2*pad;
+    const scale = Math.min(availW / width, availH / Math.max(leftH, rightH));
+    const wScaled = width * scale; const lhScaled = leftH * scale; const rhScaled = rightH * scale;
+
+    const polyPoints = `${pad},${pad} ${pad + wScaled},${pad} ${pad + wScaled},${pad + rhScaled} ${pad},${pad + lhScaled}`;
+    fSvg.appendChild(createEl('polygon', {points:polyPoints, fill:'#e9ecef', stroke:'#333', 'stroke-width':2}));
+    createDim(fSvg, pad, pad - 20, pad + wScaled, pad - 20, `Width: ${width} mm`);
+    createDim(fSvg, pad - 20, pad, pad - 20, pad + lhScaled, `LH: ${leftH}`);
+    createDim(fSvg, pad + wScaled + 20, pad, pad + wScaled + 20, pad + rhScaled, `RH: ${rightH}`);
+    frontContainer.appendChild(fSvg);
+
+    // 2. SECTION VIEW (3mm Internal Radii)
+    const sectContainer = dom['slope-section-view']; sectContainer.innerHTML = '';
+    const sSvg = createEl('svg', {viewBox:'0 0 300 300', width:'100%', height:'100%'});
+    sSvg.appendChild(defs.cloneNode(true));
+    
+    const sScale = 3; 
+    const foldW = foldL * sScale;
+    const faceH = 150; 
+    const thick = thickness * sScale;
+    const ir = 3 * sScale; // 3mm internal radius
+    const er = ir + thick;
+    const sCx = 150 - foldW/2; 
+    const sCy = 150 - faceH/2;
+
+    const p1 = `${sCx + foldW},${sCy}`;
+    const p2 = `${sCx + er},${sCy}`;
+    const arc1 = `A ${er} ${er} 0 0 0 ${sCx} ${sCy + er}`;
+    const p3 = `${sCx},${sCy + faceH - er}`;
+    const arc2 = `A ${er} ${er} 0 0 0 ${sCx + er} ${sCy + faceH}`;
+    const p4 = `${sCx + foldW},${sCy + faceH}`;
+    const p5 = `${sCx + foldW},${sCy + faceH - thick}`;
+    const p6 = `${sCx + er},${sCy + faceH - thick}`;
+    const arc3 = `A ${ir} ${ir} 0 0 1 ${sCx + thick} ${sCy + faceH - er}`;
+    const p7 = `${sCx + thick},${sCy + er}`;
+    const arc4 = `A ${ir} ${ir} 0 0 1 ${sCx + er} ${sCy + thick}`;
+    const p8 = `${sCx + foldW},${sCy + thick}`;
+
+    const sectionPath = `M ${p1} L ${p2} ${arc1} L ${p3} ${arc2} L ${p4} L ${p5} L ${p6} ${arc3} L ${p7} ${arc4} L ${p8} Z`;
+    sSvg.appendChild(createEl('path', {d:sectionPath, fill:'#adb5bd', stroke:'#343a40'}));
+    
+    // Draw 3mm Radius Arrow
+    const arcCenterX = sCx + er; const arcCenterY = sCy + er;
+    const a45 = Math.PI / 4;
+    const tgtX = arcCenterX - ir * Math.cos(a45); const tgtY = arcCenterY - ir * Math.sin(a45);
+    const startX = tgtX + 45; const startY = tgtY + 30;
+    
+    const leader = createEl('line', {x1: startX, y1: startY, x2: tgtX, y2: tgtY, stroke: '#d93025', 'stroke-width': '1.5', 'marker-end': 'url(#arrow)'});
+    sSvg.appendChild(leader);
+    const rText = createEl('text', {x: startX + 5, y: startY + 5, 'font-family': 'sans-serif', 'font-size': '12px', 'fill': '#d93025', 'font-weight': 'bold'});
+    rText.textContent = "R3 (Internal)";
+    sSvg.appendChild(rText);
+
+    createDim(sSvg, sCx, sCy - 20, sCx + foldW, sCy - 20, `Top Fold: ${foldL}mm`);
+    createDim(sSvg, sCx - 20, sCy, sCx - 20, sCy + faceH, `Variable Height`);
+    sectContainer.appendChild(sSvg);
+
+    // 3. UNFOLDED VIEW (Plan / Flat Pattern)
+    const planContainer = dom['slope-unfolded-view']; planContainer.innerHTML = '';
+    const pSvg = createEl('svg', {viewBox:'0 0 600 350', width:'100%', height:'100%'});
+    pSvg.appendChild(defs.cloneNode(true));
+
+    const pScale = Math.min((600 - 2*pad) / width, (350 - 2*pad) / (Math.max(leftH, rightH) + (2 * foldL)));
+    const wP = width * pScale; const fP = foldL * pScale;
+    const lhP = leftH * pScale; const rhP = rightH * pScale;
+    const y1_L = pad + fP; const y1_R = pad + fP;
+    const y2_L = y1_L + lhP; const y2_R = y1_R + rhP;
+    const y3_L = y2_L + fP; const y3_R = y2_R + fP;
+    
+    const planPath = `M ${pad},${pad} L ${pad + wP},${pad} L ${pad + wP},${y3_R} L ${pad},${y3_L} Z`;
+    pSvg.appendChild(createEl('path', {d:planPath, fill:'#fff', stroke:'#333', 'stroke-width':2}));
+    pSvg.appendChild(createEl('path', {d:`M ${pad},${y1_L} L ${pad + wP},${y1_R}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
+    pSvg.appendChild(createEl('path', {d:`M ${pad},${y2_L} L ${pad + wP},${y2_R}`, fill:'none', stroke:'#555', 'stroke-dasharray':'5,5'}));
+    
+    // Overall Outer Dimensions
+    createDim(pSvg, pad, pad - 20, pad + wP, pad - 20, `Overall Cut Width: ${width} mm`);
+    createDim(pSvg, pad - 30, pad, pad - 30, y3_L, `Total Cut H (L): ${leftH + 2*foldL}mm`);
+    createDim(pSvg, pad + wP + 45, pad, pad + wP + 45, y3_R, `Total Cut H (R): ${rightH + 2*foldL}mm`);
+
+    // Individual fold markers right side
+    const dimX = pad + wP + 15;
+    createDim(pSvg, dimX, pad, dimX, y1_R, `${foldL}`, '#0056b3');
+    createDim(pSvg, dimX, y1_R, dimX, y2_R, `${rightH}`, '#0056b3');
+    createDim(pSvg, dimX, y2_R, dimX, y3_R, `${foldL}`, '#0056b3');
+
+    planContainer.appendChild(pSvg);
+}
         
   function updateChainCalculations() {
             const motorTeeth = parseInt(dom.motorTeeth.value) || 0;
@@ -1765,109 +2200,136 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
         }
 
         function findAndSetBestAxle(totalWeightKgs, curtainWidth, drawGraphics = true) {
-            const width = curtainWidth || 0;
-            const additionalLength = parseFloat(dom.additionalLength.value) || 0;
-            const totalLength = width + additionalLength;
-            if(drawGraphics) dom['total-axle-length'].textContent = totalLength.toFixed(0);
+    const width = curtainWidth || 0;
+    const additionalLength = parseFloat(dom.additionalLength.value) || 0;
+    const totalLength = width + additionalLength;
+    
+    if (drawGraphics) dom['total-axle-length'].textContent = totalLength.toFixed(0);
 
-            const selectedShape = document.querySelector('input[name="axleShape"]:checked')?.value || 'circular';
-            if (totalLength <= 0 || axleData.length === 0) {
-                 if(drawGraphics) {
-                    ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
-                    dom['axle-material-grade'].textContent = 'N/A'; dom.axleType.innerHTML = '<option>-- No data --</option>'; drawAxleCrossSection(null);
-                 }
-                return { bestAxle: null, deflection: 0, totalLength: 0 };
-            }
-
-            const axlesForShape = axleData.map((axle, index) => ({ ...axle, originalIndex: index })).filter(axle => {
-                const axleShapeInSheet = (axle.Shape || 'circular').toLowerCase().trim();
-                return axleShapeInSheet === selectedShape; 
-            });
-
-            if (axlesForShape.length === 0) {
-                if(drawGraphics) {
-                    dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available --</option>`;
-                    ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
-                    dom['axle-material-grade'].textContent = 'N/A'; drawAxleCrossSection(null);
-                }
-                return { bestAxle: null, deflection: 0, totalLength: 0 };
-            }
-
-            let requiredRatio = 400;
-            if (curtainWidth > 10000) requiredRatio = 800;
-            else if (curtainWidth > 8000) requiredRatio = 600;
-
-            let recommendedAxleOriginalIndex = -1;
-            const axlePerformances = [];
-            axlesForShape.forEach(currentAxle => {
-                const perf = performDeflectionCalc(totalWeightKgs, currentAxle, totalLength, curtainWidth);
-                axlePerformances.push(perf);
-                const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
-                if (passesTest && recommendedAxleOriginalIndex === -1) {
-                    recommendedAxleOriginalIndex = currentAxle.originalIndex;
-                }
-            });
-            if (recommendedAxleOriginalIndex === -1) { recommendedAxleOriginalIndex = axlesForShape.length > 0 ? axlesForShape[0].originalIndex : -1; }
-            let finalSelectedOriginalIndex = userSelectedAxleIndex !== null ? userSelectedAxleIndex : recommendedAxleOriginalIndex;
-            
-            const isUserSelectionValid = axlesForShape.some(axle => axle.originalIndex == finalSelectedOriginalIndex);
-            if (userSelectedAxleIndex !== null && !isUserSelectionValid) { 
-                finalSelectedOriginalIndex = recommendedAxleOriginalIndex; 
-            }
-
-            if(drawGraphics) {
-                const select = dom.axleType; select.innerHTML = '';
-                axlesForShape.forEach((axle, index) => {
-                    const perf = axlePerformances[index];
-                    const option = document.createElement('option');
-                    option.value = axle.originalIndex;
-                    let optionText = axle['Name'];
-                    if (axle['Alternate name']) optionText += ` (${axle['Alternate name']})`;
-                    option.textContent = optionText;
-                    const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
-                    option.classList.toggle('option-pass', passesTest);
-                    option.classList.toggle('option-fail', !passesTest);
-                    select.appendChild(option);
-                });
-                
-                if (finalSelectedOriginalIndex > -1) { select.value = finalSelectedOriginalIndex; }
-            }
-
-            const currentIdx = drawGraphics ? dom.axleType.value : finalSelectedOriginalIndex;
-            const selectedAxleData = axleData[currentIdx];
-            if (!selectedAxleData) { if(drawGraphics) drawAxleCrossSection(null); return { bestAxle: null, deflection: 0, totalLength }; }
-
-            const finalPerformance = performDeflectionCalc(totalWeightKgs, selectedAxleData, totalLength, curtainWidth);
-            
-            if(drawGraphics) {
-                dom['axle-weight'].textContent = finalPerformance.axleWeight.toFixed(2);
-                const totalDeflectionWeight = totalWeightKgs + finalPerformance.axleWeight;
-                dom['total-deflection-weight'].textContent = totalDeflectionWeight.toFixed(2);
-                dom['axle-material-grade'].textContent = finalPerformance.materialGradeValue ? `${finalPerformance.materialGradeValue} MPa` : 'N/A';
-                dom['moment-of-inertia'].textContent = finalPerformance.inertiaI.toLocaleString(undefined, { maximumFractionDigits: 2 });
-                dom['axle-deflection'].textContent = finalPerformance.deflection.toFixed(2);
-                dom['deflection-ratio'].textContent = (finalPerformance.ratio !== Infinity) ? `1 : ${Math.round(finalPerformance.ratio)} (Required 1:${requiredRatio})` : 'N/A';
-                dom['axle-safety-factor'].textContent = isFinite(finalPerformance.safetyFactor) ? finalPerformance.safetyFactor.toFixed(2) : 'Very High';
-
-                if (finalPerformance.ratio < requiredRatio || finalPerformance.deflection > 17) {
-                    dom['ratio-paragraph'].classList.add('warning-text');
-                    dom['axle-safety-factor'].parentElement.classList.add('warning-text');
-                    dom['recommendation-box'].style.display = 'block';
-                    const nextBest = axlesForShape.find(axle => {
-                        const perf = performDeflectionCalc(totalWeightKgs, axle, totalLength, curtainWidth);
-                        return perf.ratio >= requiredRatio && perf.deflection <= 17;
-                    });
-                    if (nextBest) { dom['recommendation-box'].innerHTML = `⚠️ <strong>Warning:</strong> Selected axle failed. Max allowable deflection is 17mm. Consider using <strong>${nextBest['Name']}</strong>.`; } else { dom['recommendation-box'].innerHTML = `⚠️ <strong>Critical Warning:</strong> No available ${selectedShape} axle passes the 1:${requiredRatio} ratio and 17mm deflection limit.`; }
-                } else {
-                    dom['ratio-paragraph'].classList.remove('warning-text');
-                    dom['axle-safety-factor'].parentElement.classList.remove('warning-text');
-                    dom['recommendation-box'].style.display = 'none';
-                }
-                const collarSize = parseFloat(dom.collarSize.value) || 0;
-                drawAxleCrossSection(selectedAxleData, collarSize);
-            }
-            return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
+    const selectedShape = document.querySelector('input[name="axleShape"]:checked')?.value || 'circular';
+    
+    // Safety check for empty data
+    if (totalLength <= 0 || axleData.length === 0) {
+        if (drawGraphics) {
+            ['axle-deflection', 'deflection-ratio', 'axle-weight', 'moment-of-inertia', 'total-deflection-weight', 'axle-safety-factor'].forEach(id => dom[id].textContent = '0.00');
+            dom['axle-material-grade'].textContent = 'N/A'; 
+            dom.axleType.innerHTML = '<option>-- No data --</option>'; 
+            drawAxleCrossSection(null);
         }
+        return { bestAxle: null, deflection: 0, totalLength: 0 };
+    }
+
+    // 1. Filter axles by the selected shape (Circular/Octagonal)
+    const axlesForShape = axleData.map((axle, index) => ({ ...axle, originalIndex: index })).filter(axle => {
+        const axleShapeInSheet = (axle.Shape || 'circular').toLowerCase().trim();
+        return axleShapeInSheet === selectedShape; 
+    });
+
+    if (axlesForShape.length === 0) {
+        if (drawGraphics) {
+            dom.axleType.innerHTML = `<option>-- No suitable ${selectedShape} axles available --</option>`;
+            drawAxleCrossSection(null);
+        }
+        return { bestAxle: null, deflection: 0, totalLength: 0 };
+    }
+
+    // 2. Calculate required deflection ratio based on width
+    let requiredRatio = 400;
+    if (curtainWidth > 10000) requiredRatio = 800;
+    else if (curtainWidth > 8000) requiredRatio = 600;
+
+    // 3. Find the auto-recommended axle (first one that passes)
+    let recommendedAxleOriginalIndex = -1;
+    const axlePerformances = [];
+    
+    axlesForShape.forEach(currentAxle => {
+        const perf = performDeflectionCalc(totalWeightKgs, currentAxle, totalLength, curtainWidth);
+        axlePerformances.push({ ...perf, originalIndex: currentAxle.originalIndex });
+        
+        const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
+        if (passesTest && recommendedAxleOriginalIndex === -1) {
+            recommendedAxleOriginalIndex = currentAxle.originalIndex;
+        }
+    });
+
+    // Fallback if none pass
+    if (recommendedAxleOriginalIndex === -1) recommendedAxleOriginalIndex = axlesForShape[0].originalIndex;
+
+    // 4. DECIDE WHICH AXLE TO USE: Manual Override vs Auto-Recommend
+    let finalSelectedOriginalIndex;
+    
+    if (userSelectedAxleIndex !== null) {
+        // Verify user selection still exists in the current shape filter
+        const stillExists = axlesForShape.some(a => a.originalIndex == userSelectedAxleIndex);
+        finalSelectedOriginalIndex = stillExists ? userSelectedAxleIndex : recommendedAxleOriginalIndex;
+    } else {
+        finalSelectedOriginalIndex = recommendedAxleOriginalIndex;
+    }
+
+    // 5. Update the Dropdown UI
+    if (drawGraphics) {
+        const select = dom.axleType; 
+        select.innerHTML = '';
+        axlesForShape.forEach((axle, index) => {
+            const perf = axlePerformances[index];
+            const option = document.createElement('option');
+            option.value = axle.originalIndex;
+            
+            let optionText = axle['Name'];
+            if (axle['Alternate name']) optionText += ` (${axle['Alternate name']})`;
+            option.textContent = optionText;
+
+            const passesTest = perf.ratio >= requiredRatio && perf.deflection <= 17;
+            option.classList.toggle('option-pass', passesTest);
+            option.classList.toggle('option-fail', !passesTest);
+            select.appendChild(option);
+        });
+        
+        // Lock the select to our final choice
+        select.value = finalSelectedOriginalIndex;
+        select.disabled = false; 
+    }
+
+    // 6. Finalize calculations for the selected axle
+    const selectedAxleData = axleData[finalSelectedOriginalIndex];
+    const finalPerformance = performDeflectionCalc(totalWeightKgs, selectedAxleData, totalLength, curtainWidth);
+    
+    if (drawGraphics) {
+        dom['axle-weight'].textContent = finalPerformance.axleWeight.toFixed(2);
+        const totalDeflectionWeight = totalWeightKgs + finalPerformance.axleWeight;
+        dom['total-deflection-weight'].textContent = totalDeflectionWeight.toFixed(2);
+        dom['axle-material-grade'].textContent = finalPerformance.materialGradeValue ? `${finalPerformance.materialGradeValue} MPa` : 'N/A';
+        dom['moment-of-inertia'].textContent = finalPerformance.inertiaI.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        dom['axle-deflection'].textContent = finalPerformance.deflection.toFixed(2);
+        dom['deflection-ratio'].textContent = (finalPerformance.ratio !== Infinity) ? `1 : ${Math.round(finalPerformance.ratio)} (Req. 1:${requiredRatio})` : 'N/A';
+        dom['axle-safety-factor'].textContent = isFinite(finalPerformance.safetyFactor) ? finalPerformance.safetyFactor.toFixed(2) : 'Very High';
+
+        // Show/Hide Warning Box
+        if (finalPerformance.ratio < requiredRatio || finalPerformance.deflection > 17) {
+            dom['ratio-paragraph'].classList.add('warning-text');
+            dom['axle-safety-factor'].parentElement.classList.add('warning-text');
+            dom['recommendation-box'].style.display = 'block';
+            
+            const autoPass = axlesForShape.find(axle => {
+                const p = performDeflectionCalc(totalWeightKgs, axle, totalLength, curtainWidth);
+                return p.ratio >= requiredRatio && p.deflection <= 17;
+            });
+            
+            dom['recommendation-box'].innerHTML = autoPass 
+                ? `⚠️ <strong>Note:</strong> Your selected axle is below the recommended limit. Consider using <strong>${autoPass['Name']}</strong>.`
+                : `⚠️ <strong>Critical:</strong> No available ${selectedShape} axle meets the 17mm deflection limit for this width.`;
+        } else {
+            dom['ratio-paragraph'].classList.remove('warning-text');
+            dom['axle-safety-factor'].parentElement.classList.remove('warning-text');
+            dom['recommendation-box'].style.display = 'none';
+        }
+
+        const collarSize = parseFloat(dom.collarSize.value) || 0;
+        drawAxleCrossSection(selectedAxleData, collarSize);
+    }
+
+    return { bestAxle: selectedAxleData, deflection: finalPerformance.deflection, totalLength };
+}
 
         function performDeflectionCalc(totalWeightKgs, axle, totalLength, curtainWidth) {
             if (!axle) return { deflection: 0, ratio: Infinity, safetyFactor: Infinity, axleWeight: 0, materialGradeValue: 'N/A', inertiaI: 0 };
@@ -2509,7 +2971,8 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             const widthM = (curtainWidth || 0) / 1000;
             const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
-            const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
+            const slopingData = getSlopingBottomData();
+			const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0) + slopingData.weight;
             const lathsWeight = totalWeightKgs - bottomLathWeight;
             const wicketWidthM = (parseFloat(wicket.Width) || 0) / 1000;
             const wicketHeightM = (parseFloat(wicket.Height) || 0) / 1000;
@@ -2553,17 +3016,21 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
             return (-b + Math.sqrt(discriminant)) / (2 * a);
         }
         
-        function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth) {
-            const profileData = []; 
-            let heightLifted = 0; 
-            let currentRollDiameter = effectiveStartDiameter;
-            const lathThickness = parseFloat(lath['Thickness']);
-            if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
-            const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
-            const widthM = (curtainWidth || 0) / 1000;
-            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
-            const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0);
-            const lathsWeight = totalWeightKgs - bottomLathWeight;
+		function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth) {
+			const profileData = []; 
+			let heightLifted = 0; 
+			let currentRollDiameter = effectiveStartDiameter;
+			const lathThickness = parseFloat(lath['Thickness']);
+			if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
+			const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+			const widthM = (curtainWidth || 0) / 1000;
+			const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
+			
+			// FETCH THE DATA FIRST so it doesn't crash here
+			const slopingData = getSlopingBottomData();
+			const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0) + slopingData.weight;
+    
+    const lathsWeight = totalWeightKgs - bottomLathWeight;
             while (heightLifted < travelHeight) {
                 const percentLifted = heightLifted / travelHeight;
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
@@ -2605,18 +3072,23 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
             const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']);
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+			const slopingData = getSlopingBottomData();
             let axleRadius = 0;
             if (axle) {
                  const axleCoilDiameter = getEffectiveCoilDiameter(axle); axleRadius = axleCoilDiameter / 2;
             } else if (axleData.length > 0) { axleRadius = (getEffectiveCoilDiameter(axleData[0])) / 2; }
-            const heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
+            let heightToCoverByLaths = (floorToAxleCenter - bottomLathHeight) + axleRadius;
+			if (slopingData.maxH > 0) {
+				heightToCoverByLaths -= slopingData.maxH;
+				if (heightToCoverByLaths < 0) heightToCoverByLaths = 0;
+			}
             let numLaths = 0;
             if (lathCompressedHeight > 0 && heightToCoverByLaths > 0) { numLaths = Math.ceil(heightToCoverByLaths / lathCompressedHeight) + 2; }
             dom['lath-count'].textContent = numLaths;
             const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
             dom['laths-to-lift'].textContent = numLathsToLift;
-            const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight;
-            const fullCurtainLength = (numLaths * uncompressedLathHeight) + bottomLathHeight;
+			const compressedCurtainHeight = (numLaths * lathCompressedHeight) + bottomLathHeight + slopingData.maxH;
+			const fullCurtainLength = (numLaths * uncompressedLathHeight) + bottomLathHeight + slopingData.maxH;
             dom['curtain-height-extended'].textContent = fullCurtainLength.toFixed(0);
             dom['curtain-height-compressed'].textContent = compressedCurtainHeight.toFixed(0);
             const widthM = (curtainWidth || 0) / 1000;
@@ -2664,7 +3136,7 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
                 }
             }
             dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
-            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight;
+            const totalWeight = lathWeightBasedOnCoverage + bottomLathWeight + totalEndlockWeight + slopingData.weight;
             dom['weight-kg'].textContent = totalWeight.toFixed(2);
             
             let torqueWeight;
@@ -2730,18 +3202,21 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
 
             if (isNaN(mainLathCompressed) || isNaN(visionLathCompressed) || mainLathCompressed <= 0 || visionLathCompressed <= 0) { return resetAndReturn(); }
 
-            const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
-            const bottomLathWeightPerM = parseFloat(bottomLath['BLath weight / m length']) || 0;
-            const axleRadius = getEffectiveCoilDiameter(axle) / 2;
-            
-            let numLathsBelow = 0;
-            if (desiredVisionStart > bottomLathHeight) { numLathsBelow = Math.round((desiredVisionStart - bottomLathHeight) / mainLathCompressed); }
-            let numLathsVision = 0;
-            if (desiredVisionPanelHeight > 0) { numLathsVision = Math.round(desiredVisionPanelHeight / visionLathCompressed); }
-            const heightCoveredSoFar_compressed = bottomLathHeight + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed);
-            const remainingHeightToCover = (floorToAxleCenter + axleRadius) - heightCoveredSoFar_compressed;
-            let numLathsAbove = 0;
-            if (remainingHeightToCover > 0) { numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2; }
+			const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+			const bottomLathWeightPerM = parseFloat(bottomLath['BLath weight / m length']) || 0;
+			const axleRadius = getEffectiveCoilDiameter(axle) / 2;
+			const slopingData = getSlopingBottomData();
+			
+			let numLathsBelow = 0;
+			if (desiredVisionStart > bottomLathHeight + slopingData.maxH) { numLathsBelow = Math.round((desiredVisionStart - bottomLathHeight - slopingData.maxH) / mainLathCompressed); }
+			let numLathsVision = 0;
+			if (desiredVisionPanelHeight > 0) { numLathsVision = Math.round(desiredVisionPanelHeight / visionLathCompressed); }
+			const heightCoveredSoFar_compressed = bottomLathHeight + slopingData.maxH + (numLathsBelow * mainLathCompressed) + (numLathsVision * visionLathCompressed);
+			let remainingHeightToCover = (floorToAxleCenter + axleRadius) - heightCoveredSoFar_compressed;
+			if (remainingHeightToCover < 0) remainingHeightToCover = 0;
+			
+			let numLathsAbove = 0;
+			if (remainingHeightToCover > 0) { numLathsAbove = Math.ceil(remainingHeightToCover / mainLathCompressed) + 2; }
 
             const totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
             dom['lath-count'].textContent = totalNumLaths;
@@ -2783,9 +3258,9 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
                     if (castEndlockWeightG > 0) { const numEndlockPairs = Math.ceil(totalNumLaths / 2); totalEndlockWeight = numEndlockPairs * 2 * (castEndlockWeightG / 1000); }
                 }
             }
-            dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
-            const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight;
-            dom['weight-kg'].textContent = totalWeight.toFixed(2);
+			dom['endlock-weight'].textContent = totalEndlockWeight.toFixed(2);
+					const totalWeight = weightBelow + weightVision + weightAbove + bottomLathWeight + totalEndlockWeight + slopingData.weight;
+					dom['weight-kg'].textContent = totalWeight.toFixed(2);
 
             let torqueWeight;
             const customTorqueWeightValue = parseFloat(dom.customTorqueWeight.value);
@@ -2891,46 +3366,142 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
             container.appendChild(svg);
         }
         
-        function drawDeflectionGraphic(length, deflection, isWarning = false) {
-            const container = dom['deflection-graphic-container']; container.innerHTML = '';
-            const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
-            let svgWidth = container.clientWidth; if (svgWidth === 0) svgWidth = 550;
-            let svgHeight = container.clientHeight; if (svgHeight === 0) svgHeight = 150;
-            svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
-            const padding = 30, beamY = svgHeight / 2 + 10;
-            const maxVisualDeflection = svgHeight * 0.3;
-            const numericDeflection = parseFloat(deflection) || 0;
-            const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 17));
-            const startX = padding, endX = svgWidth - padding;
-            const refPath = document.createElementNS(svgNS, 'path');
-            refPath.setAttribute('d', `M ${startX} ${beamY} H ${endX}`); refPath.setAttribute('class', 'beam-path');
-            svg.appendChild(refPath);
-            const deflectedPath = document.createElementNS(svgNS, 'path');
-            const controlX = svgWidth / 2, controlY = beamY + visualDeflection;
-            deflectedPath.setAttribute('d', `M ${startX},${beamY} Q ${controlX},${controlY} ${endX},${beamY}`); deflectedPath.setAttribute('class', 'deflected-path');
-            
-            let curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
-            let requiredRatio = 400;
-            if (curtainWidth > 10000) requiredRatio = 800;
-            else if (curtainWidth > 8000) requiredRatio = 600;
+function drawDeflectionGraphic(length, deflection, isWarning = false) {
+    const container = dom['deflection-graphic-container'];
+    container.innerHTML = '';
+    const svgNS = "http://www.w3.org/2000/svg", svg = document.createElementNS(svgNS, "svg");
 
-            const ratio = (numericDeflection > 0) ? length / numericDeflection : Infinity;
-            if (isWarning || numericDeflection > 17 || ratio < requiredRatio) { deflectedPath.classList.add('warning'); }
-            svg.appendChild(deflectedPath);
-            const supportSize = 10;
-            const leftSupport = document.createElementNS(svgNS, 'path');
-            leftSupport.setAttribute('d', `M ${startX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`); leftSupport.setAttribute('class', 'support-symbol');
-            svg.appendChild(leftSupport);
-            const rightSupport = document.createElementNS(svgNS, 'path');
-            rightSupport.setAttribute('d', `M ${endX} ${beamY} l -${supportSize/2} ${supportSize} h ${supportSize} z`); rightSupport.setAttribute('class', 'support-symbol');
-            svg.appendChild(rightSupport);
-            if (numericDeflection > 0.1) {
-                const text = document.createElementNS(svgNS, 'text');
-                text.setAttribute('x', controlX); text.setAttribute('y', controlY + 15); text.setAttribute('class', 'graph-text');
-                text.textContent = `${numericDeflection.toFixed(2)} mm`; svg.appendChild(text);
-            }
-            container.appendChild(svg);
-        }
+    let svgWidth = container.clientWidth || 550;
+    let svgHeight = container.clientHeight || 150;
+    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+    const padding = 40; 
+    const beamY = 65; // Fixed baseline height
+    const maxVisualDeflection = 35; // Max visual pixels for the bend
+    const numericDeflection = parseFloat(deflection) || 0;
+
+    // Scale visual bend: 17mm real deflection = maxVisualDeflection pixels
+    const visualDeflection = Math.min(maxVisualDeflection, numericDeflection * (maxVisualDeflection / 17));
+
+    const startX = padding;
+    const endX = svgWidth - padding;
+    const midX = svgWidth / 2;
+    const controlY = beamY + (visualDeflection * 2); 
+    // The peak of a quadratic bezier is halfway between the baseline and the control point
+    const peakY = (beamY + controlY) / 2; 
+
+    const defs = document.createElementNS(svgNS, 'defs');
+    
+    // Define Arrow Markers
+    const createMarker = (id, color, orient) => {
+        const marker = document.createElementNS(svgNS, 'marker');
+        marker.setAttribute('id', id);
+        marker.setAttribute('viewBox', '0 0 10 10');
+        marker.setAttribute('refX', '5');
+        marker.setAttribute('refY', '5');
+        marker.setAttribute('markerWidth', '4');
+        marker.setAttribute('markerHeight', '4');
+        marker.setAttribute('orient', orient);
+        const path = document.createElementNS(svgNS, 'path');
+        path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+        path.setAttribute('fill', color);
+        marker.appendChild(path);
+        return marker;
+    };
+
+    defs.appendChild(createMarker('arrow-up', '#28a745', 'auto-start-reverse')); 
+    defs.appendChild(createMarker('arrow-down', '#d93025', 'auto'));             
+    defs.appendChild(createMarker('arrow-blue', '#007bff', 'auto'));             
+    svg.appendChild(defs);
+
+    // 1. Draw Support Arrows (Green Reactions)
+    const supportLen = 30;
+    [startX, endX].forEach(x => {
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', beamY + supportLen);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', beamY + 2);
+        line.setAttribute('stroke', '#28a745');
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('marker-end', 'url(#arrow-up)');
+        svg.appendChild(line);
+    });
+
+    // 2. Draw Deflected Beam (The Curve)
+    const deflectedPath = document.createElementNS(svgNS, 'path');
+    deflectedPath.setAttribute('d', `M ${startX},${beamY} Q ${midX},${controlY} ${endX},${beamY}`);
+    deflectedPath.setAttribute('fill', 'none');
+    deflectedPath.setAttribute('stroke', isWarning ? '#d93025' : '#007bff');
+    deflectedPath.setAttribute('stroke-width', '4');
+    svg.appendChild(deflectedPath);
+
+    // 3. Draw UDL Arrows (Downward Load)
+    const udlCount = 10;
+    const udlTopY = beamY - 40;
+    for (let i = 0; i <= udlCount; i++) {
+        const t = i / udlCount;
+        const x = startX + t * (endX - startX);
+        const yOnCurve = Math.pow(1 - t, 2) * beamY + 2 * (1 - t) * t * controlY + Math.pow(t, 2) * beamY;
+
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', udlTopY);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', yOnCurve - 4);
+        line.setAttribute('stroke', '#d93025');
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('marker-end', 'url(#arrow-down)');
+        svg.appendChild(line);
+    }
+
+    // UDL Top Horizontal Line
+    const udlLine = document.createElementNS(svgNS, 'line');
+    udlLine.setAttribute('x1', startX); udlLine.setAttribute('y1', udlTopY);
+    udlLine.setAttribute('x2', endX); udlLine.setAttribute('y2', udlTopY);
+    udlLine.setAttribute('stroke', '#d93025');
+    svg.appendChild(udlLine);
+
+    // 4. ADDED: Deflection Dimension and Text
+    if (numericDeflection > 0) {
+        // Vertical indicator line at center
+        const dimLine = document.createElementNS(svgNS, 'line');
+        dimLine.setAttribute('x1', midX);
+        dimLine.setAttribute('y1', beamY);
+        dimLine.setAttribute('x2', midX);
+        dimLine.setAttribute('y2', peakY - 2);
+        dimLine.setAttribute('stroke', '#007bff');
+        dimLine.setAttribute('stroke-width', '1');
+        dimLine.setAttribute('marker-end', 'url(#arrow-blue)');
+        svg.appendChild(dimLine);
+
+        // Numerical Text Label
+        const defText = document.createElementNS(svgNS, 'text');
+        defText.setAttribute('x', midX);
+        defText.setAttribute('y', peakY + 18); // Position below the peak
+        defText.setAttribute('text-anchor', 'middle');
+        defText.setAttribute('font-family', 'sans-serif');
+        defText.setAttribute('font-size', '14px');
+        defText.setAttribute('font-weight', 'bold');
+        defText.style.fill = isWarning ? '#d93025' : '#007bff';
+        defText.textContent = numericDeflection.toFixed(2) + " mm Deflection";
+        svg.appendChild(defText);
+    }
+
+    // UDL Label
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', midX);
+    label.setAttribute('y', udlTopY - 8);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-family', 'sans-serif');
+    label.setAttribute('font-size', '11px');
+    label.style.fill = '#d93025';
+    label.style.fontWeight = 'bold';
+    label.textContent = "Uniformly Distributed Load";
+    svg.appendChild(label);
+
+    container.appendChild(svg);
+}
 
 function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSeparation, endplateSize) {
     const container = dom['endplate-force-diagram-container']; 
@@ -2941,6 +3512,14 @@ function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSe
     const svgWidth = 450; 
     const svgHeight = 550; 
     svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+	
+	    // --- NEW LINES ADDED HERE TO CONTROL SIZE AND ALIGNMENT ---
+    svg.style.width = "100%";       // Responsive width
+    svg.style.maxWidth = "600px";   // Stop expanding at 400px (Roughly half scale of the page)
+    svg.style.height = "auto";      // Maintain aspect ratio
+    svg.style.display = "block";    // Block display to allow centering
+    svg.style.margin = "0 auto";    // Center horizontally
+    // ----------------------------------------------------------
 
     const defs = document.createElementNS(svgNS, 'defs');
     
@@ -3401,11 +3980,6 @@ function drawTopDownWidthGraphic(calculatedWidths, guide, lath, additionalLength
             
             const totalRealAxleWidth = curtainWidth + (additionalLength || 0);
             // Calculate scale based on the Front View's available width logic
-            // Front View uses: 850 - 100 - 50 - (extra space for section). 
-            // actually Front View allocates section to the right. 
-            // To ensure alignment, we need to match the scale logic of createBaseShutterGraphic.
-            // createBaseShutterGraphic uses: graphWidth = svgWidth - left - right (where right was 300, now we changed it).
-            // Let's match the visual scale:
             const frontViewRightPadding = 300; // From the base graphic function below
             const availableWidth = svgWidth - padding.left - frontViewRightPadding; 
             const scale = availableWidth / totalRealAxleWidth;
@@ -3468,7 +4042,7 @@ function drawTopDownWidthGraphic(calculatedWidths, guide, lath, additionalLength
             const drawDim = (yOffset, startX, endX, label, value) => {
                 const lineY = graphicTopY + guideOpeningSize + yOffset; 
                 const tickHeight = 8; 
-                const textGap = 5;
+				const textGap = 5;
                 const line = document.createElementNS(svgNS, 'line'); 
                 line.setAttribute('x1', startX); line.setAttribute('y1', lineY); 
                 line.setAttribute('x2', endX); line.setAttribute('y2', lineY); 
@@ -3701,9 +4275,41 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 } 
             }
             
+// Inside createBaseShutterGraphic()
+// Right before drawing the bottom lath:
+
+// FETCH SLOPING DATA
+            const slopingData = dom.isSlopingBottomLath && dom.isSlopingBottomLath.checked ? getSlopingBottomData() : { maxH: 0, leftH: 0, rightH: 0 };
+            
+            // Track the absolute lowest points for dimensioning
+            let absoluteLeftBottomY = bottomY;
+            let absoluteRightBottomY = bottomY;
+
+            // 1. Draw the Sloping Section Graphic First (sitting at the bottom-most coordinate)
+            if (slopingData.maxH > 0) {
+                const scaledLeftH = slopingData.leftH * scale;
+                const scaledRightH = slopingData.rightH * scale;
+                const scaledMaxH = slopingData.maxH * scale;
+                const slopingTopY = currentY - scaledMaxH;
+                
+                absoluteLeftBottomY = slopingTopY + scaledLeftH;
+                absoluteRightBottomY = slopingTopY + scaledRightH;
+                
+                const points = `
+                    ${lathStartX},${slopingTopY}
+                    ${lathStartX + scaledShutterWidth},${slopingTopY}
+                    ${lathStartX + scaledShutterWidth},${slopingTopY + scaledRightH}
+                    ${lathStartX},${slopingTopY + scaledLeftH}
+                `;
+                svg.appendChild(createElem('polygon', { points: points, fill: '#dee2e6', stroke: '#495057', 'stroke-width': '1' }));
+                
+                // Step up to draw the rest of the shutter properly
+                currentY = slopingTopY;
+            }
+
+            // 2. Draw Bottom Lath
             const scaledBottomLathHeight = bottomLathHeight * scale; 
             currentY -= scaledBottomLathHeight;
-            
             svg.appendChild(createElem('rect', { x:lathStartX, y:currentY, width:scaledShutterWidth, height:scaledBottomLathHeight, class:'shutter-bottomlath-graphic' }));
             const bottomLathTopY = currentY;
 
@@ -3745,27 +4351,22 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             if (visionOptions && visionOptions.visionLath) {
                 const vo = visionOptions; 
                 
-                // 1. Bottom Solid Block (Track 1: Offset 25)
                 const sectionBottom1 = currentY;
                 drawLathBlock(vo.numLathsBelow, 'shutter-lath-graphic');
                 if (vo.numLathsBelow > 0) drawAnnotation(currentY, sectionBottom1, `${lath['Name']} (x${vo.numLathsBelow})`, 25);
                 
-                // 2. Vision Block (Track 2: Offset 65)
                 const sectionBottom2 = currentY;
                 drawLathBlock(vo.numLathsVision, 'shutter-vision-lath-graphic');
                 if (vo.numLathsVision > 0) drawAnnotation(currentY, sectionBottom2, `${vo.visionLath['Name']} (x${vo.numLathsVision})`, 65);
                 
-                // 3. Top Solid Block (Track 1: Offset 25)
                 const sectionBottom3 = currentY;
                 drawLathBlock(vo.numLathsAbove, 'shutter-lath-graphic');
                 if (vo.numLathsAbove > 0) drawAnnotation(currentY, sectionBottom3, `${lath['Name']} (x${vo.numLathsAbove})`, 25);
 
-                // 4. Total Count (Track 3: Offset 105)
                 drawAnnotation(currentY, bottomLathTopY, `Total Laths: ${numLaths}`, 105);
 
             } else if (numLaths > 0) {
                  drawLathBlock(numLaths, 'shutter-lath-graphic');
-                 // Standard Annotation
                  drawAnnotation(currentY, bottomLathTopY, `${lath['Name']} (x${numLaths})`, 25);
             }
 
@@ -3780,21 +4381,40 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             }
 
             // FRONT VIEW DIMENSIONS
-            const rightDimX = startX + scaledTotalAxleWidth + 20;
+            // Shift overall height dimension further right if sloping lath is active to make room
+            const rightDimX = startX + scaledTotalAxleWidth + (slopingData.maxH > 0 ? 55 : 20);
             drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${parseFloat(dom.height.value).toFixed(0)} mm to Center of Axle`, 'vertical', 'left');
             createLeaderLine(rightDimX, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
             createLeaderLine(rightDimX, bottomY, startX + scaledTotalAxleWidth, bottomY);
 
-            // Left Dimensions (Bottom Lath) - Aligned with the 25px offset
+            // Bottom Lath & Slope Dimensions
             const leftDimX_Aligned = basePadding.left - 25; 
-            if (bottomLathHeight > 0) {
+
+            if (slopingData.maxH > 0) {
+                // If Sloping Lath is active, calculate totals and draw on BOTH sides
+                const totalLeftH = bottomLathHeight + slopingData.leftH;
+                const totalRightH = bottomLathHeight + slopingData.rightH;
+                
+                // Left Side Dimension
+                drawDimensionLine(leftDimX_Aligned, bottomLathTopY, leftDimX_Aligned, absoluteLeftBottomY, `${totalLeftH.toFixed(0)} mm`, 'vertical', 'left');
+                createLeaderLine(leftDimX_Aligned, bottomLathTopY, lathStartX, bottomLathTopY); 
+                createLeaderLine(leftDimX_Aligned, absoluteLeftBottomY, lathStartX, absoluteLeftBottomY);
+
+                // Right Side Dimension (Inner Dimension)
+                const rightInnerDimX = startX + scaledTotalAxleWidth + 20;
+                drawDimensionLine(rightInnerDimX, bottomLathTopY, rightInnerDimX, absoluteRightBottomY, `${totalRightH.toFixed(0)} mm`, 'vertical', 'right');
+                createLeaderLine(lathStartX + scaledShutterWidth, bottomLathTopY, rightInnerDimX, bottomLathTopY); 
+                createLeaderLine(lathStartX + scaledShutterWidth, absoluteRightBottomY, rightInnerDimX, absoluteRightBottomY);
+
+            } else if (bottomLathHeight > 0) {
+                // Standard non-sloping display (Left Side Only)
                 drawDimensionLine(leftDimX_Aligned, bottomLathTopY, leftDimX_Aligned, bottomY, `${bottomLathHeight.toFixed(0)} mm`, 'vertical', 'left');
                 createLeaderLine(leftDimX_Aligned, bottomLathTopY, lathStartX, bottomLathTopY); 
                 createLeaderLine(leftDimX_Aligned, bottomY, lathStartX, bottomY);
             }
 
             // --- SECTION VIEW (SIDE VIEW) ---
-            const sectionX = startX + scaledTotalAxleWidth + 100; 
+            const sectionX = startX + scaledTotalAxleWidth + 130; 
             const scaledBoxSize = (endplateSize > 0 ? endplateSize : (axleDiameter + 50)) * scale;
             const boxLeft = sectionX;
             const boxTop = endplateTopY;
@@ -3947,6 +4567,8 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
             updateChainCalculations();
         } else if (targetTabId === 'safety-brake-content') {
             calculateSafetyBrakeSelection();
+        } else if (targetTabId === 'slope-content') {
+            drawSlopingLathGraphics();
         }
     };
     
@@ -4276,235 +4898,423 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
         link.click();
     }
     
-    function addDxfLine(arr, x1, y1, x2, y2, layer = "0") {
-        arr.push("0", "LINE", "8", layer, "10", x1.toFixed(3), "20", y1.toFixed(3), "30", "0.0", "11", x2.toFixed(3), "21", y2.toFixed(3), "31", "0.0");
+    // --- DXF GENERATION HELPER FUNCTIONS ---
+
+// --- DXF GENERATION HELPER FUNCTIONS ---
+
+    // We start at hex 200 to avoid conflicts with standard reserved handles
+    let handleCounter = 0x200; 
+    function getHandle() {
+        handleCounter++;
+        return handleCounter.toString(16).toUpperCase();
     }
 
-    function addDxfRect(arr, x, y, w, h, layer = "0") {
-        addDxfLine(arr, x, y, x + w, y, layer);
-        addDxfLine(arr, x + w, y, x + w, y + h, layer);
-        addDxfLine(arr, x + w, y + h, x, y + h, layer);
-        addDxfLine(arr, x, y + h, x, y, layer);
+    // Generate Standard DXF Header with Extents and calculated HANDSEED
+    function getDxfHeader(minX, minY, maxX, maxY, nextHandleSeed) {
+        return [
+            "0", "SECTION", "2", "HEADER",
+            "9", "$ACADVER", "1", "AC1032",      
+            "9", "$ACADMAINTVER", "90", "377",   
+            "9", "$DWGCODEPAGE", "3", "ANSI_1252", 
+            "9", "$INSUNITS", "70", "4",         
+            "9", "$MEASUREMENT", "70", "1",      
+            "9", "$LTSCALE", "40", "1.0",        
+            "9", "$EXTMIN", "10", minX.toFixed(3), "20", minY.toFixed(3), "30", "0.0",
+            "9", "$EXTMAX", "10", maxX.toFixed(3), "20", maxY.toFixed(3), "30", "0.0",
+            "9", "$HANDSEED", "5", nextHandleSeed, 
+            "0", "ENDSEC"
+        ];
     }
 
+    function getDxfClasses() {
+        return ["0", "SECTION", "2", "CLASSES", "0", "ENDSEC"];
+    }
+
+    // Includes all mandatory layout tables based on the text file
+    function getDxfTables() {
+        return [
+            "0", "SECTION", "2", "TABLES",
+            
+            "0", "TABLE", "2", "VPORT", "5", "8", "330", "0", "100", "AcDbSymbolTable", "70", "1",
+            "0", "VPORT", "5", getHandle(), "330", "8", "100", "AcDbSymbolTableRecord", "100", "AcDbViewportTableRecord", "2", "*Active", "70", "0",
+            "0", "ENDTAB",
+
+            "0", "TABLE", "2", "LTYPE", "5", "5", "330", "0", "100", "AcDbSymbolTable", "70", "1",
+            "0", "LTYPE", "5", getHandle(), "330", "5", "100", "AcDbSymbolTableRecord", "100", "AcDbLinetypeTableRecord", "2", "CONTINUOUS", "70", "0", "3", "Solid line", "72", "65", "73", "0", "40", "0.0",
+            "0", "ENDTAB",
+
+            "0", "TABLE", "2", "LAYER", "5", "2", "330", "0", "100", "AcDbSymbolTable", "70", "6",
+            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "0", "70", "0", "62", "7", "6", "CONTINUOUS",
+            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "OUTLINE", "70", "0", "62", "7", "6", "CONTINUOUS",
+            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "AXLE", "70", "0", "62", "1", "6", "CONTINUOUS",
+            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "GUIDES", "70", "0", "62", "4", "6", "CONTINUOUS",
+            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "LATHS", "70", "0", "62", "251", "6", "CONTINUOUS",
+            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "DIMENSIONS", "70", "0", "62", "3", "6", "CONTINUOUS",
+            "0", "ENDTAB",
+
+            "0", "TABLE", "2", "STYLE", "5", "3", "330", "0", "100", "AcDbSymbolTable", "70", "1",
+            "0", "STYLE", "5", getHandle(), "330", "3", "100", "AcDbSymbolTableRecord", "100", "AcDbTextStyleTableRecord", "2", "Standard", "70", "0", "40", "0.0", "41", "1.0", "50", "0.0", "71", "0", "42", "2.5", "3", "txt", "4", "",
+            "0", "ENDTAB",
+
+            "0", "TABLE", "2", "APPID", "5", "9", "330", "0", "100", "AcDbSymbolTable", "70", "1",
+            "0", "APPID", "5", getHandle(), "330", "9", "100", "AcDbSymbolTableRecord", "100", "AcDbRegAppTableRecord", "2", "ACAD", "70", "0",
+            "0", "ENDTAB",
+
+            "0", "TABLE", "2", "DIMSTYLE", "5", "A", "330", "0", "100", "AcDbSymbolTable", "100", "AcDbDimStyleTable", "70", "1",
+            "0", "DIMSTYLE", "105", getHandle(), "330", "A", "100", "AcDbSymbolTableRecord", "100", "AcDbDimStyleTableRecord", "2", "Standard", "70", "0",
+            "0", "ENDTAB",
+
+            "0", "TABLE", "2", "BLOCK_RECORD", "5", "1", "330", "0", "100", "AcDbSymbolTable", "70", "2",
+            "0", "BLOCK_RECORD", "5", "1F", "330", "1", "100", "AcDbSymbolTableRecord", "100", "AcDbBlockTableRecord", "2", "*Model_Space", "340", "22", "70", "0", "280", "1", "281", "0",
+            "0", "BLOCK_RECORD", "5", "D2", "330", "1", "100", "AcDbSymbolTableRecord", "100", "AcDbBlockTableRecord", "2", "*Paper_Space", "340", "D3", "70", "0", "280", "1", "281", "0",
+            "0", "ENDTAB",
+            
+            "0", "ENDSEC"
+        ];
+    }
+
+    // Required block openings
+    function getDxfBlocks() {
+        return [
+            "0", "SECTION", "2", "BLOCKS",
+            "0", "BLOCK", "5", "20", "330", "1F", "100", "AcDbEntity", "8", "0", "100", "AcDbBlockBegin", "2", "*Model_Space", "70", "0", "10", "0.0", "20", "0.0", "30", "0.0", "3", "*Model_Space", "1", "",
+            "0", "ENDBLK", "5", "21", "330", "1F", "100", "AcDbEntity", "8", "0", "100", "AcDbBlockEnd",
+            "0", "BLOCK", "5", "D4", "330", "D2", "100", "AcDbEntity", "67", "1", "8", "0", "100", "AcDbBlockBegin", "2", "*Paper_Space", "70", "0", "10", "0.0", "20", "0.0", "30", "0.0", "3", "*Paper_Space", "1", "",
+            "0", "ENDBLK", "5", "D5", "330", "D2", "100", "AcDbEntity", "67", "1", "8", "0", "100", "AcDbBlockEnd",
+            "0", "ENDSEC"
+        ];
+    }
+
+    // Entity Object Pointers (Added "330", "1F" mapping to model space)
+    function addDxfRect(arr, x, y, w, h, layer) {
+        arr.push(
+            "0", "LWPOLYLINE", "5", getHandle(),
+            "330", "1F", "8", layer,
+            "100", "AcDbEntity", "100", "AcDbPolyline",
+            "90", "4", "70", "1", "43", "0.0",
+            "10", x.toFixed(3), "20", y.toFixed(3),
+            "10", (x + w).toFixed(3), "20", y.toFixed(3),
+            "10", (x + w).toFixed(3), "20", (y + h).toFixed(3),
+            "10", x.toFixed(3), "20", (y + h).toFixed(3)
+        );
+    }
+
+    function addDxfCircle(arr, cx, cy, r, layer) {
+        arr.push(
+            "0", "CIRCLE", "5", getHandle(),
+            "330", "1F", "8", layer,
+            "100", "AcDbEntity", "100", "AcDbCircle",
+            "10", cx.toFixed(3), "20", cy.toFixed(3), "30", "0.0", 
+            "40", r.toFixed(3)
+        );
+    }
+
+    function addDxfLine(arr, x1, y1, x2, y2, layer) {
+        arr.push(
+            "0", "LINE", "5", getHandle(),
+            "330", "1F", "8", layer,
+            "100", "AcDbEntity", "100", "AcDbLine",
+            "10", x1.toFixed(3), "20", y1.toFixed(3), "30", "0.0",
+            "11", x2.toFixed(3), "21", y2.toFixed(3), "31", "0.0"
+        );
+    }
+
+    function addDxfText(arr, x, y, text, height, layer) {
+        arr.push(
+            "0", "TEXT", "5", getHandle(),
+            "330", "1F", "8", layer,
+            "100", "AcDbEntity", "100", "AcDbText",
+            "10", x.toFixed(3), "20", y.toFixed(3), "30", "0.0",
+            "40", height.toFixed(3),
+            "1", text,
+            "100", "AcDbText"
+        );
+    }
+
+    // Required root dictionary
+    function getDxfObjects() {
+        return [
+            "0", "SECTION", "2", "OBJECTS",
+            "0", "DICTIONARY", "5", getHandle(), "330", "0", "100", "AcDbDictionary", "281", "1",
+            "0", "ENDSEC"
+        ];
+    }
+
+    // --- MAIN EXPORT FUNCTION ---
     function downloadDXF() {
         try {
-            const curtainWidth = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
-            const heightToAxle = parseFloat(dom.height.value) || 0;
+            // 1. Gather Data
+            const width = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+            const height = parseFloat(dom.height.value) || 0;
             const additionalAxle = parseFloat(dom.additionalLength.value) || 0;
-            const totalAxleWidth = curtainWidth + additionalAxle;
+            
             const lathIndex = dom.lathType.value;
-            const axleIndex = dom.axleType.value;
             const bLathIndex = dom.bottomLathType.value;
+            const axleIndex = dom.axleType.value;
+            const guideIndex = dom.guideType.value;
+            const endplateIndex = dom.endplateSelector.value;
 
-            if (!curtainWidth || lathIndex === "" || axleIndex === "") {
-                alert("Please ensure Width, Lath, and Axle are selected.");
+            if (width === 0 || lathIndex === "" || axleIndex === "") {
+                alert("Please ensure Width, Lath, and Axle are selected before exporting.");
                 return;
             }
 
             const lath = lathData[lathIndex];
             const axle = axleData[axleIndex];
             const bLath = bottomLathData[bLathIndex];
+            
             const lathH = parseFloat(lath['Compressed lath height']);
-            const bLathH = parseFloat(bLath['BLath height']) || 0;
+            const lathThick = parseFloat(lath['Thickness']) || 14;
+            const bLathH = parseFloat(bLath['BLath height']) || 50;
             const numLaths = parseInt(dom['lath-count'].textContent) || 0;
             const axleDia = parseFloat(axle['Diameter']);
-            const axleRad = axleDia / 2;
-
-            let dxf = [
-                "0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC",
-                "0", "SECTION", "2", "TABLES", "0", "TABLE", "2", "LAYER",
-                "0", "LAYER", "70", "0", "2", "AXLE", "62", "1", "70", "0",
-                "0", "LAYER", "70", "0", "2", "CURTAIN", "62", "7", "70", "0",
-                "0", "LAYER", "70", "0", "2", "GUIDES", "62", "4", "70", "0",
-                "0", "LAYER", "70", "0", "2", "ENDPLATE", "62", "2", "70", "0",
-                "0", "ENDTAB", "0", "ENDSEC",
-                "0", "SECTION", "2", "ENTITIES"
-            ];
-
-            const shutterXStart = (additionalAxle / 2);
-            addDxfRect(dxf, 0, heightToAxle - axleRad, totalAxleWidth, axleDia, "AXLE");
-            addDxfRect(dxf, shutterXStart, 0, curtainWidth, bLathH, "CURTAIN");
-            for (let i = 0; i < numLaths; i++) {
-                let yPos = bLathH + (i * lathH);
-                addDxfRect(dxf, shutterXStart, yPos, curtainWidth, lathH, "CURTAIN");
-            }
-
-            const epIndex = dom.endplateSelector.value;
-            if (epIndex !== "" && currentFilteredEndplates[epIndex]) {
-                const ep = currentFilteredEndplates[epIndex];
-                const epSize = parseFloat(ep.Size);
-                const epY = heightToAxle - (epSize / 2);
-                addDxfRect(dxf, 0, epY, totalAxleWidth, epSize, "ENDPLATE");
-            }
-
-            const planY = -1500;
-            const lathThick = parseFloat(lath['Thickness']) || 15;
-            addDxfRect(dxf, shutterXStart, planY, curtainWidth, lathThick, "CURTAIN");
-
-            const guideIndex = dom.guideType.value;
+            
+            let guideWidth = 50; 
+            let guidePenetration = 0;
             if (guideIndex !== "" && guideData[guideIndex]) {
-                const guide = guideData[guideIndex];
-                const gWidth = parseFloat(guide['Width']) || 50;
-                const gap = 20; 
-                const lx = shutterXStart - gap;
-                addDxfLine(dxf, lx, planY - 10, lx - gWidth, planY - 10, "GUIDES");
-                addDxfLine(dxf, lx - gWidth, planY - 10, lx - gWidth, planY + lathThick + 10, "GUIDES");
-                addDxfLine(dxf, lx - gWidth, planY + lathThick + 10, lx, planY + lathThick + 10, "GUIDES");
-                const rx = shutterXStart + curtainWidth + gap;
-                addDxfLine(dxf, rx, planY - 10, rx + gWidth, planY - 10, "GUIDES");
-                addDxfLine(dxf, rx + gWidth, planY - 10, rx + gWidth, planY + lathThick + 10, "GUIDES");
-                addDxfLine(dxf, rx + gWidth, planY + lathThick + 10, rx, planY + lathThick + 10, "GUIDES");
+                guideWidth = parseFloat(guideData[guideIndex]['Width']) || 50;
+                guidePenetration = parseFloat(guideData[guideIndex]['Penetration']) || 0;
             }
 
-            dxf.push("0", "ENDSEC", "0", "EOF");
-            const blob = new Blob([dxf.join('\n')], { type: 'application/dxf' });
+            let endplateSize = 300; 
+            if (endplateIndex !== "" && currentFilteredEndplates[endplateIndex]) {
+                endplateSize = parseFloat(currentFilteredEndplates[endplateIndex].Size);
+            }
+
+            // Reset Handle Counter so it's fresh each time we click export
+            handleCounter = 0x200;
+
+            // Generate structural components that use handles BEFORE the header
+            const dxfClasses = getDxfClasses(); 
+            const dxfTables = getDxfTables();
+            const dxfBlocks = getDxfBlocks();
+
+            // 2. Initialize DXF Entity Structure
+            let dxfBody = [];
+            dxfBody.push("0", "SECTION", "2", "ENTITIES");
+
+            // --- DRAWING LOGIC ---
+            const axleY = height;
+            const totalAxleWidth = width + additionalAxle;
+            const axleXStart = -(totalAxleWidth / 2);
+            const curtainLeftX = -(width / 2);
+            const curtainRightX = (width / 2);
+
+            // A. FRONT VIEW
+            const epY = axleY - (endplateSize / 2);
+            // Endplates
+            addDxfRect(dxfBody, axleXStart, epY, 5, endplateSize, "AXLE"); 
+            addDxfRect(dxfBody, (axleXStart + totalAxleWidth) - 5, epY, 5, endplateSize, "AXLE");
+            // Axle
+            addDxfRect(dxfBody, axleXStart, axleY - (axleDia/2), totalAxleWidth, axleDia, "AXLE");
+            // Centerline
+            addDxfLine(dxfBody, axleXStart - 50, axleY, axleXStart + totalAxleWidth + 50, axleY, "DIMENSIONS");
+            
+            // Guides
+            addDxfRect(dxfBody, curtainLeftX - (guideWidth - guidePenetration), 0, guideWidth, height, "GUIDES");
+            addDxfRect(dxfBody, curtainRightX - guidePenetration, 0, guideWidth, height, "GUIDES");
+            
+            // Curtain
+            addDxfRect(dxfBody, curtainLeftX, 0, width, bLathH, "LATHS");
+            let currentY = bLathH;
+            for(let i=0; i<numLaths; i++) {
+                if (currentY + lathH > axleY - (axleDia/2)) break;
+                addDxfRect(dxfBody, curtainLeftX, currentY, width, lathH, "LATHS");
+                currentY += lathH;
+            }
+            addDxfText(dxfBody, 0, -200, "FRONT VIEW", 50, "OUTLINE");
+
+            // B. PLAN VIEW (Below)
+            const planY = -600; 
+            const lgX = curtainLeftX - (guideWidth - guidePenetration);
+            const rgX = curtainRightX - guidePenetration;
+            const curtainPlanY = planY + (60 - lathThick)/2; // Assume 60mm guide depth
+            
+            addDxfRect(dxfBody, lgX, planY, guideWidth, 60, "GUIDES"); 
+            addDxfRect(dxfBody, rgX, planY, guideWidth, 60, "GUIDES");
+            addDxfRect(dxfBody, curtainLeftX, curtainPlanY, width, lathThick, "LATHS");
+            addDxfText(dxfBody, 0, planY - 200, "PLAN VIEW", 50, "OUTLINE");
+
+            // C. SECTION VIEW (Right)
+            const sectX = (width/2) + 800; 
+            const epSectLeft = sectX;
+            const epSectTop = axleY + (endplateSize/2);
+            const maxCoil = parseFloat(dom['max-coil-diameter'].textContent) || (axleDia + 100);
+
+            // Wall/Guide Line
+            addDxfLine(dxfBody, sectX, 0, sectX, height + 500, "OUTLINE");
+            // Endplate Box
+            addDxfRect(dxfBody, epSectLeft, epSectTop - endplateSize, endplateSize, endplateSize, "AXLE");
+            // Axle/Coil
+            addDxfCircle(dxfBody, epSectLeft + (endplateSize/2), axleY, axleDia/2, "AXLE");
+            addDxfCircle(dxfBody, epSectLeft + (endplateSize/2), axleY, maxCoil/2, "LATHS");
+            // Guide Side
+            addDxfRect(dxfBody, sectX, 0, 60, height, "GUIDES"); 
+            addDxfText(dxfBody, sectX + (endplateSize/2), -200, "SECTION VIEW", 50, "OUTLINE");
+
+            dxfBody.push("0", "ENDSEC"); // End ENTITIES
+            
+            const dxfObjects = getDxfObjects();
+
+            // 3. Calculate Extents for Header
+            const minX = curtainLeftX - 500;
+            const maxX = sectX + 500;
+            const minY = planY - 500;
+            const maxY = height + 500;
+
+            // Generate the next seed AFTER all shapes and objects are built
+            const nextHandleSeed = (handleCounter + 1).toString(16).toUpperCase();
+
+            // Assemble Full DXF in Strict AC1032 Order
+            let fullDxf = [];
+            fullDxf = fullDxf.concat(getDxfHeader(minX, minY, maxX, maxY, nextHandleSeed));
+            fullDxf = fullDxf.concat(dxfClasses); 
+            fullDxf = fullDxf.concat(dxfTables);
+            fullDxf = fullDxf.concat(dxfBlocks); 
+            fullDxf = fullDxf.concat(dxfBody);        
+            fullDxf = fullDxf.concat(dxfObjects);     
+            fullDxf.push("0", "EOF");
+
+            // 5. Create Blob and Download
+            const blob = new Blob([fullDxf.join('\r\n')], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Shutter_${curtainWidth.toFixed(0)}x${heightToAxle.toFixed(0)}.dxf`;
+            link.download = `Shutter_Layout_${width.toFixed(0)}x${height.toFixed(0)}.dxf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+
         } catch (err) {
-            console.error("DXF Error:", err);
-            alert("Error generating DXF.");
+            console.error("DXF Generation Error:", err);
+            alert("An error occurred while generating the DXF file. Please check console.");
         }
     }
-	// --- NEW FUNCTIONS FOR WELD STRENGTH ---
-
+ 
 function getSmallestShaftDiameter() {
-    // 1. Get Motor Shaft
-    let motorShaft = 40; // Default
-    const motorIdx = dom.motorSelector.value;
-    if (motorIdx !== "" && currentFilteredMotors[motorIdx]) {
-        const m = currentFilteredMotors[motorIdx];
-        const dsKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'driveshaft diameter mm');
-        if (dsKey) {
-            // Handle cases like "40/50" by taking the smallest
-            const valStr = String(m[dsKey]);
-            const parts = valStr.split('/').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-            if (parts.length > 0) motorShaft = Math.min(...parts);
+    // 1. Get Motor Shaft Raw exactly as the Axle Graphic does
+    let motorShaftRaw = parseFloat(dom['motor-driveshaft-dia'].textContent);
+    if (isNaN(motorShaftRaw)) motorShaftRaw = 40; 
+    
+    // 2. Get Safety Brake Shaft exactly as the Axle Graphic does
+    let brakeShaftValue = 0;
+    const sbIndex = dom.safetyBrakeSelector ? dom.safetyBrakeSelector.value : "";
+    if (sbIndex !== "" && typeof safetyBrakeData !== 'undefined' && safetyBrakeData[sbIndex]) {
+        const sb = safetyBrakeData[sbIndex];
+        const dsKey = Object.keys(sb).find(k => k.toLowerCase().includes('driveshaft diameter'));
+        if (dsKey) brakeShaftValue = parseFloat(sb[dsKey]);
+    }
+    if (!brakeShaftValue || isNaN(brakeShaftValue)) {
+        if (dom['safety-brake-driveshaft'] && dom['safety-brake-driveshaft'].textContent !== 'N/A') {
+            brakeShaftValue = parseFloat(dom['safety-brake-driveshaft'].textContent);
         }
     }
+    if (isNaN(brakeShaftValue) || brakeShaftValue === 0) brakeShaftValue = 40;
 
-    // 2. Get Safety Brake Shaft
-    let brakeShaft = 0;
-    const brakeIdx = dom.safetyBrakeSelector.value;
-    if (brakeIdx !== "" && safetyBrakeData[brakeIdx]) {
-        const sb = safetyBrakeData[brakeIdx];
-        const dsKey = Object.keys(sb).find(k => k.toLowerCase().includes('driveshaft diameter'));
-        if (dsKey) brakeShaft = parseFloat(sb[dsKey]) || 0;
-    }
-    // If no brake selected, we don't count it as "0", we ignore it (or treat as motor shaft side if tubular)
-    if (brakeShaft === 0) brakeShaft = Infinity; 
+    // Helper to lookup bearing size to match the cross-section logic
+    const lookupBearingSize = (minSize) => {
+        if (typeof bearingData === 'undefined' || bearingData.length === 0) return minSize;
+        const first = bearingData[0];
+        const sizeKey = Object.keys(first).find(k => k.toLowerCase().trim() === 'shaft size in mm');
+        if (!sizeKey) return minSize;
+        const sorted = [...bearingData].sort((a,b) => (parseFloat(a[sizeKey]) || 0) - (parseFloat(b[sizeKey]) || 0));
+        const match = sorted.find(b => (parseFloat(b[sizeKey]) || 0) >= minSize);
+        return match ? parseFloat(match[sizeKey]) : minSize;
+    };
 
-    // 3. Get Bearing Shaft
-    // Logic: If tubular, bearing is on non-motor side. If chain, bearing is on non-drive side.
-    // We simply look for the smallest bearing that fits the load to find the "worst case" shaft size used.
-    let bearingShaft = 40; 
-    if (bearingData.length > 0) {
-        const sizeKey = Object.keys(bearingData[0]).find(k => k.toLowerCase().trim() === 'shaft size in mm');
-        // Find smallest bearing available in data just as a fallback baseline, 
-        // but really we want the one selected in the cross-section logic.
-        // For worst case safety, we assume the shaft steps down to the smallest common size (often 30mm or 40mm).
-        // Let's use the logic: "What is the smallest shaft currently indicated on the Axle graphic?"
-        
-        // However, calculating strictly from data:
-        // Use a safe default of 30mm if unknown, or the motor shaft if defined.
-        bearingShaft = Math.min(motorShaft, 40); 
-    }
-
-    // Comparison Logic based on Mounting
-    const mountType = (dom.motorMountingType.value || '').toLowerCase();
+    const mountType = (dom.motorMountingType && dom.motorMountingType.value) ? dom.motorMountingType.value.toLowerCase() : '';
+    const isTubular = mountType.includes('tubular');
+    const isChainDrive = mountType.includes('chain');
     
-    let candidates = [];
-    
-    if (mountType.includes('tubular')) {
-        // Tubular: Motor inside (Motor Shaft), Dummy end (Bearing Shaft)
-        candidates.push(motorShaft);
-        // Usually dummy ends are standard 40mm or matched to brake
-        if (brakeShaft !== Infinity) candidates.push(brakeShaft);
-    } else if (mountType.includes('chain')) {
-        // Chain: Solid shaft through or stub shafts. 
-        // Motor drives sprocket. Shaft size is determined by Brake or Bearing.
-        if (brakeShaft !== Infinity) candidates.push(brakeShaft);
-        // Assume bearing side is at least 30mm or similar to brake
-        candidates.push(brakeShaft !== Infinity ? brakeShaft : 40);
+    let leftShaftDia = 40;
+    let rightShaftDia = 40;
+    let weldedShafts = [];
+
+    // Evaluate configurations to find which shafts are ACTUALLY welded to the barrel
+    if (isTubular) {
+        // Tubular: Left is internal motor (not welded to disc). Right is dummy end / safety brake (welded).
+        rightShaftDia = brakeShaftValue;
+        weldedShafts.push(rightShaftDia);
+    } else if (isChainDrive) {
+        // Chain Drive: Both ends are dummy shafts welded to barrel discs.
+        rightShaftDia = brakeShaftValue;
+        const minLeft = (brakeShaftValue < 30) ? 30 : brakeShaftValue;
+        leftShaftDia = lookupBearingSize(minLeft);
+        weldedShafts.push(leftShaftDia, rightShaftDia);
     } else {
-        // Flange/Foot: Solid shaft usually.
-        candidates.push(motorShaft);
-        if (brakeShaft !== Infinity) candidates.push(brakeShaft);
+        // Direct Drive (Flange/Foot): Both ends are welded to discs.
+        leftShaftDia = motorShaftRaw;
+        const minRight = (motorShaftRaw < 30) ? 30 : motorShaftRaw;
+        rightShaftDia = lookupBearingSize(minRight);
+        weldedShafts.push(leftShaftDia, rightShaftDia);
     }
 
-    // Filter out invalid/infinite numbers and find min
-    const valid = candidates.filter(n => n > 0 && n < 9999);
+    // Filter out invalid numbers and find the absolute minimum welded shaft size
+    const valid = weldedShafts.filter(n => !isNaN(n) && n > 0 && n < 9999);
     return valid.length > 0 ? Math.min(...valid) : 40;
 }
 
 function updateWeldCalculations() {
-    const axleIdx = dom.axleType.value;
-    if (axleIdx === "" || !axleData[axleIdx]) {
-        document.getElementById('weld-check-container').style.display = 'none';
+    const axleIdx = dom.axleType ? dom.axleType.value : "";
+    const container = document.getElementById('weld-check-container');
+    
+    if (axleIdx === "" || typeof axleData === 'undefined' || !axleData[axleIdx]) {
+        if(container) container.style.display = 'none';
         return;
     }
-    document.getElementById('weld-check-container').style.display = 'block';
+    if(container) container.style.display = 'block';
 
     const axle = axleData[axleIdx];
     const axleDia = parseFloat(axle['Diameter']) || 0;
     
-    // 1. Determine Plate Thickness
-    // Logic: 5mm if <= 139mm (5.5"), 8mm if > 139mm
+    // 1. Determine Plate Thickness (5mm if <= 139mm (5.5"), 8mm if > 139mm)
     const plateThickness = (axleDia <= 139) ? 5 : 8;
-    dom['weld-plate-thickness'].value = `${plateThickness} mm`;
+    if(dom['weld-plate-thickness']) dom['weld-plate-thickness'].value = `${plateThickness} mm`;
 
-    // 2. Determine Smallest Shaft (Worst Case)
+    // 2. Determine Smallest Welded Shaft (Worst Case)
     const shaftDia = getSmallestShaftDiameter();
-    dom['weld-shaft-dia'].value = `${shaftDia} mm`;
+    if(dom['weld-shaft-dia']) dom['weld-shaft-dia'].value = `${shaftDia} mm`;
 
     // 3. Get Applied Torque
-    const appliedTorque = parseFloat(dom['max-torque'].textContent) || 0;
-    dom['weld-applied-torque'].value = `${appliedTorque.toFixed(1)} Nm`;
+    const appliedTorque = dom['max-torque'] ? (parseFloat(dom['max-torque'].textContent) || 0) : 0;
+    if(dom['weld-applied-torque']) dom['weld-applied-torque'].value = `${appliedTorque.toFixed(1)} Nm`;
 
     // 4. Calculate Capacity
     // Shear Stress Allowable (mild steel weld) approx 100 N/mm^2 (MPa)
     const allowableShearStress = 100; 
-    
-    // Polar Moment of Inertia for a thin ring weld: J = 2 * PI * r^3 * t (approx) or PI * D^3 * t / 4
-    // Torque Capacity T = (Tau * J) / r
-    // T = (Tau * PI * D^3 * t / 4) / (D/2)
-    // T = (Tau * PI * D^2 * t) / 2
-    // Units: D(mm), t(mm), Tau(N/mm^2) -> Result in N.mm -> Divide by 1000 for Nm
-    
     const weldTorqueCapacityNm = (allowableShearStress * Math.PI * Math.pow(shaftDia, 2) * plateThickness) / (2 * 1000);
     
-    dom['weld-capacity-torque'].value = `${weldTorqueCapacityNm.toFixed(0)} Nm`;
+    if(dom['weld-capacity-torque']) dom['weld-capacity-torque'].value = `${weldTorqueCapacityNm.toFixed(0)} Nm`;
 
     // 5. Calculate Geometric Details
     const perimeter = Math.PI * shaftDia;
-    dom['weld-perimeter'].textContent = perimeter.toFixed(1);
+    if(dom['weld-perimeter']) dom['weld-perimeter'].textContent = perimeter.toFixed(1);
 
-    // "Max Tangential Force" (Shear force at the weld interface)
-    // F = Torque / Radius = Torque / (D/2)
-    // Torque in Nm, D in m. Result in Newtons.
     const radiusM = (shaftDia / 2) / 1000;
     const shearForceN = (radiusM > 0) ? appliedTorque / radiusM : 0;
-    dom['weld-max-force'].textContent = shearForceN.toFixed(0);
+    if(dom['weld-max-force']) dom['weld-max-force'].textContent = shearForceN.toFixed(0);
 
     // 6. Status Check
     const statusEl = dom['weld-status'];
-    if (appliedTorque > weldTorqueCapacityNm) {
-        statusEl.textContent = "FAIL (Weld too weak)";
-        statusEl.className = "warning-text";
-        dom['weld-capacity-torque'].style.color = "#d93025";
-        dom['weld-capacity-torque'].style.fontWeight = "bold";
-    } else {
-        const safetyMargin = ((weldTorqueCapacityNm - appliedTorque) / weldTorqueCapacityNm) * 100;
-        statusEl.textContent = `PASS (${safetyMargin.toFixed(0)}% safety margin)`;
-        statusEl.className = "option-pass";
-        statusEl.style.color = "#1e8e3e";
-        dom['weld-capacity-torque'].style.color = "#1e8e3e";
+    if(statusEl) {
+        if (appliedTorque > weldTorqueCapacityNm) {
+            statusEl.textContent = "FAIL (Weld too weak)";
+            statusEl.className = "warning-text";
+            if(dom['weld-capacity-torque']) {
+                dom['weld-capacity-torque'].style.color = "#d93025";
+                dom['weld-capacity-torque'].style.fontWeight = "bold";
+            }
+        } else {
+            const safetyMargin = weldTorqueCapacityNm > 0 ? ((weldTorqueCapacityNm - appliedTorque) / weldTorqueCapacityNm) * 100 : 0;
+            statusEl.textContent = `PASS (${safetyMargin.toFixed(0)}% safety margin)`;
+            statusEl.className = "option-pass";
+            statusEl.style.color = "#1e8e3e";
+            if(dom['weld-capacity-torque']) {
+                dom['weld-capacity-torque'].style.color = "#1e8e3e";
+                dom['weld-capacity-torque'].style.fontWeight = "normal";
+            }
+        }
     }
 
     drawWeldGraphic(shaftDia, plateThickness, appliedTorque, weldTorqueCapacityNm);
@@ -4512,14 +5322,23 @@ function updateWeldCalculations() {
 
 function drawWeldGraphic(shaftDia, plateThickness, appliedTorque, capacity) {
     const container = dom['weld-graphic-container'];
+    if(!container) return;
     container.innerHTML = '';
+    
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
     
     const width = 500;
     const height = 500;
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-
+    
+    // --- SCALING STYLES ---
+    svg.style.width = "100%";       
+    svg.style.maxWidth = "450px";   // Limits width to 450px (approx half scale)
+    svg.style.height = "auto";      // Maintains aspect ratio
+    svg.style.display = "block";    
+    svg.style.margin = "0 auto";    // Centers the graphic
+    
     const cx = 150;
     const cy = 150;
     const scale = 2.5; // Visual scale
@@ -4540,8 +5359,7 @@ function drawWeldGraphic(shaftDia, plateThickness, appliedTorque, capacity) {
     defs.appendChild(marker);
     svg.appendChild(defs);
 
-    // 1. Plate (Outer Circle) - represented as the "Barrel/Lever" context
-    // Just drawing a larger circle to represent the disc material
+    // 1. Plate (Outer Circle)
     const discRadius = (shaftDia/2 + 20) * scale;
     const plate = document.createElementNS(svgNS, 'circle');
     plate.setAttribute('cx', cx); plate.setAttribute('cy', cy);
@@ -4571,7 +5389,6 @@ function drawWeldGraphic(shaftDia, plateThickness, appliedTorque, capacity) {
 
     // 4. Force Arrows (Tangential)
     const arrowPath = document.createElementNS(svgNS, 'path');
-    // Draw an arc arrow
     const arcR = shaftRadius + 15;
     const d = `M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx} ${cy - arcR}`;
     arrowPath.setAttribute('d', d);
@@ -4600,7 +5417,6 @@ function drawWeldGraphic(shaftDia, plateThickness, appliedTorque, capacity) {
     createText(infoX, 90, `Shaft: Ø${shaftDia} mm`);
     createText(infoX, 110, `Disc Thickness: ${plateThickness} mm`);
     
-    // Visualization of Fail/Pass color
     const resultColor = (appliedTorque > capacity) ? "#d93025" : "#1e8e3e";
     
     createText(infoX, 150, "Capacity:", "#555", "12px");
@@ -4609,17 +5425,30 @@ function drawWeldGraphic(shaftDia, plateThickness, appliedTorque, capacity) {
     createText(infoX, 170, "Load:", "#555", "12px");
     createText(infoX + 70, 170, `${appliedTorque.toFixed(1)} Nm`, resultColor, "12px", "bold");
 
-    // Arrow Label
     createText(cx, cy - arcR - 10, "Rotational Force", "#e67e22", "10px", "bold");
     createText(cx, cy + discRadius + 20, "TOP VIEW (Shaft/Disc Weld)", "#555", "10px", "normal");
     
-    // Add warning if shaft is small
-    if (shaftDia < 40) {
-        createText(infoX, 230, "⚠️ Using smallest shaft", "#e67e22", "11px", "italic");
+    if (shaftDia < 30) {
+        createText(infoX, 230, "⚠️ Using sub-30mm shaft size", "#e67e22", "11px", "italic");
     }
 
     container.appendChild(svg);
 }
+
+// Ensure the weld calculation recalculates when Motor or Brake manually changed
+if (dom.motorSelector) {
+    dom.motorSelector.addEventListener('change', () => {
+        if (typeof updateSelectedMotorInfo === 'function') updateSelectedMotorInfo();
+        updateWeldCalculations();
+    });
+}
+if (dom.safetyBrakeSelector) {
+    dom.safetyBrakeSelector.addEventListener('change', () => {
+        if (typeof updateSelectedSafetyBrakeInfo === 'function') updateSelectedSafetyBrakeInfo();
+        updateWeldCalculations();
+    });
+}
+
 </script>
 </body>
 </html>
