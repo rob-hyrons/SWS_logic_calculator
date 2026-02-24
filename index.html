@@ -322,6 +322,7 @@
                     <p><strong>Guide Type:</strong> <span id="p-guide">-</span></p>
                     <p><strong>Axle Shape:</strong> <span id="p-axle-shape">-</span></p>
                     <p><strong>Powder Coated:</strong> <span id="p-pc">No</span></p>
+                    <p><strong>Reverse Coil:</strong> <span id="p-reverse-coil">No</span></p>
                     <p id="p-slope-row" style="display:none; grid-column: span 2;"><strong>Sloping Bottom Lath:</strong> Yes (<span id="p-slope-weight">0</span> kg)</p>
                 </div>
             </div>
@@ -421,7 +422,7 @@
                         </div>
                     </div>
                     
-                    <!-- Row 6: Checkboxes for Sloping Bottom & Add Vision -->
+                    <!-- Row 6: Checkboxes for Sloping Bottom, Add Vision, Reverse Coil -->
                     <div class="form-row">
                         <div class="form-group form-col" data-admin-label="Sloping Bottom Lath Option">
                             <label for="isSlopingBottomLath" style="display: inline-block; font-weight: 500; cursor: pointer;">
@@ -431,6 +432,11 @@
                         <div class="form-group form-col" data-admin-label="Add Vision Slats Option">
                             <label for="addVision" style="display: inline-block; font-weight: 500; cursor: pointer;">
                                 <input type="checkbox" id="addVision" style="width: auto; margin-right: 8px; vertical-align: middle;">Add Vision Slats
+                            </label>
+                        </div>
+                        <div class="form-group form-col" data-admin-label="Reverse Coil Option">
+                            <label for="reverseCoil" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="reverseCoil" style="width: auto; margin-right: 8px; vertical-align: middle;" disabled>Reverse Coil (+10mm thickness on 1st 2 revs)
                             </label>
                         </div>
                     </div>
@@ -952,6 +958,11 @@
                                 <input type="checkbox" id="reportPowderCoated" style="width: auto; margin-right: 8px; vertical-align: middle;">
                                 Include Powder Coating (+0.5 kg/m²)
                             </label>
+                            &nbsp;&nbsp;&nbsp;
+                            <label for="reportReverseCoil" style="display: inline-block; font-weight: 500; cursor: pointer;">
+                                <input type="checkbox" id="reportReverseCoil" style="width: auto; margin-right: 8px; vertical-align: middle;">
+                                Apply Reverse Coil (If Reversible)
+                            </label>
                         </div>
 
                         <div class="form-row">
@@ -1072,7 +1083,8 @@ const dom = {};
             'safety-brake-max-speed', 'actual-barrel-speed', 'safety-brake-speed-warning', 'weld-shaft-dia', 'weld-plate-thickness', 'weld-applied-torque', 'weld-capacity-torque', 'weld-perimeter', 'weld-max-force', 'weld-status', 'weld-graphic-container',
             'isSlopingBottomLath', 'slope-tab-btn', 'slope-content',
             'slopeLeftHeight', 'slopeRightHeight', 'slopeFoldLength', 'slopeThickness',
-            'slope-front-view', 'slope-section-view', 'slope-unfolded-view', 'slopeMaterial', 'slope-weight'
+            'slope-front-view', 'slope-section-view', 'slope-unfolded-view', 'slopeMaterial', 'slope-weight',
+            'reverseCoil', 'reportReverseCoil'
         ].forEach(id => {
             const el = document.getElementById(id);
             if (el) dom[id] = el;
@@ -1109,7 +1121,8 @@ const dom = {};
             'visionPanelHeight', 'powderCoated', 'includeDeflectionInSizing', 'collarSize', 
             'endlockType', 'useCustomLath', 'customLathWeight', 'customTorqueWeight', 
             'axleFixity', 'chainPitch', 'slopeLeftHeight', 'slopeRightHeight', 
-            'slopeFoldLength', 'slopeThickness', 'slopeMaterial', 'shapeCircular', 'shapeOctagonal'
+            'slopeFoldLength', 'slopeThickness', 'slopeMaterial', 'shapeCircular', 'shapeOctagonal',
+            'reverseCoil'
         ].forEach(id => {
             if (dom[id]) {
                 dom[id].addEventListener('input', () => {
@@ -1304,7 +1317,7 @@ if (dom.dxfButton) {
             try {
                 const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                 const required = {
-                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter'],
+                    'Lath': ['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter', 'reversible'],
                     'Bottom lath': ['Bottom lath name', 'BLath height'],
                     'Axles': ['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                     'Motors': ['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image', 'Limit turn', 'Driveshaft diameter mm'],
@@ -1447,6 +1460,7 @@ if (dom.dxfButton) {
                 'Is_Powder_Coated': { id: 'powderCoated', type: 'checkbox' },
                 'Has_Vision_Slats': { id: 'addVision', type: 'checkbox' },
                 'Include_Deflection_In_Sizing': { id: 'includeDeflectionInSizing', type: 'checkbox' },
+                'Reverse_Coil': { id: 'reverseCoil', type: 'checkbox' },
                 'Lath_Type_Name': { id: 'lathType', type: 'select' },
                 'Endlock_Type_Name': { id: 'endlockType', type: 'select' },
                 'Bottom_Lath_Name': { id: 'bottomLathType', type: 'select' },
@@ -1665,7 +1679,7 @@ function getCalculatedWidths() {
     return { curtainWidth, clearOpening, overallWidth, epOffset, epSize };
 }
 		
-		function syncSummaryForPrint() {
+function syncSummaryForPrint() {
     // Helper to get text from a dropdown safely
     const getSelText = (el) => (el && el.selectedIndex >= 0) ? el.options[el.selectedIndex].text : "Not Selected";
 
@@ -1683,6 +1697,11 @@ function getCalculatedWidths() {
     
     // Powder Coating
     document.getElementById('p-pc').textContent = dom.powderCoated.checked ? "Yes (+0.5 kg/m²)" : "No";
+
+    // Reverse Coil
+    if (document.getElementById('p-reverse-coil')) {
+        document.getElementById('p-reverse-coil').textContent = dom.reverseCoil.checked && !dom.reverseCoil.disabled ? "Yes" : "No";
+    }
 
     // Sloping Lath Row
     const slopeRow = document.getElementById('p-slope-row');
@@ -1822,6 +1841,23 @@ function updateAllCalculations() {
     
     const effectiveLath = getLathWithCustomWeight();
     
+    // Reverse Coil Enable/Disable Check
+    if (dom.reverseCoil) {
+        if (effectiveLath) {
+            const revKey = Object.keys(effectiveLath).find(k => k.toLowerCase().trim() === 'reversible');
+            const isReversible = revKey && String(effectiveLath[revKey]).toLowerCase().trim() === 'yes';
+            if (isReversible) {
+                dom.reverseCoil.disabled = false;
+            } else {
+                dom.reverseCoil.disabled = true;
+                dom.reverseCoil.checked = false;
+            }
+        } else {
+            dom.reverseCoil.disabled = true;
+            dom.reverseCoil.checked = false;
+        }
+    }
+    
     // 2. IMAGE DISPLAY LOGIC
     const lathImageContainer = document.getElementById('lath-image-container');
     const lathImageDisplay = document.getElementById('lathImageDisplay');
@@ -1908,18 +1944,6 @@ function updateAllCalculations() {
 
     // 6. POPULATE PDF SUMMARY & PRINT PAGE
     syncSummaryForPrint(); 
-        
-    const getSelText = (el) => el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : "None Selected";
-    if (document.getElementById('p-width')) document.getElementById('p-width').textContent = dom.width.value || "0";
-    if (document.getElementById('p-width-type')) document.getElementById('p-width-type').textContent = getSelText(dom.widthType);
-    if (document.getElementById('p-height')) document.getElementById('p-height').textContent = dom.height.value || "0";
-    if (document.getElementById('p-lath')) document.getElementById('p-lath').textContent = getSelText(dom.lathType);
-    if (document.getElementById('p-bottom-lath')) document.getElementById('p-bottom-lath').textContent = getSelText(dom.bottomLathType);
-    if (document.getElementById('p-guide')) document.getElementById('p-guide').textContent = getSelText(dom.guideType);
-    
-    const shapeInput = document.querySelector('input[name="axleShape"]:checked');
-    if (document.getElementById('p-axle-shape')) document.getElementById('p-axle-shape').textContent = shapeInput ? shapeInput.nextElementSibling.textContent : "Circular";
-    if (document.getElementById('p-pc')) document.getElementById('p-pc').textContent = dom.powderCoated.checked ? "Yes" : "No";
 }
 
     // --- SLOPING BOTTOM LATH VISUALIZATIONS ---
@@ -2676,21 +2700,45 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
         }
 
         function calculateMaxFloorToAxleHeight(endplateSize, lath, bottomLath, axle) {
-            if (!lath || !axle || !bottomLath || endplateSize || endplateSize <= 0) return 0;
+            if (!lath || !axle || !bottomLath || endplateSize <= 0) return 0;
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(axle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
             const axleRadius = effectiveStartDiameter / 2;
 
-            const lathThickness = parseFloat(lath['Thickness']);
+            const baseLathThickness = parseFloat(lath['Thickness']);
             const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
             const uncompressedLathHeight = parseFloat(lath['uncompressed lath height']) || lathCompressedHeight;
             const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
 
-            if (lathThickness <= 0 || effectiveStartDiameter <= 0 || endplateSize <= effectiveStartDiameter || uncompressedLathHeight <= 0) return 0;
-            const maxRevolutions = (endplateSize - effectiveStartDiameter) / (2 * lathThickness);
-            if (maxRevolutions <= 0) return 0;
-            const maxCurtainLength = Math.PI * lathThickness * Math.pow(maxRevolutions, 2) + Math.PI * effectiveStartDiameter * maxRevolutions;
+            if (baseLathThickness <= 0 || effectiveStartDiameter <= 0 || endplateSize <= effectiveStartDiameter || uncompressedLathHeight <= 0) return 0;
+            
+            const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
+            let currentDia = effectiveStartDiameter;
+            let maxCurtainLength = 0;
+            let halfRevs = 0;
+
+            while (true) {
+                let currentLathThickness = baseLathThickness;
+                if (isReverseCoil && halfRevs < 4) {
+                    currentLathThickness += 10;
+                }
+                if (currentDia + 2 * currentLathThickness > endplateSize) {
+                    const remainingDia = endplateSize - currentDia;
+                    if (remainingDia > 0) {
+                        const partialHalfRevs = remainingDia / currentLathThickness;
+                        const partialRevsFull = partialHalfRevs / 2;
+                        maxCurtainLength += (Math.PI * currentDia) * partialRevsFull;
+                    }
+                    break;
+                }
+                const circumference = Math.PI * currentDia;
+                maxCurtainLength += circumference / 2;
+                currentDia += currentLathThickness;
+                halfRevs++;
+                if (halfRevs > 500) break;
+            }
+
             const numLaths = (maxCurtainLength - bottomLathHeight) / uncompressedLathHeight;
             const heightToCoverByLaths = numLaths * lathCompressedHeight;
             const maxFloorToAxleHeight = heightToCoverByLaths + bottomLathHeight - axleRadius;
@@ -2868,108 +2916,110 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
         }
 
         function calculateMotorRecommendation(totalWeightKgs, lath, axle, travelHeight, curtainWidth) {
-    if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
-        ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
-        lastTorqueProfile = []; maxCoilDiameter = 0; drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
-        dom.motorSelector.innerHTML = '<option>-- First select a mounting type --</option>';
-        dom.motorSelector.disabled = true; updateSelectedMotorInfo(); return;
-    }
-    
-    const collarSize = parseFloat(dom.collarSize.value) || 0;
-    const axleCoilDiameter = getEffectiveCoilDiameter(axle);
-    const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
-    calculatedRotations = calculateTotalRevolutions(travelHeight, effectiveStartDiameter, parseFloat(lath['Thickness']));
-    dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
-    
-    const { profileData, finalCoilDiameter } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth);
-    maxCoilDiameter = finalCoilDiameter;
+            if (!lath || !axle || !travelHeight || travelHeight <= 0 || totalWeightKgs <= 0) {
+                ['max-torque', 'total-revolutions', 'max-torque-inputs'].forEach(id => { dom[id].textContent = '0.0'; });
+                lastTorqueProfile = []; maxCoilDiameter = 0; drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+                dom.motorSelector.innerHTML = '<option>-- First select a mounting type --</option>';
+                dom.motorSelector.disabled = true; updateSelectedMotorInfo(); return;
+            }
+            
+            const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
+            const collarSize = parseFloat(dom.collarSize.value) || 0;
+            const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+            const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
+            
+            const { profileData, finalCoilDiameter, totalRevolutions } = getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth, isReverseCoil);
+            
+            calculatedRotations = totalRevolutions;
+            dom['total-revolutions'].textContent = calculatedRotations.toFixed(1);
+            maxCoilDiameter = finalCoilDiameter;
 
-    let baselineFriction = parseFloat(dom.friction.value) || 0;
-    let additionalFriction = 0;
-    if (parseFloat(dom.height.value) >= 7000) additionalFriction += 5;
+            let baselineFriction = parseFloat(dom.friction.value) || 0;
+            let additionalFriction = 0;
+            if (parseFloat(dom.height.value) >= 7000) additionalFriction += 5;
 
-    let isHighPerformance = false;
-    const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
-    if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
-        isHighPerformance = true;
-    }
-    if (isHighPerformance) additionalFriction += 5;
-    
-    const totalAppliedFriction = baselineFriction + additionalFriction;
-    dom['total-applied-friction'].textContent = totalAppliedFriction;
-    const frictionMultiplier = 1 + (totalAppliedFriction / 100);
+            let isHighPerformance = false;
+            const usageFilterValue = dom.motorUsageFilter.value.toLowerCase();
+            if (usageFilterValue.includes('high') || usageFilterValue.includes('hi ') || usageFilterValue.includes('speed')) {
+                isHighPerformance = true;
+            }
+            if (isHighPerformance) additionalFriction += 5;
+            
+            const totalAppliedFriction = baselineFriction + additionalFriction;
+            dom['total-applied-friction'].textContent = totalAppliedFriction;
+            const frictionMultiplier = 1 + (totalAppliedFriction / 100);
 
-    lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
-    drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
-    
-    const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
-    dom['max-torque'].textContent = requiredTorque.toFixed(1);
-    dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
+            lastTorqueProfile = profileData.map(item => ({...item, torque: item.torque * frictionMultiplier}));
+            drawTorqueGraph(lastTorqueProfile, dom['torque-graph-container']);
+            
+            const requiredTorque = lastTorqueProfile.length > 0 ? Math.max(...lastTorqueProfile.map(p => p.torque)) : 0;
+            dom['max-torque'].textContent = requiredTorque.toFixed(1);
+            dom['max-torque-inputs'].textContent = requiredTorque.toFixed(1);
 
-    const selectedMountType = dom.motorMountingType.value;
-    const selectedVoltage = dom.motorVoltageFilter.value;
-    const selectedManufacturer = dom.motorManufacturerFilter.value;
-    const selectedUsage = dom.motorUsageFilter.value;
-    const selectedMO = dom.motorManualOverrideFilter.value;
+            const selectedMountType = dom.motorMountingType.value;
+            const selectedVoltage = dom.motorVoltageFilter.value;
+            const selectedManufacturer = dom.motorManufacturerFilter.value;
+            const selectedUsage = dom.motorUsageFilter.value;
+            const selectedMO = dom.motorManualOverrideFilter.value;
 
-    let voltageKey = '', manufacturerKey = '', usageKey = '', moKey = '';
-    if (motorData.length > 0) {
-        voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
-        manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
-        usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
-        moKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manual override');
-    }
-    currentFilteredMotors = motorData.filter(motor => {
-        const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
-        const motorVoltages = String(motor[voltageKey] || '').split('/').map(v => v.trim());
-        const voltageMatch = !selectedVoltage || !voltageKey || motorVoltages.includes(selectedVoltage);
-        const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
-        const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
-        const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
-        return mountMatch && voltageMatch && manufacturerMatch && usageMatch && moMatch;
-    });
-    
-    const select = dom.motorSelector; 
-    const previousValue = select.value;
-    
-    select.innerHTML = ''; select.disabled = false;
-    if (currentFilteredMotors.length === 0) {
-        select.innerHTML = '<option value="">-- No motors for this type --</option>';
-        updateSelectedMotorInfo(); return;
-    }
-    
-    let recommendedMotorIndexInFilteredList = -1;
-    currentFilteredMotors.forEach((motor, index) => {
-        const option = document.createElement('option');
-        option.value = index;
-        const motorTorqueMin = parseFloat(motor['Torque (Nm) min']) || 0;
-        const motorTorqueMax = parseFloat(motor['Torque (Nm) max']) || 0;
-        
-        // --- ADDED .toFixed(1) TO DROPDOWN TEXT ---
-        option.textContent = `${motor['Name']} (${motorTorqueMin.toFixed(1)}-${motorTorqueMax.toFixed(1)} Nm)`;
-        
-        const passesTest = requiredTorque >= motorTorqueMin && requiredTorque <= motorTorqueMax;
-        if (passesTest) {
-            option.classList.add('option-pass');
-            if (recommendedMotorIndexInFilteredList === -1) { recommendedMotorIndexInFilteredList = index; }
-        } else {
-            option.classList.add('option-fail'); 
+            let voltageKey = '', manufacturerKey = '', usageKey = '', moKey = '';
+            if (motorData.length > 0) {
+                voltageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'voltage');
+                manufacturerKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manufacturer');
+                usageKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'usage type');
+                moKey = Object.keys(motorData[0]).find(k => k.toLowerCase().trim() === 'manual override');
+            }
+            currentFilteredMotors = motorData.filter(motor => {
+                const mountMatch = !selectedMountType || motor['Mounting type'] === selectedMountType;
+                const motorVoltages = String(motor[voltageKey] || '').split('/').map(v => v.trim());
+                const voltageMatch = !selectedVoltage || !voltageKey || motorVoltages.includes(selectedVoltage);
+                const manufacturerMatch = !selectedManufacturer || !manufacturerKey || motor[manufacturerKey] === selectedManufacturer;
+                const usageMatch = !selectedUsage || !usageKey || motor[usageKey] === selectedUsage;
+                const moMatch = !selectedMO || !moKey || String(motor[moKey]).trim().toLowerCase() === String(selectedMO).trim().toLowerCase();
+                return mountMatch && voltageMatch && manufacturerMatch && usageMatch && moMatch;
+            });
+            
+            const select = dom.motorSelector; 
+            const previousValue = select.value;
+            
+            select.innerHTML = ''; select.disabled = false;
+            if (currentFilteredMotors.length === 0) {
+                select.innerHTML = '<option value="">-- No motors for this type --</option>';
+                updateSelectedMotorInfo(); return;
+            }
+            
+            let recommendedMotorIndexInFilteredList = -1;
+            currentFilteredMotors.forEach((motor, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const motorTorqueMin = parseFloat(motor['Torque (Nm) min']) || 0;
+                const motorTorqueMax = parseFloat(motor['Torque (Nm) max']) || 0;
+                
+                // --- ADDED .toFixed(1) TO DROPDOWN TEXT ---
+                option.textContent = `${motor['Name']} (${motorTorqueMin.toFixed(1)}-${motorTorqueMax.toFixed(1)} Nm)`;
+                
+                const passesTest = requiredTorque >= motorTorqueMin && requiredTorque <= motorTorqueMax;
+                if (passesTest) {
+                    option.classList.add('option-pass');
+                    if (recommendedMotorIndexInFilteredList === -1) { recommendedMotorIndexInFilteredList = index; }
+                } else {
+                    option.classList.add('option-fail'); 
+                }
+                select.appendChild(option);
+            });
+
+            if (previousValue !== "" && currentFilteredMotors[previousValue]) {
+                select.value = previousValue;
+            } else if (recommendedMotorIndexInFilteredList !== -1) { 
+                select.value = recommendedMotorIndexInFilteredList; 
+            } else {
+                const noMotorOption = document.createElement('option');
+                noMotorOption.value = ""; noMotorOption.textContent = "-- No suitable motor found --";
+                noMotorOption.selected = true; noMotorOption.disabled = true;
+                select.prepend(noMotorOption);
+            }
+            updateSelectedMotorInfo();
         }
-        select.appendChild(option);
-    });
-
-    if (previousValue !== "" && currentFilteredMotors[previousValue]) {
-        select.value = previousValue;
-    } else if (recommendedMotorIndexInFilteredList !== -1) { 
-        select.value = recommendedMotorIndexInFilteredList; 
-    } else {
-        const noMotorOption = document.createElement('option');
-        noMotorOption.value = ""; noMotorOption.textContent = "-- No suitable motor found --";
-        noMotorOption.selected = true; noMotorOption.disabled = true;
-        select.prepend(noMotorOption);
-    }
-    updateSelectedMotorInfo();
-}
         
         function updateSelectedSafetyBrakeInfo() {
             calculateSafetyBrakeSelection();
@@ -3183,7 +3233,9 @@ function updateSelectedMotorInfo() {
             const collarSize = parseFloat(dom.collarSize.value) || 0;
             const axleCoilDiameter = getEffectiveCoilDiameter(selectedAxle);
             const effectiveStartDiameter = Math.max(axleCoilDiameter, collarSize);
-            const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth);
+            
+            const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
+            const { profileData } = getTorqueProfileWithWicket(totalWeightKgs, selectedLath, travelHeight, selectedWicket, effectiveStartDiameter, curtainWidth, isReverseCoil);
             
             const frictionText = dom['total-applied-friction'].textContent;
             const frictionMultiplier = 1 + (parseFloat(frictionText) || 0) / 100;
@@ -3193,17 +3245,19 @@ function updateSelectedMotorInfo() {
             drawTorqueGraph(adjustedProfile, dom['wicket-torque-graph-container']);
         }
 
-        function getTorqueProfileWithWicket(totalWeightKgs, lath, travelHeight, wicket, effectiveStartDiameter, curtainWidth) {
+        function getTorqueProfileWithWicket(totalWeightKgs, lath, travelHeight, wicket, effectiveStartDiameter, curtainWidth, isReverseCoil) {
             const profileData = []; 
             let heightLifted = 0; 
             let currentRollDiameter = effectiveStartDiameter;
-            const lathThickness = parseFloat(lath['Thickness']);
-            if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
+            const baseLathThickness = parseFloat(lath['Thickness']);
+            
+            if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter, totalRevolutions: 0 };
+            
             const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
             const widthM = (curtainWidth || 0) / 1000;
             const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
             const slopingData = getSlopingBottomData();
-			const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0) + slopingData.weight;
+            const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0) + slopingData.weight;
             const lathsWeight = totalWeightKgs - bottomLathWeight;
             const wicketWidthM = (parseFloat(wicket.Width) || 0) / 1000;
             const wicketHeightM = (parseFloat(wicket.Height) || 0) / 1000;
@@ -3213,7 +3267,15 @@ function updateSelectedMotorInfo() {
             const wicketStartHeightFromBottomM = (bottomLathHeight / 1000) + (10 / 1000);
             const wicketEndHeightFromBottomM = wicketStartHeightFromBottomM + wicketHeightM;
 
+            let halfRevs = 0;
+            let exactRevs = 0;
+
             while (heightLifted < travelHeight) {
+                let currentLathThickness = baseLathThickness;
+                if (isReverseCoil && halfRevs < 4) {
+                    currentLathThickness += 10;
+                }
+
                 const percentLifted = heightLifted / travelHeight;
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
                 let remainingTotalWeight = remainingLathWeight + bottomLathWeight;
@@ -3227,54 +3289,79 @@ function updateSelectedMotorInfo() {
                 }
                 remainingTotalWeight -= reduction;
                 remainingTotalWeight = Math.max(0, remainingTotalWeight);
+                
                 const force = remainingTotalWeight * 9.81; 
-                const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
+                const radiusM = ((currentRollDiameter + currentLathThickness) / 2) / 1000;
                 profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
+                
                 const circumference = Math.PI * currentRollDiameter; 
-                heightLifted += circumference / 2; 
-                currentRollDiameter += lathThickness;
-            } 
-            return { profileData, finalCoilDiameter: currentRollDiameter };
-        };
+                const halfRevHeight = circumference / 2;
 
-        function calculateTotalRevolutions(travelHeight, initialDiameter, lathThickness) {
-            if (travelHeight <= 0 || initialDiameter <= 0 || lathThickness <= 0) return 0;
-            const a = Math.PI * lathThickness;
-            const b = Math.PI * initialDiameter;
-            const c = -travelHeight;
-            const discriminant = b * b - 4 * a * c;
-            if (discriminant < 0) return 0;
-            return (-b + Math.sqrt(discriminant)) / (2 * a);
-        }
+                if (heightLifted + halfRevHeight > travelHeight) {
+                    const remainingHeight = travelHeight - heightLifted;
+                    exactRevs += remainingHeight / circumference;
+                    heightLifted = travelHeight;
+                    currentRollDiameter += currentLathThickness * (remainingHeight / halfRevHeight);
+                } else {
+                    heightLifted += halfRevHeight;
+                    currentRollDiameter += currentLathThickness;
+                    exactRevs += 0.5;
+                }
+                halfRevs++;
+                if (halfRevs > 500) break;
+            } 
+            return { profileData, finalCoilDiameter: currentRollDiameter, totalRevolutions: exactRevs };
+        };
         
-		function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth) {
-			const profileData = []; 
-			let heightLifted = 0; 
-			let currentRollDiameter = effectiveStartDiameter;
-			const lathThickness = parseFloat(lath['Thickness']);
-			if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter };
-			const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
-			const widthM = (curtainWidth || 0) / 1000;
-			const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
-			
-			// FETCH THE DATA FIRST so it doesn't crash here
-			const slopingData = getSlopingBottomData();
-			const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0) + slopingData.weight;
-    
-    const lathsWeight = totalWeightKgs - bottomLathWeight;
+        function getTorqueProfile(totalWeightKgs, lath, travelHeight, effectiveStartDiameter, curtainWidth, isReverseCoil) {
+            const profileData = []; 
+            let heightLifted = 0; 
+            let currentRollDiameter = effectiveStartDiameter;
+            const baseLathThickness = parseFloat(lath['Thickness']) || 0;
+            
+            if (travelHeight <= 0 || totalWeightKgs <= 0) return { profileData: [], finalCoilDiameter: currentRollDiameter, totalRevolutions: 0 };
+            
+            const selectedBottomLath = bottomLathData[dom.bottomLathType.value];
+            const widthM = (curtainWidth || 0) / 1000;
+            const bottomLathHeight = parseFloat(selectedBottomLath['BLath height']) || 0;
+            const slopingData = getSlopingBottomData();
+            const bottomLathWeight = widthM * (parseFloat(selectedBottomLath['BLath weight / m length']) || 0) + slopingData.weight;
+            const lathsWeight = totalWeightKgs - bottomLathWeight;
+            
+            let halfRevs = 0;
+            let exactRevs = 0;
+
             while (heightLifted < travelHeight) {
+                let currentLathThickness = baseLathThickness;
+                if (isReverseCoil && halfRevs < 4) {
+                    currentLathThickness += 10;
+                }
+
                 const percentLifted = heightLifted / travelHeight;
                 const remainingLathWeight = lathsWeight * (1 - percentLifted);
                 const remainingTotalWeight = remainingLathWeight + bottomLathWeight;
                 const force = remainingTotalWeight * 9.81; 
-                const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000;
+                const radiusM = ((currentRollDiameter + currentLathThickness) / 2) / 1000;
                 profileData.push({ torque: force * radiusM, diameter: currentRollDiameter, heightLifted: heightLifted });
+                
                 const circumference = Math.PI * currentRollDiameter; 
-                heightLifted += circumference / 2; 
-                currentRollDiameter += lathThickness;
+                const halfRevHeight = circumference / 2;
+
+                if (heightLifted + halfRevHeight > travelHeight) {
+                    const remainingHeight = travelHeight - heightLifted;
+                    exactRevs += remainingHeight / circumference;
+                    heightLifted = travelHeight;
+                    currentRollDiameter += currentLathThickness * (remainingHeight / halfRevHeight);
+                } else {
+                    heightLifted += halfRevHeight;
+                    currentRollDiameter += currentLathThickness;
+                    exactRevs += 0.5;
+                }
+                halfRevs++;
+                if (halfRevs > 500) break; // Infinite loop safety break
             } 
-            return { profileData, finalCoilDiameter: currentRollDiameter };
-        };
+            return { profileData, finalCoilDiameter: currentRollDiameter, totalRevolutions: exactRevs };
+        }
         
         function populateDropdown(selectElement, dataArray, nameField) {
             selectElement.innerHTML = `<option value="">-- Select an option --</option>`;
@@ -3634,7 +3721,7 @@ function drawDeflectionGraphic(length, deflection, isWarning = false) {
         marker.setAttribute('markerHeight', '4');
         marker.setAttribute('orient', orient);
         const path = document.createElementNS(svgNS, 'path');
-        path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+		path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
         path.setAttribute('fill', color);
         marker.appendChild(path);
         return marker;
@@ -3912,11 +3999,19 @@ function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSe
             svg.appendChild(createElem('rect', { x: boxX, y: boxY, width: scaledBoxSize, height: scaledBoxSize, fill: '#f8f9fa', stroke: '#ced4da', 'stroke-width': '1' }));
             const axleDiameter = getEffectiveCoilDiameter(axle); const scaledAxleRadius = (axleDiameter / 2) * scale;
             svg.appendChild(createElem('circle', { cx: centerX, cy: centerY, r: scaledAxleRadius, class: 'shutter-axle-graphic' }));
-            for (let i = 1; i <= numLaths; i++) {
-                const currentRadius = (axleDiameter / 2) + (i * lathThickness);
-                if (currentRadius * 2 > coilDiameter) break; 
+            
+            const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
+            let currentRadius = axleDiameter / 2;
+            let revs = 0;
+            while (currentRadius * 2 < coilDiameter && revs < 50) {
+                let t = lathThickness;
+                if (isReverseCoil && revs < 2) t += 10;
+                currentRadius += t;
+                if (currentRadius * 2 > coilDiameter) break;
                 svg.appendChild(createElem('circle', { cx: centerX, cy: centerY, r: currentRadius * scale, class: 'coil-wrap-graphic' }));
+                revs++;
             }
+            
             const scaledCoilRadius = (coilDiameter / 2) * scale;
             svg.appendChild(createElem('circle', { cx: centerX, cy: centerY, r: scaledCoilRadius, fill: 'none', stroke: '#007bff', 'stroke-width': '2' }));
             const dimLineX = boxX + scaledBoxSize + 25;
@@ -4164,16 +4259,17 @@ function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSe
             container.appendChild(svg);
         }
 
-function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, selectedGuide, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
+        function drawShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, selectedGuide, visionData = null, endlockOffsets = {cast: 0, wind: 0}) {
             const container = dom['shutter-graphic-container']; container.innerHTML = '';
-            // Pass guide to createBaseShutterGraphic
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets, guide: selectedGuide }, 'shutter');
+            const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { visionOptions: visionData, endlockOffsets: endlockOffsets, guide: selectedGuide, isReverseCoil }, 'shutter');
             if(graphic) container.appendChild(graphic);
         }
         
         function drawWicketGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
             const container = dom['wicket-graphic-container']; container.innerHTML = '';
-            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets }, 'wicket');
+            const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
+            const graphic = createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets, isReverseCoil }, 'wicket');
             if(graphic) container.appendChild(graphic);
         }
 
@@ -4353,7 +4449,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 if (!isNaN(val)) hangdownValue = val;
             }
 
-            const { wicket = null, visionOptions = null, endlockOffsets = { cast: 0, wind: 0 }, guide = null } = options;
+            const { wicket = null, visionOptions = null, endlockOffsets = { cast: 0, wind: 0 }, guide = null, isReverseCoil = false } = options;
             const selectedEndlockIndex = dom.endlockType.value; 
             const endlocksSelected = selectedEndlockIndex !== "" && endlockData[selectedEndlockIndex];
             
@@ -4521,10 +4617,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 } 
             }
             
-// Inside createBaseShutterGraphic()
-// Right before drawing the bottom lath:
-
-// FETCH SLOPING DATA
+            // FETCH SLOPING DATA
             const slopingData = dom.isSlopingBottomLath && dom.isSlopingBottomLath.checked ? getSlopingBottomData() : { maxH: 0, leftH: 0, rightH: 0 };
             
             // Track the absolute lowest points for dimensioning
@@ -4719,7 +4812,12 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                 
                 while(true) {
                     currentAngle += step;
-                    currentR += (Math.abs(step) / (2*Math.PI)) * thicknessScale;
+                    let revs = Math.abs(currentAngle - pStartAngle) / (2 * Math.PI);
+                    let t = mainLathThickness;
+                    if (isReverseCoil && revs < 2) t += 10;
+                    let currentThicknessScale = t * scale;
+                    
+                    currentR += (Math.abs(step) / (2*Math.PI)) * currentThicknessScale;
                     const x = coilCenterX + currentR * Math.cos(currentAngle);
                     const y = coilCenterY + currentR * Math.sin(currentAngle);
                     points.push(`L ${x} ${y}`);
@@ -4987,7 +5085,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
         }
     }
 
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj) {
+    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj, isReverseCoil) {
         if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
         const lathThickness = parseFloat(lath['Thickness']) || 0;
         let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
@@ -4999,16 +5097,28 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
         }
         const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
         const lathsWeight = torqueWeight - bottomLathWeightActual;
+        
         let heightLifted = 0;
         let currentRollDiameter = effectiveStartDiameter;
         let maxTorqueFound = 0;
+        let halfRevs = 0;
+        
         while (heightLifted < travelHeight) {
+            let currentLathThickness = lathThickness;
+            if (isReverseCoil && halfRevs < 4) {
+                currentLathThickness += 10;
+            }
+            
             const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
-            const radiusM = ((currentRollDiameter + lathThickness) / 2) / 1000
+            const radiusM = ((currentRollDiameter + currentLathThickness) / 2) / 1000;
             maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
+            
             heightLifted += (Math.PI * currentRollDiameter) / 2; 
-            currentRollDiameter += lathThickness;
+            currentRollDiameter += currentLathThickness;
+            halfRevs++;
+            if (halfRevs > 500) break;
         }
+        
         let totalFriction = baseline_friction;
         if (height_mm >= 7000) totalFriction += 5;
         if (motorObj) {
@@ -5034,6 +5144,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
         const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
         
         const isReportPowderCoated = document.getElementById('reportPowderCoated').checked;
+        const isReportReverseCoilChecked = document.getElementById('reportReverseCoil').checked;
 
         const lathIndex1 = document.getElementById('reportLathType').value;
         const lathIndex2 = document.getElementById('reportLathType2').value;
@@ -5067,6 +5178,11 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
         for (let width = minWidth; width <= maxWidth; width += interval) {
             calculationCache[width] = {};
             const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
+            
+            const revKey = Object.keys(currentLath).find(k => k.toLowerCase().trim() === 'reversible');
+            const isReversible = revKey && String(currentLath[revKey]).toLowerCase().trim() === 'yes';
+            const useReverseCoil = isReportReverseCoilChecked && isReversible;
+
             for (let height = minHeight; height <= maxHeight; height += interval) {
                 const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height, isReportPowderCoated);
                 const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
@@ -5090,7 +5206,7 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
                                     return m[usageKey] == usage && m[manufacturerKey] == man && volMatch && m[mountingKey] == mou;
                                 });
                                 
-                                const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor);
+                                const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor, useReverseCoil);
 
                                 const suitableMotors = motorData.filter(m => {
                                     const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
@@ -5145,8 +5261,6 @@ function createBaseShutterGraphic(realWidth, additionalLength, numLaths, lath, b
     }
     
     // --- DXF GENERATION HELPER FUNCTIONS ---
-
-// --- DXF GENERATION HELPER FUNCTIONS ---
 
     // We start at hex 200 to avoid conflicts with standard reserved handles
     let handleCounter = 0x200; 
