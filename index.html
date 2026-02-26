@@ -3460,17 +3460,18 @@ function calculateCurtainProperties(lath, bottomLath, axle, curtainWidth, floorT
                 const axleCircumference = Math.PI * (axleRadius * 2);
                 const wrapLength = axleCircumference * 0.30; 
                 
-                topLaths = Math.ceil((diagonalLength + wrapLength) / lathCompressedHeight);
+                const strapKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'attachment strap');
+                const attachmentStrapLength = strapKey ? parseFloat(lath[strapKey]) || 0 : 0;
+                
+                const distanceToCover = Math.max(0, (diagonalLength + wrapLength) - attachmentStrapLength);
+                topLaths = Math.ceil(distanceToCover / lathCompressedHeight);
             }
 
             let numLaths = verticalLaths + topLaths;
-
-            // 4. 95mm Lath Specific Adjustment (Minus 1 for barrel attachment)
             const lathNameStr = (lath['Name'] || '').toLowerCase();
-            if (lathNameStr.includes('95')) {
-                numLaths -= 1;
-            }
             // ----------------------------------------------
+            
+
             
             dom['lath-count'].textContent = numLaths;
             const numLathsToLift = numLaths >= 3 ? numLaths - 3 : 0;
@@ -3613,7 +3614,8 @@ function calculateVisionCurtainProperties(mainLath, bottomLath, axle, curtainWid
             let remainingVertical = guideHeight - heightCoveredSoFar_compressed;
 			if (remainingVertical < 0) remainingVertical = 0;
 			
-			let numVerticalLathsAbove = 0;
+
+            let numVerticalLathsAbove = 0;
             if (mainLathCompressed > 0) {
                 numVerticalLathsAbove = Math.ceil(remainingVertical / mainLathCompressed);
             }
@@ -3626,16 +3628,21 @@ function calculateVisionCurtainProperties(mainLath, bottomLath, axle, curtainWid
                 const diagonalLength = Math.sqrt(Math.pow(horizontalDist, 2) + Math.pow(verticalDist, 2));
                 const axleCircumference = Math.PI * (axleRadius * 2);
                 const wrapLength = axleCircumference * 0.30; 
-                topLaths = Math.ceil((diagonalLength + wrapLength) / mainLathCompressed);
+                
+                const strapKey = Object.keys(mainLath).find(k => k.toLowerCase().trim() === 'attachment strap');
+                const attachmentStrapLength = strapKey ? parseFloat(mainLath[strapKey]) || 0 : 0;
+                
+                const distanceToCover = Math.max(0, (diagonalLength + wrapLength) - attachmentStrapLength);
+                topLaths = Math.ceil(distanceToCover / mainLathCompressed);
             }
 
             let numLathsAbove = numVerticalLathsAbove + topLaths;
             let totalNumLaths = numLathsBelow + numLathsVision + numLathsAbove;
 
             const lathNameStr = (mainLath['Name'] || '').toLowerCase();
-            if (lathNameStr.includes('95')) { totalNumLaths -= 1; numLathsAbove -= 1; } // Adjust final top laths
 
             dom['lath-count'].textContent = totalNumLaths;
+
             const numLathsToLift = totalNumLaths >= 3 ? totalNumLaths - 3 : 0;
             dom['laths-to-lift'].textContent = numLathsToLift;
             const weightBelow = numLathsBelow * (mainLathCompressed / 1000) * widthM * mainLathKgsM2;
@@ -4868,6 +4875,7 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
 
     const coilCenterX = boxLeft + (scaledBoxSize/2);
     const coilCenterY = axleCenterlineY;
+
     const maxCoilDia = parseFloat(dom['max-coil-diameter'].textContent) || axleDiameter;
     const scaledMaxCoilRadius = (maxCoilDia / 2) * scale;
     const pStartAngle = Math.PI / 6; 
@@ -4876,8 +4884,26 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
         let currentAngle = pStartAngle; 
         let currentR = sectionAxleRadius;
         const step = -0.1; 
-        let points =[];
-        points.push(`M ${coilCenterX + currentR * Math.cos(currentAngle)} ${coilCenterY + currentR * Math.sin(currentAngle)}`);
+        
+        const strapKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'attachment strap');
+        const attachmentStrapLength = strapKey ? parseFloat(lath[strapKey]) || 0 : 0;
+        const scaledStrapLength = attachmentStrapLength * scale;
+        
+        let strapPoints = [];
+        let lathPoints =[];
+        let isStrap = true;
+        let pathLength = 0;
+        
+        let lastX = coilCenterX + currentR * Math.cos(currentAngle);
+        let lastY = coilCenterY + currentR * Math.sin(currentAngle);
+        
+        if (scaledStrapLength > 0) {
+            strapPoints.push(`M ${lastX} ${lastY}`);
+        } else {
+            isStrap = false;
+            lathPoints.push(`M ${lastX} ${lastY}`);
+        }
+        
         while(true) {
             currentAngle += step;
             let revs = Math.abs(currentAngle - pStartAngle) / (2 * Math.PI);
@@ -4885,29 +4911,67 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
             if (isReverseCoil && revs < 2) t += 10;
             let currentThicknessScale = t * scale;
             currentR += (Math.abs(step) / (2*Math.PI)) * currentThicknessScale;
+            
             const x = coilCenterX + currentR * Math.cos(currentAngle);
             const y = coilCenterY + currentR * Math.sin(currentAngle);
-            points.push(`L ${x} ${y}`);
+            
+            const dist = Math.sqrt(Math.pow(x - lastX, 2) + Math.pow(y - lastY, 2));
+            pathLength += dist;
+            
+            if (isStrap && pathLength > scaledStrapLength) {
+                isStrap = false;
+                strapPoints.push(`L ${x} ${y}`);
+                lathPoints.push(`M ${x} ${y}`);
+            } else if (isStrap) {
+                strapPoints.push(`L ${x} ${y}`);
+            } else {
+                lathPoints.push(`L ${x} ${y}`);
+            }
+            
+            lastX = x;
+            lastY = y;
+            
             if (currentR >= scaledMaxCoilRadius) {
                 const dx = x - coilCenterX;
                 const dy = y - coilCenterY;
                 if (dx < 0 && Math.abs(dy) < 2) break; 
             }
-            if (points.length > 5000) break; 
+            if (strapPoints.length + lathPoints.length > 5000) break; 
         }
-        const lastPoint = points[points.length-1].split(' ');
-        const lx = parseFloat(lastPoint[1]);
-        const ly = parseFloat(lastPoint[2]);
+        
+        const lastPointStr = lathPoints.length > 0 ? lathPoints[lathPoints.length-1] : strapPoints[strapPoints.length-1];
+        const lastPointParts = lastPointStr.split(' ');
+        const lx = parseFloat(lastPointParts[1]);
+        const ly = parseFloat(lastPointParts[2]);
+        
         const dangleDist = hangdownValue * scale;
         const dangleTopY = boxBottomY;
-        const pathD = points.join(" ");
-        svg.appendChild(createElem('path', { d: pathD, fill: 'none', stroke: '#343a40', 'stroke-width': scaledLathThickness + 1, 'stroke-linecap': 'butt' }));
-        svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: '#343a40', 'stroke-width': scaledLathThickness + 1 }));
-        svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2) - 0.5, y: dangleTopY, width: scaledLathThickness + 1, height: dangleDist + 0.5, fill: '#343a40' }));
-        svg.appendChild(createElem('path', { d: pathD, fill: 'none', stroke: '#ffc107', 'stroke-width': scaledLathThickness - 0.5, 'stroke-linecap': 'butt' }));
-        svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: '#ffc107', 'stroke-width': scaledLathThickness - 0.5 }));
-        svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2), y: dangleTopY, width: scaledLathThickness - 0.5, height: dangleDist, fill: '#ffc107' }));
+        
+        // Draw Attachment Strap (Green)
+        if (strapPoints.length > 1) {
+            const strapPathD = strapPoints.join(" ");
+            svg.appendChild(createElem('path', { d: strapPathD, fill: 'none', stroke: '#1e7e34', 'stroke-width': scaledLathThickness + 1, 'stroke-linecap': 'butt' }));
+            svg.appendChild(createElem('path', { d: strapPathD, fill: 'none', stroke: '#28a745', 'stroke-width': scaledLathThickness - 0.5, 'stroke-linecap': 'butt' }));
+        }
+        
+        // Draw Remaining Laths Coil (Yellow)
+        if (lathPoints.length > 1) {
+            const lathPathD = lathPoints.join(" ");
+            svg.appendChild(createElem('path', { d: lathPathD, fill: 'none', stroke: '#343a40', 'stroke-width': scaledLathThickness + 1, 'stroke-linecap': 'butt' }));
+            svg.appendChild(createElem('path', { d: lathPathD, fill: 'none', stroke: '#ffc107', 'stroke-width': scaledLathThickness - 0.5, 'stroke-linecap': 'butt' }));
+        }
+
+        const strokeColorDrop = isStrap ? '#1e7e34' : '#343a40';
+        const fillColorDrop = isStrap ? '#28a745' : '#ffc107';
+
+        svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: strokeColorDrop, 'stroke-width': scaledLathThickness + 1 }));
+        svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2) - 0.5, y: dangleTopY, width: scaledLathThickness + 1, height: dangleDist + 0.5, fill: strokeColorDrop }));
+        svg.appendChild(createElem('line', { x1: lx, y1: ly, x2: lx, y2: dangleTopY, stroke: fillColorDrop, 'stroke-width': scaledLathThickness - 0.5 }));
+        svg.appendChild(createElem('rect', { x: lx - (scaledLathThickness/2), y: dangleTopY, width: scaledLathThickness - 0.5, height: dangleDist, fill: fillColorDrop }));
     }
+    
+    // SIDE VIEW LABEL
+
     
     // SIDE VIEW LABEL
     const labelSV = createElem('text', { x: boxLeft + scaledBoxSize/2, y: bottomY + 50, class: 'dimension-text bold', 'text-anchor': 'middle' });
@@ -5064,6 +5128,7 @@ function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm,
         const epSize = 300; // Assumed standard endplate size for background generation
         const epHalf = epSize / 2;
         let guideHeight = height_mm - epHalf;
+
         let verticalToCover = guideHeight - bottomLathHeight;
         if (verticalToCover < 0) verticalToCover = 0;
         
@@ -5073,16 +5138,21 @@ function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm,
         if (lathCompressedHeight > 0) {
             const diagonalLength = Math.sqrt(Math.pow(epHalf, 2) + Math.pow(epHalf + axleRadius, 2));
             const wrapLength = (Math.PI * (axleRadius * 2)) * 0.30; 
-            topLaths = Math.ceil((diagonalLength + wrapLength) / lathCompressedHeight);
+            
+            const strapKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'attachment strap');
+            const attachmentStrapLength = strapKey ? parseFloat(lath[strapKey]) || 0 : 0;
+            
+            const distanceToCover = Math.max(0, (diagonalLength + wrapLength) - attachmentStrapLength);
+            topLaths = Math.ceil(distanceToCover / lathCompressedHeight);
         }
 
         let numLaths = verticalLaths + topLaths;
 
         const lathNameStr = (lath['Name'] || '').toLowerCase();
-        if (lathNameStr.includes('95')) { numLaths -= 1; }
         // --------------------------------------
 
         const widthM = width_mm / 1000;
+
         
         let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
         if (isPowderCoated) { kgsPerM2 += 0.5; }
