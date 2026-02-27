@@ -1979,6 +1979,23 @@ function updateAllCalculations() {
     filterEndlockDropdown(dom.lathType.value);
     
     const effectiveLath = getLathWithCustomWeight();
+	
+	// --- START REVERSE COIL FIX ---
+    if (effectiveLath && dom.reverseCoil) {
+        // Look for a 'Reversible' column in the Excel data
+        const revKey = Object.keys(effectiveLath).find(k => k.toLowerCase().trim() === 'reversible');
+        const isReversible = revKey && String(effectiveLath[revKey]).toLowerCase().trim() === 'yes';
+        
+        // Enable or disable the tickbox based on the spreadsheet
+        dom.reverseCoil.disabled = !isReversible;
+        
+        // If the user ticked it, but then changed to a non-reversible lath, untick it automatically
+        if (!isReversible && dom.reverseCoil.checked) {
+            dom.reverseCoil.checked = false;
+        }
+    }
+    // --- END REVERSE COIL FIX ---
+	
     
     // 2. IMAGE DISPLAY LOGIC
 // 2. IMAGE DISPLAY LOGIC
