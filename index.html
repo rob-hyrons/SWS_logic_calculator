@@ -6522,8 +6522,11 @@ function calculateCurtainProperties(lath, bottomLath, axle, curtainWidth, passed
     // --- MAIN EXPORT FUNCTION ---
 function downloadDXF() {
         try {
-            // 1. Gather Data
+            // 1. GATHER EXACT CALCULATED DATA FROM DOM
             const width = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
+            const clearOpening = parseFloat(dom['calculated-clear-opening'].textContent) || 0;
+            const overallWidth = parseFloat(dom['calculated-overall-width'].textContent) || 0;
+            
             const inputHeight = parseFloat(dom.height.value) || 0;
             const hType = dom.heightType.value;
             const additionalAxle = parseFloat(dom.additionalLength.value) || 0;
@@ -6552,11 +6555,14 @@ function downloadDXF() {
             const slopingData = (dom.isSlopingBottomLath && dom.isSlopingBottomLath.checked) ? getSlopingBottomData() : null;
             const hasVision = dom.addVision && dom.addVision.checked && visionCalcs;
             
+            let hangdownValue = 50;
+            if (bLath && bLath['Hangdown'] !== undefined) {
+                hangdownValue = parseFloat(bLath['Hangdown']) || 50;
+            }
+
             let guideWidth = 50; 
-            let guidePenetration = 0;
             if (guideIndex !== "" && guideData[guideIndex]) {
                 guideWidth = parseFloat(guideData[guideIndex]['Width']) || 50;
-                guidePenetration = parseFloat(guideData[guideIndex]['Penetration']) || 0;
             }
 
             let endplateSize = 300; 
@@ -6571,16 +6577,14 @@ function downloadDXF() {
             let floorToAxleCenter = inputHeight;
             if (hType === 'undersidePlate') floorToAxleCenter = inputHeight + (endplateSize / 2);
             else if (hType === 'topPlate') floorToAxleCenter = inputHeight - (endplateSize / 2);
-
-            const clearOpening = width - (2 * guidePenetration);
-            const overallWidth = clearOpening + (2 * guideWidth) + (2 * epOffset);
+            else if (hType === 'bottomHangdown') floorToAxleCenter = inputHeight + hangdownValue + (endplateSize / 2);
 
             let dxfBody =[];
             dxfBody.push("0", "SECTION", "2", "ENTITIES");
 
-            // --- HELPER FOR SIMULATED HATCHING ---
+            // --- HELPER FOR SIMULATED HATCHING (For Vision Panels) ---
             const addHatch = (arr, x, y, w, h, layer) => {
-                const spacing = 15; // mm between lines
+                const spacing = 15;
                 for (let i = spacing; i < (w + h); i += spacing) {
                     let x1 = x + Math.max(0, i - h);
                     let y1 = y + Math.min(i, h);
@@ -6590,30 +6594,40 @@ function downloadDXF() {
                 }
             };
 
+            // --- GEOMETRIC CENTERING MATHS ---
             const axleY = floorToAxleCenter;
             const totalAxleWidth = width + additionalAxle;
-            const axleXStart = -(totalAxleWidth / 2);
+            
+            // X-Coordinates based on perfect center alignment
             const curtainLeftX = -(width / 2);
             const curtainRightX = (width / 2);
-            const guideLeftOut = curtainLeftX - guideWidth + guidePenetration;
-            const guideRightOut = curtainRightX + guideWidth - guidePenetration;
+            const coLeft = -(clearOpening / 2);
+            const coRight = (clearOpening / 2);
+            const guideLeftOut = coLeft - guideWidth;
+            const guideRightOut = coRight + guideWidth;
+            const ovLeft = -(overallWidth / 2);
+            const ovRight = (overallWidth / 2);
+            const axleXStart = -(totalAxleWidth / 2);
 
             // ==========================================
             // A. FRONT VIEW
             // ==========================================
             addDxfText(dxfBody, 0, -400, "FRONT VIEW", 150, "OUTLINE", "center");
-
-            // Axle & Plates
+            
+            // Endplates & Axle
             const epY = axleY - (endplateSize / 2);
-            addDxfRect(dxfBody, axleXStart, epY, 5, endplateSize, "AXLE"); 
-            addDxfRect(dxfBody, (axleXStart + totalAxleWidth) - 5, epY, 5, endplateSize, "AXLE");
+            if(epOffset > 0) {
+                addDxfRect(dxfBody, ovLeft, epY, epOffset, endplateSize, "AXLE"); 
+                addDxfRect(dxfBody, guideRightOut, epY, epOffset, endplateSize, "AXLE");
+            }
             addDxfRect(dxfBody, axleXStart, axleY - (axleDia/2), totalAxleWidth, axleDia, "AXLE");
             addDxfLine(dxfBody, axleXStart - 100, axleY, axleXStart + totalAxleWidth + 100, axleY, "DIMENSIONS"); 
             
             // Guides
             addDxfRect(dxfBody, guideLeftOut, 0, guideWidth, floorToAxleCenter, "GUIDES");
-            addDxfRect(dxfBody, curtainRightX - guidePenetration, 0, guideWidth, floorToAxleCenter, "GUIDES");
+            addDxfRect(dxfBody, coRight, 0, guideWidth, floorToAxleCenter, "GUIDES");
 
+            // Bottom Section (Sloping or Standard)
             let currentY = 0;
             if (slopingData) {
                 const slY = slopingData.leftH, srY = slopingData.rightH, maxS = slopingData.maxH;
@@ -6623,17 +6637,21 @@ function downloadDXF() {
                 addDxfLine(dxfBody, curtainLeftX, maxS - slY, curtainLeftX, maxS, "LATHS");
                 currentY = maxS;
             }
-
             addDxfRect(dxfBody, curtainLeftX, currentY, width, bLathH, "LATHS");
             currentY += bLathH;
 
+            // Curtain Loop (Handles Vision Hatching Separately)
             if (hasVision) {
                 const vo = visionCalcs;
                 const visH = parseFloat(vo.visionLath['Compressed lath height']);
+                
+                // 1. Below Vision
                 for(let i=0; i<vo.numLathsBelow; i++){
                     addDxfRect(dxfBody, curtainLeftX, currentY, width, lathH, "LATHS");
                     currentY += lathH;
                 }
+                
+                // 2. Vision Area (Hatched)
                 const vStart = currentY;
                 for(let i=0; i<vo.numLathsVision; i++){
                     addDxfRect(dxfBody, curtainLeftX, currentY, width, visH, "LATHS");
@@ -6641,13 +6659,17 @@ function downloadDXF() {
                     currentY += visH;
                 }
                 const vEnd = currentY;
+                
+                // 3. Above Vision
                 for(let i=0; i<vo.numLathsAbove; i++){
                     if (currentY + lathH > axleY - (axleDia/2)) break;
                     addDxfRect(dxfBody, curtainLeftX, currentY, width, lathH, "LATHS");
                     currentY += lathH;
                 }
-                addDxfDim(dxfBody, curtainRightX, 0, curtainRightX, vStart, `Vision Start: ${vStart.toFixed(0)}`, -100, "DIMENSIONS");
-                addDxfDim(dxfBody, curtainRightX, vStart, curtainRightX, vEnd, `Vision Panel: ${vo.actualVisionPanelHeight.toFixed(0)}`, -100, "DIMENSIONS");
+
+                // Front View Vision Dimensions (Placed on far left to avoid overlap)
+                addDxfDim(dxfBody, curtainLeftX, 0, curtainLeftX, vStart, `Vision Start (${vStart.toFixed(0)} mm)`, 350, "DIMENSIONS");
+                addDxfDim(dxfBody, curtainLeftX, vStart, curtainLeftX, vEnd, `Vision Panel (${(vEnd - vStart).toFixed(0)} mm)`, 350, "DIMENSIONS");
             } else {
                 for(let i=0; i<numLaths; i++) {
                     if (currentY + lathH > axleY - (axleDia/2)) break;
@@ -6656,50 +6678,80 @@ function downloadDXF() {
                 }
             }
 
-            addDxfDim(dxfBody, guideRightOut, 0, guideRightOut, floorToAxleCenter, `${inputHeight.toFixed(0)} mm`, -250, "DIMENSIONS");
+            // Standard Front View Height Dimension
+            let heightLabel = "to Center of Axle";
+            if(hType === 'undersidePlate') heightLabel = "to Underside";
+            if(hType === 'topPlate') heightLabel = "to Top of Plate";
+            if(hType === 'bottomHangdown') heightLabel = "to Bottom Hangdown";
+            addDxfDim(dxfBody, guideRightOut, 0, guideRightOut, floorToAxleCenter, `${inputHeight.toFixed(0)} mm ${heightLabel}`, -250, "DIMENSIONS");
 
             // ==========================================
-            // B. PLAN VIEW (Corrected Endplate Projection)
+            // B. PLAN VIEW 
             // ==========================================
             const planY = -1500; 
-            const ovLeft = guideLeftOut - epOffset;
-            const ovRight = guideRightOut + epOffset;
-
-            // Moved "PLAN VIEW" label down to account for 300mm deep plates
-            addDxfText(dxfBody, 0, planY - 1200, "PLAN VIEW", 150, "OUTLINE", "center");
             
-            // Endplates projecting "down" from the wall line
+            // Text dropped fully clear of all Plan Dimensions
+            addDxfText(dxfBody, 0, planY - 800, "PLAN VIEW", 150, "OUTLINE", "center");
+            
+            // Endplates projecting back
             addDxfRect(dxfBody, ovLeft, planY - endplateSize, epOffset, endplateSize, "AXLE");
             addDxfRect(dxfBody, guideRightOut, planY - endplateSize, epOffset, endplateSize, "AXLE");
             
-            // Guides & Curtain
+            // Guides & Curtain Slot
             addDxfRect(dxfBody, guideLeftOut, planY - 60, guideWidth, 60, "GUIDES"); 
-            addDxfRect(dxfBody, curtainRightX - guidePenetration, planY - 60, guideWidth, 60, "GUIDES");
+            addDxfRect(dxfBody, coRight, planY - 60, guideWidth, 60, "GUIDES");
             addDxfRect(dxfBody, curtainLeftX, planY - 30 - (lathThick/2), width, lathThick, "LATHS");
 
-            // Plan Dims
-            const coLeft = curtainLeftX + guidePenetration, coRight = curtainRightX - guidePenetration;
-            addDxfDim(dxfBody, coLeft, planY, coRight, planY, `Clear Opening (${clearOpening.toFixed(0)})`, 150, "DIMENSIONS");
-            addDxfDim(dxfBody, ovLeft, planY, ovRight, planY, `Overall Width (${overallWidth.toFixed(0)})`, 350, "DIMENSIONS");
+            // Plan View Bottom Width Dimensions (Negative Offset pushes lines Down)
+            addDxfDim(dxfBody, coLeft, planY, coRight, planY, `Clear Opening (${clearOpening.toFixed(0)} mm)`, -150, "DIMENSIONS");
+            addDxfDim(dxfBody, curtainLeftX, planY, curtainRightX, planY, `Curtain Width (${width.toFixed(0)} mm)`, -350, "DIMENSIONS");
+            addDxfDim(dxfBody, ovLeft, planY, ovRight, planY, `Overall Width (Reveal) (${overallWidth.toFixed(0)} mm)`, -550, "DIMENSIONS");
+
+            // Plan View Top Offset Dimensions (Positive Offset pushes lines Up)
+            if (epOffset > 0) {
+                addDxfDim(dxfBody, ovLeft, planY + 60, guideLeftOut, planY + 60, `Offset (${epOffset.toFixed(0)} mm)`, 150, "DIMENSIONS");
+                addDxfDim(dxfBody, guideRightOut, planY + 60, ovRight, planY + 60, `Offset (${epOffset.toFixed(0)} mm)`, 150, "DIMENSIONS");
+            }
 
             // ==========================================
-            // C. SIDE VIEW
+            // C. SIDE VIEW / SECTION
             // ==========================================
             const sectX = (width/2) + 1200; 
-            const epSectLeft = sectX, epSectTop = axleY + (endplateSize/2), epSectBottom = axleY - (endplateSize/2);
+            const epSectLeft = sectX;
+            const epSectTop = axleY + (endplateSize/2);
+            const epSectBottom = axleY - (endplateSize/2);
+            const hangdownBottomY = epSectBottom - hangdownValue;
             const maxCoil = parseFloat(dom['max-coil-diameter'].textContent) || (axleDia + 100);
 
-            addDxfText(dxfBody, sectX + (endplateSize/2), -400, "SIDE VIEW", 150, "OUTLINE", "center");
+            addDxfText(dxfBody, sectX + (endplateSize/2), -400, "SIDE VIEW / SECTION", 150, "OUTLINE", "center");
+            
+            // Wall Line & Solid Guide Rectangle
+            addDxfLine(dxfBody, sectX, 0, sectX, epSectTop + 200, "OUTLINE"); 
+            addDxfRect(dxfBody, epSectLeft, 0, guideWidth, epSectBottom, "GUIDES"); 
+
+            // Endplate & Coil Profile
             addDxfRect(dxfBody, epSectLeft, epSectBottom, endplateSize, endplateSize, "AXLE");
             addDxfCircle(dxfBody, epSectLeft + (endplateSize/2), axleY, axleDia/2, "AXLE");
             addDxfCircle(dxfBody, epSectLeft + (endplateSize/2), axleY, maxCoil/2, "LATHS");
-            addDxfRect(dxfBody, epSectLeft + 20, 0, lathThick, axleY, "LATHS"); 
+            addDxfRect(dxfBody, epSectLeft + (guideWidth/2) - (lathThick/2), hangdownBottomY, lathThick, (axleY - hangdownBottomY), "LATHS");
+
+            // --- SIDE VIEW DIMENSIONS ---
+            const rightRefX = epSectLeft + endplateSize;
+
+            // Left Side of Side View (Clear Opening & Hang Down)
+            addDxfDim(dxfBody, epSectLeft, hangdownBottomY, epSectLeft, epSectBottom, `${hangdownValue.toFixed(0)} mm Hang Down`, 150, "DIMENSIONS");
+            addDxfDim(dxfBody, epSectLeft, 0, epSectLeft, hangdownBottomY, `${hangdownBottomY.toFixed(0)} mm Clear Opening`, 150, "DIMENSIONS");
+            
+            // Right Side of Side View (Plate Stack)
+            addDxfDim(dxfBody, rightRefX, epSectBottom, rightRefX, epSectTop, `${endplateSize.toFixed(0)} mm`, -150, "DIMENSIONS");
+            addDxfDim(dxfBody, rightRefX, 0, rightRefX, epSectBottom, `${epSectBottom.toFixed(0)} mm to Underside`, -350, "DIMENSIONS");
+            addDxfDim(dxfBody, rightRefX, 0, rightRefX, epSectTop, `${epSectTop.toFixed(0)} mm to Top`, -550, "DIMENSIONS");
 
             dxfBody.push("0", "ENDSEC"); 
 
-            // Assembly & Download
-            const minX = curtainLeftX - 1000, maxX = sectX + 1000, minY = planY - 1500, maxY = epSectTop + 500;
-            let fullDxf = [].concat(getDxfHeader(minX, minY, maxX, maxY), getDxfTables(), dxfBody, ["0", "EOF"]);
+            // Final Assembly
+            const minX = ovLeft - 500, maxX = sectX + 2500, minY = planY - 1500, maxY = epSectTop + 500;
+            let fullDxf =[].concat(getDxfHeader(minX, minY, maxX, maxY), getDxfTables(), dxfBody, ["0", "EOF"]);
 
             const blob = new Blob([fullDxf.join('\r\n') + '\r\n'], { type: 'application/dxf' });
             const link = document.createElement('a');
