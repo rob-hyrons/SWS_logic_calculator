@@ -1832,6 +1832,140 @@ function filterBottomLathDropdown(selectedLathIndex) {
     }
 }
 
+function filterGuideDropdown(selectedLathIndex) {
+    if (!dom.guideType || !guideData || guideData.length === 0) return;
+    
+    // 1. Find the "Lath type" header from the selected primary lath
+    let targetHeader = "";
+    if (selectedLathIndex !== "" && lathData[selectedLathIndex]) {
+        const lath = lathData[selectedLathIndex];
+        const typeKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'lath type');
+        if (typeKey) {
+            targetHeader = String(lath[typeKey]).trim(); 
+        }
+    }
+
+    // 2. Save current selection Name
+    let previousSelectedName = "";
+    if (dom.guideType.value !== "" && guideData[dom.guideType.value]) {
+        const oldNameKey = Object.keys(guideData[dom.guideType.value]).find(k => k.toLowerCase().trim() === 'name');
+        previousSelectedName = guideData[dom.guideType.value][oldNameKey];
+    }
+    
+    // 3. Clear the dropdown
+    dom.guideType.innerHTML = '<option value="">-- Select an option --</option>';
+
+    guideData.forEach((guide, index) => {
+        const nameKey = Object.keys(guide).find(k => k.toLowerCase().trim() === 'name');
+        const guideName = guide[nameKey];
+
+        if (!guideName || String(guideName).trim() === "" || String(guideName).includes("undefined")) {
+            return; 
+        }
+
+        let isAllowed = false;
+        if (targetHeader === "") {
+            isAllowed = true; 
+        } else {
+            // Check the column matching the Lath Type (e.g., "75mm lath") in the Guides sheet
+            const guideColKey = Object.keys(guide).find(k => k.trim().toLowerCase() === targetHeader.toLowerCase());
+            if (guideColKey) {
+                const cellValue = String(guide[guideColKey]).toLowerCase().trim();
+                if (cellValue === 'yes' || cellValue === 'y') isAllowed = true;
+            }
+        }
+
+        if (isAllowed) {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = guideName;
+            dom.guideType.appendChild(option);
+        }
+    });
+
+    // 4. Restore selection
+    if (previousSelectedName) {
+        for (let i = 0; i < dom.guideType.options.length; i++) {
+            if (dom.guideType.options[i].textContent === previousSelectedName) {
+                dom.guideType.selectedIndex = i;
+                return;
+            }
+        }
+    }
+    
+    if (dom.guideType.options.length > 1) {
+        dom.guideType.selectedIndex = 1;
+    }
+}
+
+function filterEndlockDropdown(selectedLathIndex) {
+    if (!dom.endlockType || !endlockData || endlockData.length === 0) return;
+    
+    // 1. Find the "Lath type" header from the selected primary lath
+    let targetHeader = "";
+    if (selectedLathIndex !== "" && lathData[selectedLathIndex]) {
+        const lath = lathData[selectedLathIndex];
+        const typeKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'lath type');
+        if (typeKey) {
+            targetHeader = String(lath[typeKey]).trim(); 
+        }
+    }
+
+    // 2. Save the current selection Description (Name)
+    let previousSelectedName = "";
+    if (dom.endlockType.value !== "" && endlockData[dom.endlockType.value]) {
+        const oldNameKey = Object.keys(endlockData[dom.endlockType.value]).find(k => k.toLowerCase().trim() === 'description');
+        previousSelectedName = endlockData[dom.endlockType.value][oldNameKey];
+    }
+    
+    // 3. Clear the dropdown
+    dom.endlockType.innerHTML = '<option value="">-- Select an option --</option>';
+
+    endlockData.forEach((endlock, index) => {
+        // Robust lookup for the "Description" column
+        const nameKey = Object.keys(endlock).find(k => k.toLowerCase().trim() === 'description');
+        const endlockName = endlock[nameKey];
+
+        if (!endlockName || String(endlockName).trim() === "" || String(endlockName).includes("undefined")) {
+            return; 
+        }
+
+        let isAllowed = false;
+        if (targetHeader === "") {
+            isAllowed = true; 
+        } else {
+            // Check the column matching the Lath Type (e.g., "75mm lath") in the Endlock sheet
+            const endlockColKey = Object.keys(endlock).find(k => k.trim().toLowerCase() === targetHeader.toLowerCase());
+            if (endlockColKey) {
+                const cellValue = String(endlock[endlockColKey]).toLowerCase().trim();
+                if (cellValue === 'yes' || cellValue === 'y') isAllowed = true;
+            }
+        }
+
+        if (isAllowed) {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = endlockName;
+            dom.endlockType.appendChild(option);
+        }
+    });
+
+    // 4. Restore selection
+    if (previousSelectedName) {
+        for (let i = 0; i < dom.endlockType.options.length; i++) {
+            if (dom.endlockType.options[i].textContent === previousSelectedName) {
+                dom.endlockType.selectedIndex = i;
+                return;
+            }
+        }
+    }
+    
+    if (dom.endlockType.options.length > 1) {
+        dom.endlockType.selectedIndex = 1;
+    }
+}
+
+
 function updateAllCalculations() {
     if (lathData.length === 0) { return; }
 
@@ -1839,9 +1973,11 @@ function updateAllCalculations() {
     const calculatedWidths = getCalculatedWidths();
     const curtainWidth = calculatedWidths.curtainWidth;
     
-    // Dynamic filters for lath and bottom lath
+    // Dynamic filters for lath, bottom lath and guides
     filterLathDropdownByWidth(curtainWidth);
     filterBottomLathDropdown(dom.lathType.value);
+    filterGuideDropdown(dom.lathType.value);
+	filterEndlockDropdown(dom.lathType.value);		// <--- ADD THIS LINE
     
     const effectiveLath = getLathWithCustomWeight();
     
