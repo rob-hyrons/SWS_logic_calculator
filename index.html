@@ -5599,110 +5599,42 @@ function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm,
         link.click();
     }
     
-    // --- DXF GENERATION HELPER FUNCTIONS ---
-
-    // We start at hex 200 to avoid conflicts with standard reserved handles
-    let handleCounter = 0x200; 
-    function getHandle() {
-        handleCounter++;
-        return handleCounter.toString(16).toUpperCase();
-    }
-
-    // Generate Standard DXF Header with Extents and calculated HANDSEED
-    function getDxfHeader(minX, minY, maxX, maxY, nextHandleSeed) {
+// --- DXF GENERATION HELPER FUNCTIONS (AC1009 / R12 COMPATIBILITY) ---
+    function getDxfHeader(minX, minY, maxX, maxY) {
         return[
             "0", "SECTION", "2", "HEADER",
-            "9", "$ACADVER", "1", "AC1032",      
-            "9", "$ACADMAINTVER", "90", "377",   
-            "9", "$DWGCODEPAGE", "3", "ANSI_1252", 
-            "9", "$INSUNITS", "70", "4",         
-            "9", "$MEASUREMENT", "70", "1",      
-            "9", "$LTSCALE", "40", "1.0",        
+            "9", "$ACADVER", "1", "AC1009",      
             "9", "$EXTMIN", "10", minX.toFixed(3), "20", minY.toFixed(3), "30", "0.0",
             "9", "$EXTMAX", "10", maxX.toFixed(3), "20", maxY.toFixed(3), "30", "0.0",
-            "9", "$HANDSEED", "5", nextHandleSeed, 
             "0", "ENDSEC"
         ];
     }
 
-    function getDxfClasses() {
-        return ["0", "SECTION", "2", "CLASSES", "0", "ENDSEC"];
-    }
-
-    // Includes all mandatory layout tables based on the text file
     function getDxfTables() {
         return[
             "0", "SECTION", "2", "TABLES",
-            
-            "0", "TABLE", "2", "VPORT", "5", "8", "330", "0", "100", "AcDbSymbolTable", "70", "1",
-            "0", "VPORT", "5", getHandle(), "330", "8", "100", "AcDbSymbolTableRecord", "100", "AcDbViewportTableRecord", "2", "*Active", "70", "0",
+            "0", "TABLE", "2", "LAYER", "70", "6",
+            "0", "LAYER", "2", "0", "70", "0", "62", "7", "6", "CONTINUOUS",
+            "0", "LAYER", "2", "OUTLINE", "70", "0", "62", "7", "6", "CONTINUOUS",
+            "0", "LAYER", "2", "AXLE", "70", "0", "62", "2", "6", "CONTINUOUS",   // Yellow
+            "0", "LAYER", "2", "GUIDES", "70", "0", "62", "4", "6", "CONTINUOUS", // Cyan
+            "0", "LAYER", "2", "LATHS", "70", "0", "62", "7", "6", "CONTINUOUS",  // White/Black
+            "0", "LAYER", "2", "DIMENSIONS", "70", "0", "62", "8", "6", "CONTINUOUS", // Dark Grey
             "0", "ENDTAB",
-
-            "0", "TABLE", "2", "LTYPE", "5", "5", "330", "0", "100", "AcDbSymbolTable", "70", "1",
-            "0", "LTYPE", "5", getHandle(), "330", "5", "100", "AcDbSymbolTableRecord", "100", "AcDbLinetypeTableRecord", "2", "CONTINUOUS", "70", "0", "3", "Solid line", "72", "65", "73", "0", "40", "0.0",
-            "0", "ENDTAB",
-
-            "0", "TABLE", "2", "LAYER", "5", "2", "330", "0", "100", "AcDbSymbolTable", "70", "6",
-            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "0", "70", "0", "62", "7", "6", "CONTINUOUS",
-            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "OUTLINE", "70", "0", "62", "7", "6", "CONTINUOUS",
-            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "AXLE", "70", "0", "62", "1", "6", "CONTINUOUS",
-            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "GUIDES", "70", "0", "62", "4", "6", "CONTINUOUS",
-            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "LATHS", "70", "0", "62", "251", "6", "CONTINUOUS",
-            "0", "LAYER", "5", getHandle(), "330", "2", "100", "AcDbSymbolTableRecord", "100", "AcDbLayerTableRecord", "2", "DIMENSIONS", "70", "0", "62", "3", "6", "CONTINUOUS",
-            "0", "ENDTAB",
-
-            "0", "TABLE", "2", "STYLE", "5", "3", "330", "0", "100", "AcDbSymbolTable", "70", "1",
-            "0", "STYLE", "5", getHandle(), "330", "3", "100", "AcDbSymbolTableRecord", "100", "AcDbTextStyleTableRecord", "2", "Standard", "70", "0", "40", "0.0", "41", "1.0", "50", "0.0", "71", "0", "42", "2.5", "3", "txt", "4", "",
-            "0", "ENDTAB",
-
-            "0", "TABLE", "2", "APPID", "5", "9", "330", "0", "100", "AcDbSymbolTable", "70", "1",
-            "0", "APPID", "5", getHandle(), "330", "9", "100", "AcDbSymbolTableRecord", "100", "AcDbRegAppTableRecord", "2", "ACAD", "70", "0",
-            "0", "ENDTAB",
-
-            "0", "TABLE", "2", "DIMSTYLE", "5", "A", "330", "0", "100", "AcDbSymbolTable", "100", "AcDbDimStyleTable", "70", "1",
-            "0", "DIMSTYLE", "105", getHandle(), "330", "A", "100", "AcDbSymbolTableRecord", "100", "AcDbDimStyleTableRecord", "2", "Standard", "70", "0",
-            "0", "ENDTAB",
-
-            "0", "TABLE", "2", "BLOCK_RECORD", "5", "1", "330", "0", "100", "AcDbSymbolTable", "70", "2",
-            "0", "BLOCK_RECORD", "5", "1F", "330", "1", "100", "AcDbSymbolTableRecord", "100", "AcDbBlockTableRecord", "2", "*Model_Space", "340", "22", "70", "0", "280", "1", "281", "0",
-            "0", "BLOCK_RECORD", "5", "D2", "330", "1", "100", "AcDbSymbolTableRecord", "100", "AcDbBlockTableRecord", "2", "*Paper_Space", "340", "D3", "70", "0", "280", "1", "281", "0",
-            "0", "ENDTAB",
-            
             "0", "ENDSEC"
         ];
     }
 
-    // Required block openings
-    function getDxfBlocks() {
-        return[
-            "0", "SECTION", "2", "BLOCKS",
-            "0", "BLOCK", "5", "20", "330", "1F", "100", "AcDbEntity", "8", "0", "100", "AcDbBlockBegin", "2", "*Model_Space", "70", "0", "10", "0.0", "20", "0.0", "30", "0.0", "3", "*Model_Space", "1", "",
-            "0", "ENDBLK", "5", "21", "330", "1F", "100", "AcDbEntity", "8", "0", "100", "AcDbBlockEnd",
-            "0", "BLOCK", "5", "D4", "330", "D2", "100", "AcDbEntity", "67", "1", "8", "0", "100", "AcDbBlockBegin", "2", "*Paper_Space", "70", "0", "10", "0.0", "20", "0.0", "30", "0.0", "3", "*Paper_Space", "1", "",
-            "0", "ENDBLK", "5", "D5", "330", "D2", "100", "AcDbEntity", "67", "1", "8", "0", "100", "AcDbBlockEnd",
-            "0", "ENDSEC"
-        ];
-    }
-
-    // Entity Object Pointers (Added "330", "1F" mapping to model space)
     function addDxfRect(arr, x, y, w, h, layer) {
-        arr.push(
-            "0", "LWPOLYLINE", "5", getHandle(),
-            "330", "1F", "8", layer,
-            "100", "AcDbEntity", "100", "AcDbPolyline",
-            "90", "4", "70", "1", "43", "0.0",
-            "10", x.toFixed(3), "20", y.toFixed(3),
-            "10", (x + w).toFixed(3), "20", y.toFixed(3),
-            "10", (x + w).toFixed(3), "20", (y + h).toFixed(3),
-            "10", x.toFixed(3), "20", (y + h).toFixed(3)
-        );
+        addDxfLine(arr, x, y, x + w, y, layer);
+        addDxfLine(arr, x + w, y, x + w, y + h, layer);
+        addDxfLine(arr, x + w, y + h, x, y + h, layer);
+        addDxfLine(arr, x, y + h, x, y, layer);
     }
 
     function addDxfCircle(arr, cx, cy, r, layer) {
         arr.push(
-            "0", "CIRCLE", "5", getHandle(),
-            "330", "1F", "8", layer,
-            "100", "AcDbEntity", "100", "AcDbCircle",
+            "0", "CIRCLE", "8", layer,
             "10", cx.toFixed(3), "20", cy.toFixed(3), "30", "0.0", 
             "40", r.toFixed(3)
         );
@@ -5710,41 +5642,88 @@ function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm,
 
     function addDxfLine(arr, x1, y1, x2, y2, layer) {
         arr.push(
-            "0", "LINE", "5", getHandle(),
-            "330", "1F", "8", layer,
-            "100", "AcDbEntity", "100", "AcDbLine",
+            "0", "LINE", "8", layer,
             "10", x1.toFixed(3), "20", y1.toFixed(3), "30", "0.0",
             "11", x2.toFixed(3), "21", y2.toFixed(3), "31", "0.0"
         );
     }
 
-    function addDxfText(arr, x, y, text, height, layer) {
+    function addDxfText(arr, x, y, text, height, layer, align = 'left', rotation = 0) {
         arr.push(
-            "0", "TEXT", "5", getHandle(),
-            "330", "1F", "8", layer,
-            "100", "AcDbEntity", "100", "AcDbText",
+            "0", "TEXT", "8", layer,
             "10", x.toFixed(3), "20", y.toFixed(3), "30", "0.0",
             "40", height.toFixed(3),
             "1", text,
-            "100", "AcDbText"
+            "50", rotation.toFixed(3)
         );
+        if (align === 'center') {
+            // R12 format for absolute Middle-Center justification requires Group 72=4 and a secondary alignment point
+            arr.push(
+                "72", "4", 
+                "11", x.toFixed(3), "21", y.toFixed(3), "31", "0.0"
+            );
+        }
     }
 
-    // Required root dictionary
-    function getDxfObjects() {
-        return[
-            "0", "SECTION", "2", "OBJECTS",
-            "0", "DICTIONARY", "5", getHandle(), "330", "0", "100", "AcDbDictionary", "281", "1",
-            "0", "ENDSEC"
-        ];
+    function addDxfDim(arr, startX, startY, endX, endY, label, offsetDist, layer) {
+        const dx = endX - startX;
+        const dy = endY - startY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        if (length === 0) return;
+
+        // Calculate normal vectors for the perpendicular offset
+        const nx = -(dy / length);
+        const ny = (dx / length);
+        
+        // Offset dimension line coordinates
+        const dimStartX = startX + nx * offsetDist;
+        const dimStartY = startY + ny * offsetDist;
+        const dimEndX = endX + nx * offsetDist;
+        const dimEndY = endY + ny * offsetDist;
+
+        // Extension lines (50mm gap from object, extending 50mm past dimension line)
+        const sign = offsetDist >= 0 ? 1 : -1;
+        const gap = 50 * sign;
+        const ext = offsetDist + (50 * sign);
+
+        addDxfLine(arr, startX + nx * gap, startY + ny * gap, startX + nx * ext, startY + ny * ext, layer);
+        addDxfLine(arr, endX + nx * gap, endY + ny * gap, endX + nx * ext, endY + ny * ext, layer);
+
+        // Main dimension line
+        addDxfLine(arr, dimStartX, dimStartY, dimEndX, dimEndY, layer);
+
+        // Architectural Ticks (45-degree angle slashes)
+        const tick = 40; 
+        addDxfLine(arr, dimStartX - tick, dimStartY - tick, dimStartX + tick, dimStartY + tick, layer);
+        addDxfLine(arr, dimEndX - tick, dimEndY - tick, dimEndX + tick, dimEndY + tick, layer);
+
+        // Text Position and Rotation
+        let angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
+        let textDirX = nx;
+        let textDirY = ny;
+
+        // Prevent text from rendering upside down
+        if (angleDeg > 90 || angleDeg <= -90) {
+            angleDeg += 180;
+            textDirX = -nx;
+            textDirY = -ny;
+        }
+
+        // Push text away from the dimension line by 60mm to prevent crossing lines
+        const textPx = (dimStartX + dimEndX) / 2 + textDirX * 60 * sign;
+        const textPy = (dimStartY + dimEndY) / 2 + textDirY * 60 * sign;
+
+        // Insert dimension text (Height: 70)
+        addDxfText(arr, textPx, textPy, label, 70, layer, 'center', angleDeg);
     }
 
     // --- MAIN EXPORT FUNCTION ---
     function downloadDXF() {
         try {
-            // 1. Gather Data
+            // 1. Gather Shared Data
             const width = parseFloat(dom['calculated-curtain-width'].textContent) || 0;
-            const height = parseFloat(dom.height.value) || 0;
+            const inputHeight = parseFloat(dom.height.value) || 0;
+            const hType = dom.heightType.value;
             const additionalAxle = parseFloat(dom.additionalLength.value) || 0;
             
             const lathIndex = dom.lathType.value;
@@ -5768,6 +5747,11 @@ function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm,
             const numLaths = parseInt(dom['lath-count'].textContent) || 0;
             const axleDia = parseFloat(axle['Diameter']);
             
+            let hangdownValue = 50;
+            if (bLath && bLath['Hangdown'] !== undefined) {
+                hangdownValue = parseFloat(bLath['Hangdown']) || 50;
+            }
+
             let guideWidth = 50; 
             let guidePenetration = 0;
             if (guideIndex !== "" && guideData[guideIndex]) {
@@ -5776,110 +5760,167 @@ function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm,
             }
 
             let endplateSize = 300; 
+            let epOffset = 0;
             if (endplateIndex !== "" && currentFilteredEndplates[endplateIndex]) {
-                endplateSize = parseFloat(currentFilteredEndplates[endplateIndex].Size);
+                const ep = currentFilteredEndplates[endplateIndex];
+                endplateSize = parseFloat(ep.Size) || 300;
+                const offsetKey = Object.keys(ep).find(k => k.toLowerCase().trim() === 'offset');
+                epOffset = offsetKey ? (parseFloat(ep[offsetKey]) || 0) : 0;
             }
 
-            // Reset Handle Counter so it's fresh each time we click export
-            handleCounter = 0x200;
+            // Height Calculation Logic
+            let floorToAxleCenter = inputHeight;
+            if (hType === 'undersidePlate') floorToAxleCenter = inputHeight + (endplateSize / 2);
+            else if (hType === 'topPlate') floorToAxleCenter = inputHeight - (endplateSize / 2);
+            else if (hType === 'bottomHangdown') floorToAxleCenter = inputHeight + hangdownValue + (endplateSize / 2);
 
-            // Generate structural components that use handles BEFORE the header
-            const dxfClasses = getDxfClasses(); 
-            const dxfTables = getDxfTables();
-            const dxfBlocks = getDxfBlocks();
+            const clearOpening = width - (2 * guidePenetration);
+            const overallWidth = clearOpening + (2 * guideWidth) + (2 * epOffset);
 
             // 2. Initialize DXF Entity Structure
             let dxfBody =[];
             dxfBody.push("0", "SECTION", "2", "ENTITIES");
 
             // --- DRAWING LOGIC ---
-            const axleY = height;
+            const axleY = floorToAxleCenter;
             const totalAxleWidth = width + additionalAxle;
             const axleXStart = -(totalAxleWidth / 2);
             const curtainLeftX = -(width / 2);
             const curtainRightX = (width / 2);
 
+            const guideLeftOut = curtainLeftX - guideWidth + guidePenetration;
+            const guideRightOut = curtainRightX + guideWidth - guidePenetration;
+
+            // ==========================================
             // A. FRONT VIEW
+            // ==========================================
             const epY = axleY - (endplateSize / 2);
+            addDxfText(dxfBody, 0, -400, "FRONT VIEW", 150, "OUTLINE", "center");
+
             // Endplates
             addDxfRect(dxfBody, axleXStart, epY, 5, endplateSize, "AXLE"); 
             addDxfRect(dxfBody, (axleXStart + totalAxleWidth) - 5, epY, 5, endplateSize, "AXLE");
             // Axle
             addDxfRect(dxfBody, axleXStart, axleY - (axleDia/2), totalAxleWidth, axleDia, "AXLE");
-            // Centerline
-            addDxfLine(dxfBody, axleXStart - 50, axleY, axleXStart + totalAxleWidth + 50, axleY, "DIMENSIONS");
+            addDxfLine(dxfBody, axleXStart - 100, axleY, axleXStart + totalAxleWidth + 100, axleY, "DIMENSIONS"); // Centerline
             
-            // Guides
-            addDxfRect(dxfBody, curtainLeftX - (guideWidth - guidePenetration), 0, guideWidth, height, "GUIDES");
-            addDxfRect(dxfBody, curtainRightX - guidePenetration, 0, guideWidth, height, "GUIDES");
-            
-            // Curtain
+            // Guides & Curtain
+            addDxfRect(dxfBody, guideLeftOut, 0, guideWidth, floorToAxleCenter, "GUIDES");
+            addDxfRect(dxfBody, curtainRightX - guidePenetration, 0, guideWidth, floorToAxleCenter, "GUIDES");
             addDxfRect(dxfBody, curtainLeftX, 0, width, bLathH, "LATHS");
+            
             let currentY = bLathH;
             for(let i=0; i<numLaths; i++) {
                 if (currentY + lathH > axleY - (axleDia/2)) break;
                 addDxfRect(dxfBody, curtainLeftX, currentY, width, lathH, "LATHS");
                 currentY += lathH;
             }
-            addDxfText(dxfBody, 0, -200, "FRONT VIEW", 50, "OUTLINE");
 
-            // B. PLAN VIEW (Below)
-            const planY = -600; 
-            const lgX = curtainLeftX - (guideWidth - guidePenetration);
-            const rgX = curtainRightX - guidePenetration;
-            const curtainPlanY = planY + (60 - lathThick)/2; // Assume 60mm guide depth
+            // FRONT VIEW DIMENSIONS
+            let heightLabel = "to Center of Axle";
+            if(hType === 'undersidePlate') heightLabel = "to Underside of Plate";
+            if(hType === 'topPlate') heightLabel = "to Top of Plate";
+            if(hType === 'bottomHangdown') heightLabel = "to Bottom of Hangdown";
             
+            // Right Side
+            addDxfDim(dxfBody, guideRightOut, 0, guideRightOut, floorToAxleCenter, `${inputHeight.toFixed(0)} mm ${heightLabel}`, -200, "DIMENSIONS");
+            
+            // Left Side
+            addDxfDim(dxfBody, guideLeftOut, 0, guideLeftOut, bLathH, `${bLathH.toFixed(0)} mm`, 200, "DIMENSIONS");
+            addDxfDim(dxfBody, guideLeftOut, bLathH, guideLeftOut, axleY - (axleDia/2), `${lath.Name} (x${numLaths})`, 200, "DIMENSIONS");
+
+
+            // ==========================================
+            // B. PLAN VIEW (Below)
+            // ==========================================
+            const planY = -1500; 
+            const lgX = guideLeftOut;
+            const rgX = curtainRightX - guidePenetration;
+            const curtainPlanY = planY + 30 - lathThick/2; 
+            
+            addDxfText(dxfBody, 0, planY - 600, "PLAN VIEW", 150, "OUTLINE", "center");
+            
+            // Plan Geometries
             addDxfRect(dxfBody, lgX, planY, guideWidth, 60, "GUIDES"); 
             addDxfRect(dxfBody, rgX, planY, guideWidth, 60, "GUIDES");
             addDxfRect(dxfBody, curtainLeftX, curtainPlanY, width, lathThick, "LATHS");
-            addDxfText(dxfBody, 0, planY - 200, "PLAN VIEW", 50, "OUTLINE");
 
-            // C. SECTION VIEW (Right)
-            const sectX = (width/2) + 800; 
+            // Plan Endplates
+            const ovLeft = guideLeftOut - epOffset;
+            const ovRight = guideRightOut + epOffset;
+            addDxfRect(dxfBody, ovLeft, planY, epOffset, 60, "AXLE");
+            addDxfRect(dxfBody, guideRightOut, planY, epOffset, 60, "AXLE");
+            
+            // PLAN VIEW DIMENSIONS
+            const coLeft = curtainLeftX + guidePenetration;
+            const coRight = curtainRightX - guidePenetration;
+            addDxfDim(dxfBody, coLeft, planY, coRight, planY, `Clear Opening (${clearOpening.toFixed(0)} mm)`, -150, "DIMENSIONS");
+            addDxfDim(dxfBody, curtainLeftX, planY, curtainRightX, planY, `Curtain Width (${width.toFixed(0)} mm)`, -350, "DIMENSIONS");
+            addDxfDim(dxfBody, ovLeft, planY, ovRight, planY, `Overall Width (Reveal) (${overallWidth.toFixed(0)} mm)`, -550, "DIMENSIONS");
+
+            if (epOffset > 0) {
+                addDxfDim(dxfBody, ovLeft, planY + 60, guideLeftOut, planY + 60, `Offset (${epOffset.toFixed(0)} mm)`, 150, "DIMENSIONS");
+                addDxfDim(dxfBody, guideRightOut, planY + 60, ovRight, planY + 60, `Offset (${epOffset.toFixed(0)} mm)`, 150, "DIMENSIONS");
+            }
+
+
+            // ==========================================
+            // C. SIDE VIEW / SECTION (Far Right)
+            // ==========================================
+            const sectX = (width/2) + 1200; 
             const epSectLeft = sectX;
             const epSectTop = axleY + (endplateSize/2);
+            const epSectBottom = axleY - (endplateSize/2);
             const maxCoil = parseFloat(dom['max-coil-diameter'].textContent) || (axleDia + 100);
 
+            addDxfText(dxfBody, sectX + (endplateSize/2), -400, "SIDE VIEW / SECTION", 150, "OUTLINE", "center");
+
             // Wall/Guide Line
-            addDxfLine(dxfBody, sectX, 0, sectX, height + 500, "OUTLINE");
+            addDxfLine(dxfBody, sectX, 0, sectX, epSectTop + 200, "OUTLINE");
             // Endplate Box
-            addDxfRect(dxfBody, epSectLeft, epSectTop - endplateSize, endplateSize, endplateSize, "AXLE");
+            addDxfRect(dxfBody, epSectLeft, epSectBottom, endplateSize, endplateSize, "AXLE");
             // Axle/Coil
             addDxfCircle(dxfBody, epSectLeft + (endplateSize/2), axleY, axleDia/2, "AXLE");
             addDxfCircle(dxfBody, epSectLeft + (endplateSize/2), axleY, maxCoil/2, "LATHS");
-            // Guide Side
-            addDxfRect(dxfBody, sectX, 0, 60, height, "GUIDES"); 
-            addDxfText(dxfBody, sectX + (endplateSize/2), -200, "SECTION VIEW", 50, "OUTLINE");
+            // Curtain drop profile
+            addDxfRect(dxfBody, epSectLeft + 20, 0, lathThick, axleY, "LATHS"); 
 
-            dxfBody.push("0", "ENDSEC"); // End ENTITIES
+            // SECTION DIMENSIONS
+            // Top Box Width
+            addDxfDim(dxfBody, epSectLeft, epSectTop, epSectLeft + endplateSize, epSectTop, `${endplateSize.toFixed(0)} mm`, 150, "DIMENSIONS");
             
-            const dxfObjects = getDxfObjects();
+            // Left Side Vertical
+            addDxfDim(dxfBody, epSectLeft, epSectBottom - hangdownValue, epSectLeft, epSectBottom, `${hangdownValue.toFixed(0)} mm Hang Down`, 200, "DIMENSIONS");
+            addDxfDim(dxfBody, epSectLeft, 0, epSectLeft, epSectBottom - hangdownValue, `${(epSectBottom - hangdownValue).toFixed(0)} mm Clear Opening`, 200, "DIMENSIONS");
+            
+            // Right Side Vertical
+            const rightSectDimX = epSectLeft + endplateSize;
+            addDxfDim(dxfBody, rightSectDimX, epSectBottom, rightSectDimX, epSectTop, `${endplateSize.toFixed(0)} mm`, -150, "DIMENSIONS");
+            addDxfDim(dxfBody, rightSectDimX, 0, rightSectDimX, epSectBottom, `${epSectBottom.toFixed(0)} mm to Underside`, -150, "DIMENSIONS");
+            addDxfDim(dxfBody, rightSectDimX, 0, rightSectDimX, epSectTop, `${epSectTop.toFixed(0)} mm to Top`, -350, "DIMENSIONS");
+
+
+            dxfBody.push("0", "ENDSEC"); // End ENTITIES section
 
             // 3. Calculate Extents for Header
-            const minX = curtainLeftX - 500;
-            const maxX = sectX + 500;
-            const minY = planY - 500;
-            const maxY = height + 500;
+            const minX = curtainLeftX - 1000;
+            const maxX = sectX + 1000;
+            const minY = planY - 1000;
+            const maxY = epSectTop + 500;
 
-            // Generate the next seed AFTER all shapes and objects are built
-            const nextHandleSeed = (handleCounter + 1).toString(16).toUpperCase();
-
-            // Assemble Full DXF in Strict AC1032 Order
+            // Assemble Full DXF in R12 Order
             let fullDxf =[];
-            fullDxf = fullDxf.concat(getDxfHeader(minX, minY, maxX, maxY, nextHandleSeed));
-            fullDxf = fullDxf.concat(dxfClasses); 
-            fullDxf = fullDxf.concat(dxfTables);
-            fullDxf = fullDxf.concat(dxfBlocks); 
+            fullDxf = fullDxf.concat(getDxfHeader(minX, minY, maxX, maxY));
+            fullDxf = fullDxf.concat(getDxfTables());
             fullDxf = fullDxf.concat(dxfBody);        
-            fullDxf = fullDxf.concat(dxfObjects);     
             fullDxf.push("0", "EOF");
 
-            // 5. Create Blob and Download
-            const blob = new Blob([fullDxf.join('\r\n')], { type: 'application/dxf' });
+            // 5. Create Blob and Download 
+            const blob = new Blob([fullDxf.join('\r\n') + '\r\n'], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Shutter_Layout_${width.toFixed(0)}x${height.toFixed(0)}.dxf`;
+            link.download = `Shutter_Layout_${width.toFixed(0)}x${inputHeight.toFixed(0)}.dxf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
