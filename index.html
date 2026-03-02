@@ -306,7 +306,8 @@
                 <!-- Explicit Buttons for PDF and DXF -->
                 <div class="print-container">
                      <button id="dxfButton">Download DXF</button>
-                     <button id="printButton">Print / Save PDF</button>
+					 <button id="bimButton" style="background-color: #6f42c1;">Download BIM (IFC)</button> <!-- Added this -->
+					 <button id="printButton">Print / Save PDF</button>
                 </div>
             </div>
             
@@ -885,7 +886,15 @@
                 <!-- Admin Tab -->
                 <div id="admin-content" class="tab-pane">
                     <h2>Admin Controls</h2>
-                    
+                    <div class="admin-section">
+					
+						<h3>System Data Export</h3>
+						<p>Export all current calculation results, recommended motors, and axle specifications to a single JSON file.</p>
+						<button id="exportJsonButton" style="background-color: #17a2b8; padding: 0.8em 1.5em; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+							Export Full Configuration (JSON)
+						</button>
+					</div>
+
                     <div class="admin-section">
                         <h3>Import from CSV</h3>
                         <div class="form-group" style="display: flex; align-items: center; gap: 1em;">
@@ -895,23 +904,7 @@
                         <div id="import-status-admin" style="font-style: italic; color: #555;"></div>
                     </div>
 
-                    <div class="admin-section">
-                        <h3>Tab Visibility</h3>
-                        <div class="admin-button-group">
-                            <button id="tabsSelectAll">Select All</button>
-                            <button id="tabsDeselectAll">Deselect All</button>
-                        </div>
-                        <div id="tab-controls-container" class="admin-controls"></div>
-                    </div>
 
-                    <div class="admin-section">
-                        <h3>Input Option Visibility</h3>
-                         <div class="admin-button-group">
-                            <button id="inputsSelectAll">Select All</button>
-                            <button id="inputsDeselectAll">Deselect All</button>
-                        </div>
-                        <div id="input-controls-container" class="admin-controls"></div>
-                    </div>
 
                     <div class="admin-section">
                         <h3>Axle Calculation Settings</h3>
@@ -1256,62 +1249,7 @@ if (dom.dxfButton) {
             });
         }
 
-        function initializeAdminControls() {
-            const tabContainer = document.getElementById('tab-controls-container');
-            const inputContainer = document.getElementById('input-controls-container');
-            tabContainer.innerHTML = '';
-            inputContainer.innerHTML = '';
 
-            document.querySelectorAll('.tab-button').forEach(tab => {
-                const tabId = tab.dataset.tab;
-                const labelText = tab.textContent.trim();
-                const controlItem = document.createElement('div');
-                controlItem.className = 'admin-control-item';
-                const isChecked = tab.style.display !== 'none';
-                controlItem.innerHTML = `<label><input type="checkbox" data-target-tab="${tabId}" ${isChecked ? 'checked' : ''}>${labelText}</label>`;
-                tabContainer.appendChild(controlItem);
-                controlItem.querySelector('input').addEventListener('change', (e) => {
-                    tab.style.display = e.target.checked ? '' : 'none';
-                    updatePrintStyles();
-                });
-            });
-
-            document.querySelectorAll('[data-admin-label]').forEach((inputGroup, index) => {
-                const labelText = inputGroup.dataset.adminLabel;
-                const groupId = `admin-input-${index}`;
-                inputGroup.id = groupId;
-                const controlItem = document.createElement('div');
-                controlItem.className = 'admin-control-item';
-                controlItem.innerHTML = `<label><input type="checkbox" data-target-input="${groupId}" checked>${labelText}</label>`;
-                inputContainer.appendChild(controlItem);
-                 controlItem.querySelector('input').addEventListener('change', (e) => {
-                    inputGroup.style.display = e.target.checked ? '' : 'none';
-                });
-            });
-
-            const setupBulkActions = (selectAllId, deselectAllId, containerId) => {
-                document.getElementById(selectAllId).addEventListener('click', () => {
-                    document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(cb => {
-                        if (!cb.checked) {
-                            cb.checked = true;
-                            cb.dispatchEvent(new Event('change'));
-                        }
-                    });
-                });
-                document.getElementById(deselectAllId).addEventListener('click', () => {
-                    document.querySelectorAll(`#${containerId} input[type="checkbox"]`).forEach(cb => {
-                        if (cb.checked) {
-                            cb.checked = false;
-                            cb.dispatchEvent(new Event('change'));
-                        }
-                    });
-                });
-            };
-
-            setupBulkActions('tabsSelectAll', 'tabsDeselectAll', 'tab-controls-container');
-            setupBulkActions('inputsSelectAll', 'inputsDeselectAll', 'input-controls-container');
-            updatePrintStyles();
-        }
 
         function handleShapeChange() {
             const selectedShape = document.querySelector('input[name="axleShape"]:checked').value;
@@ -5780,8 +5718,7 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
 
 <script>
     window.addEventListener('load', () => {
-        initializeAdminControls(); 
-        const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
+          const excelFileUrl = 'https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/Calculation%20Data.xlsx';
         const statusDiv = document.getElementById('import-status');
         statusDiv.textContent = 'Loading data from repository...'; statusDiv.style.color = '#555';
         fetch(excelFileUrl).then(response => {
@@ -5789,7 +5726,12 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
             return response.arrayBuffer();
         }).then(fileData => { processExcelFile(fileData); }).catch(error => {
             statusDiv.textContent = 'Failed to fetch the Excel file from the repository. Please check the console for details.'; statusDiv.style.color = 'red'; console.error('There has been a problem with the fetch operation:', error);});
-    });
+ 
+	if (document.getElementById('exportJsonButton')) {
+    document.getElementById('exportJsonButton').addEventListener('click', exportConfigurationJson);
+}
+
+   });
 </script>
 
 <script>
@@ -7019,6 +6961,261 @@ if (dom.safetyBrakeSelector) {
         if (typeof updateSelectedSafetyBrakeInfo === 'function') updateSelectedSafetyBrakeInfo();
         updateWeldCalculations();
     });
+}
+
+
+// Add event listener
+// Ensure the button is linked - add this once in your main script area
+if (document.getElementById('bimButton')) {
+    document.getElementById('bimButton').addEventListener('click', downloadIFC);
+}
+
+function downloadIFC() {
+    try {
+        // 1. GATHER DATA WITH SAFETY FALLBACKS
+        const curtainWidthText = dom['calculated-curtain-width'] ? dom['calculated-curtain-width'].textContent : "0";
+        const overallWidthText = dom['calculated-overall-width'] ? dom['calculated-overall-width'].textContent : "0";
+        const clearOpeningText = dom['calculated-clear-opening'] ? dom['calculated-clear-opening'].textContent : "0";
+        const heightVal = dom.height ? dom.height.value : "0";
+
+        const curtainWidth = (parseFloat(curtainWidthText) || 0) / 1000;
+        const overallWidth = (parseFloat(overallWidthText) || 0) / 1000;
+        const clearOpening = (parseFloat(clearOpeningText) || 0) / 1000;
+        const height = (parseFloat(heightVal) || 0) / 1000;
+
+        if (curtainWidth <= 0 || height <= 0) {
+            alert("Please enter a valid Width and Height in the calculator first.");
+            return;
+        }
+
+        // Lath Props
+        const lathIndex = dom.lathType ? dom.lathType.value : "";
+        const lath = (lathIndex !== "" && lathData[lathIndex]) ? lathData[lathIndex] : { Thickness: 14, Name: "Standard" };
+        const thick = (parseFloat(lath['Thickness']) || 14) / 1000;
+
+        // Headbox (Endplate) Props
+        const epIdx = dom.endplateSelector ? dom.endplateSelector.value : "";
+        let epSize = 0.3; // Default 300mm
+        if (epIdx !== "" && typeof currentFilteredEndplates !== 'undefined' && currentFilteredEndplates[epIdx]) {
+            epSize = (parseFloat(currentFilteredEndplates[epIdx].Size) || 300) / 1000;
+        }
+
+        // Guide Props
+        const gIdx = dom.guideType ? dom.guideType.value : "";
+        let gWidth = 0.065; 
+        let gLabel = "Guide";
+        if (gIdx !== "" && typeof guideData !== 'undefined' && guideData[gIdx]) {
+            const gWidthCalc = parseFloat(guideData[gIdx].Width);
+            if (!isNaN(gWidthCalc)) gWidth = gWidthCalc / 1000;
+            gLabel = guideData[gIdx].Name || "Guide";
+        }
+        const gDepth = 0.034; // standard 34mm
+
+        // POSITIONING MATH
+        const xPosDist = (clearOpening / 2) + (gWidth / 2);
+        const yPosOffset = -((epSize / 2) - (gDepth / 2));
+        const gHeight = height - (epSize / 2);
+
+        // METADATA
+        const weight = dom['weight-kg'] ? dom['weight-kg'].textContent : "0";
+        const motor = dom['motor-name'] ? dom['motor-name'].textContent : "N/A";
+
+        // GUID GENERATOR
+        function createStepGuid() {
+            const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$";
+            let guid = "";
+            for (let i = 0; i < 22; i++) guid += chars.charAt(Math.floor(Math.random() * chars.length));
+            return guid;
+        }
+
+        const timestamp = new Date().toISOString().replace(/[-:T]/g, "").split(".")[0];
+
+        // 2. GENERATE IFC 2X3 CONTENT
+        let ifc = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('SWS Shutter Assembly'),'2;1');
+FILE_NAME('SWS_Export_${timestamp}.ifc','${new Date().toISOString()}',('SWS'),('SWS'),'Calculator','SWS Calc','');
+FILE_SCHEMA(('IFC2X3'));
+ENDSEC;
+DATA;
+#1=IFCPERSON($,'Calculator',$,$,$,$,$,$);
+#2=IFCORGANIZATION($,'SWS',$,$,$);
+#3=IFCPERSONANDORGANIZATION(#1,#2,$);
+#4=IFCAPPLICATION(#2,'1.0','SWS Calculator','SWS_Calc');
+#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,${Math.floor(Date.now()/1000)});
+#6=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRES.);
+#7=IFCUNITASSIGNMENT((#6));
+
+/* --- Geometric Context --- */
+#10=IFCPROJECT('${createStepGuid()}',#5,'SWS Shutter',$,$,$,$,(#20),#7);
+#20=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#21,#22);
+#21=IFCAXIS2PLACEMENT3D(#23,#24,#25);
+#22=IFCDIRECTION((0.,1.,0.));
+#23=IFCCARTESIANPOINT((0.,0.,0.));
+#24=IFCDIRECTION((0.,0.,1.));
+#25=IFCDIRECTION((1.,0.,0.));
+
+#30=IFCSITE('${createStepGuid()}',#5,'Site',$,$,#21,$,$,.ELEMENT.,$,$,$,$,$);
+#40=IFCBUILDING('${createStepGuid()}',#5,'Building',$,$,#21,$,$,.ELEMENT.,$,$,$);
+#50=IFCBUILDINGSTOREY('${createStepGuid()}',#5,'Level 0',$,$,#21,$,$,.ELEMENT.,0.);
+
+/* Directions and Points reused to keep file clean */
+#90=IFCDIRECTION((0.,0.,1.));
+#91=IFCCARTESIANPOINT((0.,0.,0.));
+#92=IFCCARTESIANPOINT((0.,0.));
+
+/* --- 1. THE CURTAIN --- */
+#100=IFCBUILDINGELEMENTPROXY('${createStepGuid()}',#5,'Curtain',$,$,#101,#110,$,$);
+#101=IFCLOCALPLACEMENT($,#102);
+#102=IFCAXIS2PLACEMENT3D(#103,$,$);
+#103=IFCCARTESIANPOINT((0., ${yPosOffset.toFixed(4)}, 0.));
+#110=IFCPRODUCTDEFINITIONSHAPE($,$,(#111));
+#111=IFCSHAPEREPRESENTATION(#20,'Body','SweptSolid',(#112));
+#112=IFCEXTRUDEDAREASOLID(#113,#114,#90,${height.toFixed(4)});
+#113=IFCRECTANGLEPROFILEDEF(.AREA.,'Curtain_Profile',#115,${curtainWidth.toFixed(4)},${thick.toFixed(4)});
+#114=IFCAXIS2PLACEMENT3D(#91,$,$);
+#115=IFCAXIS2PLACEMENT2D(#92,$);
+
+/* --- 2. THE HEADBOX --- */
+#200=IFCBUILDINGELEMENTPROXY('${createStepGuid()}',#5,'Headbox',$,$,#201,#210,$,$);
+#201=IFCLOCALPLACEMENT($,#202);
+#202=IFCAXIS2PLACEMENT3D(#203,$,$);
+#203=IFCCARTESIANPOINT((0., 0., ${(height - (epSize / 2)).toFixed(4)}));
+#210=IFCPRODUCTDEFINITIONSHAPE($,$,(#211));
+#211=IFCSHAPEREPRESENTATION(#20,'Body','SweptSolid',(#212));
+#212=IFCEXTRUDEDAREASOLID(#213,#114,#90,${epSize.toFixed(4)});
+#213=IFCRECTANGLEPROFILEDEF(.AREA.,'Box_Profile',#115,${overallWidth.toFixed(4)},${epSize.toFixed(4)});
+
+/* --- 3. GUIDE LEFT --- */
+#300=IFCBUILDINGELEMENTPROXY('${createStepGuid()}',#5,'Guide Left','${gLabel}',$,#301,#310,$,$);
+#301=IFCLOCALPLACEMENT($,#302);
+#302=IFCAXIS2PLACEMENT3D(#303,$,$);
+#303=IFCCARTESIANPOINT((- ${xPosDist.toFixed(4)}, ${yPosOffset.toFixed(4)}, 0.)); 
+#310=IFCPRODUCTDEFINITIONSHAPE($,$,(#311));
+#311=IFCSHAPEREPRESENTATION(#20,'Body','SweptSolid',(#312));
+#312=IFCEXTRUDEDAREASOLID(#313,#114,#90,${gHeight.toFixed(4)});
+#313=IFCRECTANGLEPROFILEDEF(.AREA.,'G_L_Profile',#115,${gWidth.toFixed(4)},${gDepth.toFixed(4)});
+
+/* --- 4. GUIDE RIGHT --- */
+#400=IFCBUILDINGELEMENTPROXY('${createStepGuid()}',#5,'Guide Right','${gLabel}',$,#401,#410,$,$);
+#401=IFCLOCALPLACEMENT($,#402);
+#402=IFCAXIS2PLACEMENT3D(#403,$,$);
+#403=IFCCARTESIANPOINT((${xPosDist.toFixed(4)}, ${yPosOffset.toFixed(4)}, 0.)); 
+#410=IFCPRODUCTDEFINITIONSHAPE($,$,(#411));
+#411=IFCSHAPEREPRESENTATION(#20,'Body','SweptSolid',(#412));
+#412=IFCEXTRUDEDAREASOLID(#413,#114,#90,${gHeight.toFixed(4)});
+#413=IFCRECTANGLEPROFILEDEF(.AREA.,'G_R_Profile',#115,${gWidth.toFixed(4)},${gDepth.toFixed(4)});
+
+/* Structure & Parameters */
+#500=IFCRELCONTAINEDINSPATIALSTRUCTURE('${createStepGuid()}',#5,$,$,(#100,#200,#300,#400),#50);
+#501=IFCRELAGGREGATES('${createStepGuid()}',#5,$,$,#10,(#30));
+#502=IFCRELAGGREGATES('${createStepGuid()}',#5,$,$,#30,(#40));
+#503=IFCRELAGGREGATES('${createStepGuid()}',#5,$,$,#40,(#50));
+
+#600=IFCPROPERTYSET('${createStepGuid()}',#5,'Technical_Specs',$,(#601,#602,#603));
+#601=IFCPROPERTYSINGLEVALUE('System Weight','',IFCLABEL('${weight} kg'),$);
+#602=IFCPROPERTYSINGLEVALUE('Lath','',IFCLABEL('${lath.Name}'),$);
+#603=IFCPROPERTYSINGLEVALUE('Motor','',IFCLABEL('${motor}'),$);
+#610=IFCRELDEFINESBYPROPERTIES('${createStepGuid()}',#5,$,$,(#100,#200,#300,#400),#600);
+
+ENDSEC;
+END-ISO-10303-21;`;
+
+        // 3. TRIGGER DOWNLOAD
+        const blob = new Blob([ifc], { type: 'application/octet-stream' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `SWS_Shutter_BIM.ifc`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (err) {
+        console.error("BIM Export Error: ", err);
+        alert("BIM Export failed. Technical details: " + err.message);
+    }
+}
+
+
+function exportConfigurationJson() {
+    // 1. Gather Input Data
+    const inputData = {
+        width_mm: parseFloat(dom.width.value),
+        width_type: dom.widthType.options[dom.widthType.selectedIndex]?.text,
+        height_mm: parseFloat(dom.height.value),
+        height_reference: dom.heightType.options[dom.heightType.selectedIndex]?.text,
+        lath_type: dom.lathType.options[dom.lathType.selectedIndex]?.text,
+        bottom_lath: dom.bottomLathType.options[dom.bottomLathType.selectedIndex]?.text,
+        powder_coated: dom.powderCoated.checked,
+        reverse_coil: dom.reverseCoil.checked,
+        sloping_bottom: dom.isSlopingBottomLath.checked
+    };
+
+    // 2. Gather Calculation Outputs (Weights & Areas)
+    const resultsData = {
+        total_weight_kg: dom['weight-kg'].textContent,
+        torque_weight_kg: dom['torque-weight-kg'].textContent,
+        endlock_weight_kg: dom['endlock-weight'].textContent,
+        curtain_area_m2: dom['curtain-area'].textContent,
+        max_torque_required_nm: dom['max-torque'].textContent,
+        total_revolutions: dom['total-revolutions'].textContent,
+        opening_time_seconds: dom['opening-time'].textContent,
+        max_coil_diameter_mm: dom['max-coil-diameter'].textContent
+    };
+
+    // 3. Gather Axle Analysis
+    const axleDataExport = {
+        selected_axle: dom.axleType.options[dom.axleType.selectedIndex]?.text,
+        axle_length_mm: dom['total-axle-length'].textContent,
+        axle_weight_kg: dom['axle-weight'].textContent,
+        deflection_mm: dom['axle-deflection'].textContent,
+        deflection_ratio: dom['deflection-ratio'].textContent,
+        safety_factor: dom['axle-safety-factor'].textContent,
+        weld_status: dom['weld-status']?.textContent || "N/A"
+    };
+
+    // 4. Gather Motor Recommendations
+    // We map through the currently filtered list (currentFilteredMotors) 
+    // and identify which ones are "passing" based on the required torque.
+    const requiredTorque = parseFloat(dom['max-torque'].textContent) || 0;
+    const motorRecommendations = currentFilteredMotors.map(m => {
+        const tMin = parseFloat(m['Torque (Nm) min']) || 0;
+        const tMax = parseFloat(m['Torque (Nm) max']) || 0;
+        return {
+            name: m.Name,
+            torque_range: `${tMin}-${tMax} Nm`,
+            rpm: m.RPM,
+            manufacturer: m.Manufacturer,
+            status: (requiredTorque >= tMin && requiredTorque <= tMax) ? "PASS" : "FAIL"
+        };
+    });
+
+    // 5. Combine into Final Object
+    const exportObject = {
+        export_timestamp: new Date().toISOString(),
+        calculator_id: `SHUTTER-${inputData.width_mm}x${inputData.height_mm}`,
+        inputs: inputData,
+        outputs: resultsData,
+        axle_analysis: axleDataExport,
+        motor_selection: {
+            currently_selected: dom['motor-name'].textContent,
+            available_motors_in_class: motorRecommendations
+        },
+        safety_brake: {
+            name: dom['safety-brake-name'].textContent,
+            capacity: dom['safety-brake-capacity'].textContent,
+            barrel_speed_rpm: dom['actual-barrel-speed'].textContent
+        }
+    };
+
+    // 6. Trigger Download
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObject, null, 4));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `SWS_Config_${inputData.width_mm}x${inputData.height_mm}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
 }
 
 </script>
