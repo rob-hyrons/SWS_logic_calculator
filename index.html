@@ -2056,14 +2056,16 @@ function updateAllCalculations() {
     const selectedGuideIndex = dom.guideType.value;
     const selectedGuide = (selectedGuideIndex !== "" && guideData[selectedGuideIndex]) ? guideData[selectedGuideIndex] : null;
 
-    if(typeof drawShutterGraphic === 'function') {
-        drawShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), effectiveLath, selectedBottomLath, bestAxle, selectedEndplate, selectedGuide, visionData, endlockOffsets);
+if(typeof drawShutterGraphic === 'function') {
+        // FIXED: Added floorToAxleCenter as the final argument
+        drawShutterGraphic(curtainWidth, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), effectiveLath, selectedBottomLath, bestAxle, selectedEndplate, selectedGuide, visionData, endlockOffsets, floorToAxleCenter);
     }
     if(typeof drawTopDownWidthGraphic === 'function') {
         drawTopDownWidthGraphic(calculatedWidths, selectedGuide, effectiveLath, parseFloat(dom.additionalLength.value));
     }
     
-    updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth);
+    // FIXED: Passed floorToAxleCenter to the wicket calculations as well
+    updateWicketCalculationsAndGraphic(endlockOffsets, curtainWidth, floorToAxleCenter);
     updateChainCalculations();
     updateWeldCalculations();
     
@@ -3704,7 +3706,7 @@ function updateSelectedMotorInfo() {
             updateWicketCalculationsAndGraphic({cast:0, wind:0}, curtainWidth);
         }
 
-        function updateWicketCalculationsAndGraphic(endlockOffsets = {cast: 0, wind: 0}, curtainWidthRaw) {
+function updateWicketCalculationsAndGraphic(endlockOffsets = {cast: 0, wind: 0}, curtainWidthRaw, floorToAxleCenter) {
             const calculatedWidths = getCalculatedWidths();
             const curtainWidth = calculatedWidths.curtainWidth;
             const selectedWicketIndex = dom.wicketDoorSelector.value;
@@ -3731,7 +3733,23 @@ function updateSelectedMotorInfo() {
             dom['wicket-lath-height'].textContent = wicketLathHeight.toFixed(0);
             const selectedEndplateIndex = dom.endplateSelector.value;
             const selectedEndplate = (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) ? currentFilteredEndplates[selectedEndplateIndex] : null;
-            drawWicketGraphic(calculatedWidths, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, selectedWicket, wicketLathHeight, endlockOffsets);
+            
+            // Generate fallback floorToAxleCenter if loading this tab isolated
+            if (!floorToAxleCenter) {
+                const inputHeight = parseFloat(dom.height.value) || 0;
+                let epSize = 300;
+                if (selectedEndplate) epSize = parseFloat(selectedEndplate.Size) || 300;
+                let hangdownValue = 50;
+                if (selectedBottomLath && selectedBottomLath['Hangdown'] !== undefined) hangdownValue = parseFloat(selectedBottomLath['Hangdown']) || 50;
+                const hType = dom.heightType ? dom.heightType.value : 'axleCenter';
+                
+                floorToAxleCenter = inputHeight;
+                if (hType === 'undersidePlate') floorToAxleCenter = inputHeight + (epSize / 2);
+                else if (hType === 'topPlate') floorToAxleCenter = inputHeight - (epSize / 2);
+                else if (hType === 'bottomHangdown') floorToAxleCenter = inputHeight + hangdownValue + (epSize / 2);
+            }
+
+            drawWicketGraphic(calculatedWidths, parseFloat(dom.additionalLength.value), parseInt(dom['lath-count'].textContent), selectedLath, selectedBottomLath, selectedAxle, selectedEndplate, selectedWicket, wicketLathHeight, endlockOffsets, floorToAxleCenter);
             calculateWicketTorque(curtainWidth);
         }
 
@@ -5042,13 +5060,14 @@ function drawEndplateForceDiagram(downwardForce, pulloutForce, offsetM, fixingSe
             if(graphic) container.appendChild(graphic);
         }
         
-        function drawWicketGraphic(calculatedWidths, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}) {
+function drawWicketGraphic(calculatedWidths, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, wicket, wicketLathHeight, endlockOffsets = {cast: 0, wind: 0}, floorToAxleCenter) {
             const container = dom['wicket-graphic-container']; container.innerHTML = '';
             const isReverseCoil = dom.reverseCoil ? (dom.reverseCoil.checked && !dom.reverseCoil.disabled) : false;
-            const graphic = createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets, isReverseCoil }, 'wicket');
+            
+            // FIXED: Added convergedHeight to the options object here
+            const graphic = createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, lath, bottomLath, axle, selectedEndplate, { wicket: wicket, endlockOffsets: endlockOffsets, isReverseCoil, convergedHeight: floorToAxleCenter }, 'wicket');
             if(graphic) container.appendChild(graphic);
         }
-
 function drawTopDownWidthGraphic(calculatedWidths, guide, lath, additionalLength) {
     const container = dom['width-graphic-container']; 
     container.innerHTML = '';
@@ -5479,15 +5498,13 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
     }
 
     // FRONT VIEW HEIGHT DIMENSION (Uses raw input for label)
+// FRONT VIEW HEIGHT DIMENSION (Always shows calculated height to Center of Axle)
     const rightDimX = startX + scaledTotalAxleWidth + (slopingData.maxH > 0 ? 55 : 20);
-    const rawInputHeight = parseFloat(dom.height.value) || 0;
-    let heightLabel = "to Center of Axle";
-    const hType = dom.heightType.value;
-    if(hType === 'undersidePlate') heightLabel = "to Underside of Plate";
-    if(hType === 'topPlate') heightLabel = "to Top of Plate";
-    if(hType === 'bottomHangdown') heightLabel = "to Bottom of Hangdown";
-
-    drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${rawInputHeight.toFixed(0)} mm ${heightLabel}`, 'vertical', 'left');
+    
+    // activeHeight contains the correctly calculated height to the axle center based on the dropdown selection
+    drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${activeHeight.toFixed(0)} mm to Center of Axle`, 'vertical', 'left');
+	
+	
     createLeaderLine(rightDimX, axleCenterlineY, startX + scaledTotalAxleWidth, axleCenterlineY);
     createLeaderLine(rightDimX, bottomY, startX + scaledTotalAxleWidth, bottomY);
 
