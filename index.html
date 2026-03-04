@@ -5499,7 +5499,7 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
 
     // FRONT VIEW HEIGHT DIMENSION (Uses raw input for label)
 // FRONT VIEW HEIGHT DIMENSION (Always shows calculated height to Center of Axle)
-    const rightDimX = startX + scaledTotalAxleWidth + (slopingData.maxH > 0 ? 55 : 20);
+    const rightDimX = startX + scaledTotalAxleWidth + (slopingData.maxH > 0 ? 55 : 30);
     
     // activeHeight contains the correctly calculated height to the axle center based on the dropdown selection
     drawDimensionLine(rightDimX, axleCenterlineY, rightDimX, bottomY, `${activeHeight.toFixed(0)} mm to Center of Axle`, 'vertical', 'left');
@@ -5683,13 +5683,24 @@ function createBaseShutterGraphic(calculatedWidths, additionalLength, numLaths, 
     createLeaderLine(rightSharedLineX, boxTop, farRightDimX, boxTop);
     createLeaderLine(rightSharedLineX, bottomY, farRightDimX, bottomY);
 
-    const coDimX = boxLeft - 20; 
+const hangdownDimX = boxLeft - 15; // Closer to the shutter
+    const coDimX = boxLeft - 40;       // Pushed further left to avoid text overlap
     const calculatedCO = activeHeight - (endplateSize/2) - hangdownValue;
+    const hangdownBottomY = boxBottomY + (hangdownValue * scale);
+
     if (hangdownValue > 0) {
-        drawDimensionLine(coDimX, boxBottomY, coDimX, boxBottomY + (hangdownValue * scale), `${hangdownValue.toFixed(0)} mm Hang Down`, 'vertical', 'left');
-        createLeaderLine(coDimX, boxBottomY, boxLeft, boxBottomY);
+        // Hang Down Dimension
+        drawDimensionLine(hangdownDimX, boxBottomY, hangdownDimX, hangdownBottomY, `${hangdownValue.toFixed(0)} mm Hang Down`, 'vertical', 'left');
+        // Top and Bottom leader lines for Hang Down
+        createLeaderLine(hangdownDimX, boxBottomY, boxLeft, boxBottomY);
+        createLeaderLine(hangdownDimX, hangdownBottomY, boxLeft, hangdownBottomY);
     }
-    drawDimensionLine(coDimX, boxBottomY + (hangdownValue * scale), coDimX, bottomY, `${calculatedCO.toFixed(0)} mm Clear Opening`, 'vertical', 'left');
+    
+    // Clear Opening Dimension
+    drawDimensionLine(coDimX, hangdownBottomY, coDimX, bottomY, `${calculatedCO.toFixed(0)} mm Clear Opening`, 'vertical', 'left');
+    // Top leader line for Clear Opening (connects to the bottom of the hangdown)
+    createLeaderLine(coDimX, hangdownBottomY, boxLeft, hangdownBottomY);
+    // Bottom leader line for Clear Opening
     createLeaderLine(coDimX, bottomY, guideX, bottomY);
 
     return svg;
@@ -6637,12 +6648,8 @@ function downloadDXF() {
                 }
             }
 
-            // Standard Front View Height Dimension
-            let heightLabel = "to Center of Axle";
-            if(hType === 'undersidePlate') heightLabel = "to Underside";
-            if(hType === 'topPlate') heightLabel = "to Top of Plate";
-            if(hType === 'bottomHangdown') heightLabel = "to Bottom Hangdown";
-            addDxfDim(dxfBody, guideRightOut, 0, guideRightOut, floorToAxleCenter, `${inputHeight.toFixed(0)} mm ${heightLabel}`, -250, "DIMENSIONS");
+// Standard Front View Height Dimension (Always shows calculated height to Center of Axle)
+            addDxfDim(dxfBody, guideRightOut, 0, guideRightOut, floorToAxleCenter, `${floorToAxleCenter.toFixed(0)} mm to Center of Axle`, -250, "DIMENSIONS");
 
             // ==========================================
             // B. PLAN VIEW 
@@ -6697,9 +6704,10 @@ function downloadDXF() {
             // --- SIDE VIEW DIMENSIONS ---
             const rightRefX = epSectLeft + endplateSize;
 
-            // Left Side of Side View (Clear Opening & Hang Down)
+// Left Side of Side View (Clear Opening & Hang Down)
+            // Offset Clear Opening further left (350 instead of 150) to prevent overlapping text in CAD
             addDxfDim(dxfBody, epSectLeft, hangdownBottomY, epSectLeft, epSectBottom, `${hangdownValue.toFixed(0)} mm Hang Down`, 150, "DIMENSIONS");
-            addDxfDim(dxfBody, epSectLeft, 0, epSectLeft, hangdownBottomY, `${hangdownBottomY.toFixed(0)} mm Clear Opening`, 150, "DIMENSIONS");
+            addDxfDim(dxfBody, epSectLeft, 0, epSectLeft, hangdownBottomY, `${hangdownBottomY.toFixed(0)} mm Clear Opening`, 350, "DIMENSIONS");
             
             // Right Side of Side View (Plate Stack)
             addDxfDim(dxfBody, rightRefX, epSectBottom, rightRefX, epSectTop, `${endplateSize.toFixed(0)} mm`, -150, "DIMENSIONS");
