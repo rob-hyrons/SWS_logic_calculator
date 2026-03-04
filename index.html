@@ -6163,6 +6163,70 @@ function calculateCurtainProperties(lath, bottomLath, axle, curtainWidth, passed
             return { totalWeight, torqueWeight, travelHeight, fullCurtainLength, visionData, endlockOffsets };
         }
 
+function calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width_mm, height_mm, isPowderCoated) {
+    if (!lath || !bottomLath || height_mm <= 0) { return { totalWeight: 0, torqueWeight: 0, travelHeight: 0 }; }
+    
+    const lathCompressedHeight = parseFloat(lath['Compressed lath height']);
+    const bottomLathHeight = parseFloat(bottomLath['BLath height']) || 0;
+    const widthM = width_mm / 1000;
+    
+    // 1. Calculate Number of Laths (Geometric approximation)
+    const epSize = 300; 
+    const axleRadius = 60;
+    const guideHeight = height_mm - (epSize / 2);
+    let verticalToCover = Math.max(0, guideHeight - bottomLathHeight);
+    let numLaths = lathCompressedHeight > 0 ? Math.ceil(verticalToCover / lathCompressedHeight) : 0;
+    
+    // 2. Pre-fetch endlock data (DO THIS ONCE)
+    const castEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm cast'));
+    const windEndlockObj = endlockData.find(el => (el['Description'] || '').toLowerCase().includes('75mm wind'));
+    
+    const castWeightG = castEndlockObj ? (parseFloat(castEndlockObj['Weight in grams']) || 0) : 0;
+    const windWeightG = windEndlockObj ? (parseFloat(windEndlockObj['Weight in grams']) || 0) : 0;
+    
+    // 3. Mathematical Weight Calculation (NO LOOP)
+    let totalEndlockWeight = 0;
+    const isWindLath = (lath['Name'] || '').toLowerCase().includes('wind');
+    
+    if (isWindLath) {
+        // Cast endlocks every 2 laths
+        const castCount = Math.floor(numLaths / 2);
+        totalEndlockWeight += castCount * 2 * (castWeightG / 1000);
+        
+        // Wind endlocks at specific positions (2, 4, 6, 8, and every 8th after)
+        // This is a math pattern, not a loop
+        let windCount = 0;
+        if (numLaths >= 2) windCount += 1; // 2
+        if (numLaths >= 4) windCount += 1; // 4
+        if (numLaths >= 6) windCount += 1; // 6
+        if (numLaths >= 8) windCount += 1; // 8
+        if (numLaths > 8) windCount += Math.floor((numLaths - 8) / 8); 
+        
+        totalEndlockWeight += windCount * 2 * (windWeightG / 1000);
+    } else {
+        // Simple case: every 2 laths
+        totalEndlockWeight = Math.ceil(numLaths / 2) * 2 * (castWeightG / 1000);
+    }
+
+    // 4. Calculate Final Weights
+    let kgsPerM2 = parseFloat(lath['Kgs/ m2']) || 0;
+    if (isPowderCoated) kgsPerM2 += 0.5;
+    
+    const lathWeight = widthM * (numLaths * lathCompressedHeight / 1000) * kgsPerM2;
+    const bottomLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+    
+    const totalWeight = lathWeight + bottomLathWeight + totalEndlockWeight;
+    
+    // Torque calculation
+    let torqueWeight = totalWeight;
+    if (numLaths >= 3) {
+        const bufferWeight = 3 * (lathCompressedHeight / 1000) * widthM * kgsPerM2;
+        torqueWeight -= bufferWeight;
+    }
+
+    return { totalWeight, torqueWeight, travelHeight: height_mm - bottomLathHeight };
+}
+
     function findBestAxleHeadless(totalWeightKgs, totalLength, lath, width_mm) {
          if (totalLength <= 0 || axleData.length === 0) { return { name: 'null', deflection: 0, axleObj: null }; }
         const axlesForShape = axleData.filter(axle => (axle.Shape || 'circular').toLowerCase().trim() === 'circular');
@@ -6196,166 +6260,269 @@ function calculateCurtainProperties(lath, bottomLath, axle, curtainWidth, passed
         }
     }
 
-    function calculateTorqueHeadless(torqueWeight, lath, travelHeight, axle, width_mm, bottomLath, baseline_friction, matchAxleDia, overrideCollarDia, height_mm, motorObj, isReverseCoil) {
-        if (!lath || !axle || !bottomLath || travelHeight <= 0 || torqueWeight <= 0) return 0;
-        const lathThickness = parseFloat(lath['Thickness']) || 0;
-        let effectiveStartDiameter = getEffectiveCoilDiameter(axle);
-        if (matchAxleDia > 0 && overrideCollarDia > 0) {
-            const currentAxleDia = parseFloat(axle['Diameter']) || 0;
-            if (Math.abs(currentAxleDia - matchAxleDia) < 2.0) {
-                effectiveStartDiameter = Math.max(effectiveStartDiameter, overrideCollarDia);
-            }
-        }
-        const bottomLathWeightActual = (width_mm / 1000) * (parseFloat(bottomLath['BLath weight / m length']) || 0);
-        const lathsWeight = torqueWeight - bottomLathWeightActual;
+/**
+ * 1. COMPREHENSIVE HEADLESS CALCULATION
+ * Syncs Friction, Reverse Coil, and Axle Selection logic with the Main UI
+ */
+function calculateSystemHeadless(width, height, lath, bottomLath, endlock, isPC, useReverse) {
+    // A. Basic Stats
+    const props = calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width, height, isPC);
+    
+    // B. Axle Selection (Respects Width Limits)
+    const axleRes = findBestAxleHeadless(props.totalWeight, width + 20, lath, width);
+    const axle = axleRes.axleObj;
+
+    // C. Torque Calculation
+    const lathThickness = parseFloat(lath['Thickness']) || 0;
+    const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+    const collarSize = parseFloat(dom.collarSize.value) || 0;
+    const startDia = Math.max(axleCoilDiameter, collarSize);
+    
+    const widthM = width / 1000;
+    const bLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+    const lathsWeight = props.torqueWeight - bLathWeight;
+    
+    let heightLifted = 0;
+    let currentRollDiameter = startDia;
+    let maxTorqueFound = 0;
+    let halfRevs = 0;
+    
+    while (heightLifted < props.travelHeight) {
+        let t = lathThickness;
+        if (useReverse && halfRevs < 4) t += 10;
         
-        let heightLifted = 0;
-        let currentRollDiameter = effectiveStartDiameter;
-        let maxTorqueFound = 0;
-        let halfRevs = 0;
+        const force = ((lathsWeight * (1 - heightLifted/props.travelHeight)) + bLathWeight) * 9.81;
+        const radiusM = ((currentRollDiameter + t) / 2) / 1000;
+        maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
         
-        while (heightLifted < travelHeight) {
-            let currentLathThickness = lathThickness;
-            if (isReverseCoil && halfRevs < 4) {
-                currentLathThickness += 10;
-            }
-            
-            const force = ( (lathsWeight * (1 - heightLifted/travelHeight)) + bottomLathWeightActual) * 9.81;
-            const radiusM = ((currentRollDiameter + currentLathThickness) / 2) / 1000;
-            maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
-            
-            heightLifted += (Math.PI * currentRollDiameter) / 2; 
-            currentRollDiameter += currentLathThickness;
-            halfRevs++;
-            if (halfRevs > 500) break;
-        }
-        
-        let totalFriction = baseline_friction;
-        if (height_mm >= 7000) totalFriction += 5;
-        if (motorObj) {
-            const usageKey = Object.keys(motorObj).find(k => k.toLowerCase().trim() === 'usage type');
-            const usage = usageKey ? (motorObj[usageKey] || '').toLowerCase() : '';
-            if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
-                totalFriction += 5;
-            }
-        }
-        return maxTorqueFound * (1 + totalFriction / 100);
+        heightLifted += (Math.PI * currentRollDiameter) / 2; 
+        currentRollDiameter += t;
+        halfRevs++;
+        if (halfRevs > 500) break;
     }
 
-    async function generateCsvReport() {
-        const statusDiv = document.getElementById('csv-generation-status');
-        statusDiv.textContent = 'Starting report generation...'; statusDiv.style.color = 'blue';
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const minWidth = parseInt(document.getElementById('reportMinWidth').value);
-        const maxWidth = parseInt(document.getElementById('reportMaxWidth').value);
-        const minHeight = parseInt(document.getElementById('reportMinHeight').value);
-        const maxHeight = parseInt(document.getElementById('reportMaxHeight').value);
-        const interval = parseInt(document.getElementById('reportInterval').value);
-        const reportAxleMatch = parseFloat(document.getElementById('reportAxleMatch').value) || 0;
-        const reportCollarOverride = parseFloat(document.getElementById('reportCollarOverride').value) || 0;
-        
-        const isReportPowderCoated = document.getElementById('reportPowderCoated').checked;
-        const isReportReverseCoilChecked = document.getElementById('reportReverseCoil').checked;
+    // D. Friction Logic (UI Sync)
+    const frictionKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'friction %');
+    let totalFriction = frictionKey ? (parseFloat(lath[frictionKey]) || 0) : 10;
+    if (height >= 7000) totalFriction += 5;
 
-        const lathIndex1 = document.getElementById('reportLathType').value;
-        const lathIndex2 = document.getElementById('reportLathType2').value;
-        const switchLimit = document.getElementById('reportLathLimit').value ? parseInt(document.getElementById('reportLathLimit').value) : Infinity; 
-        const endlockIndex = document.getElementById('reportEndlockType').value;
-        const bottomLathIndex = document.getElementById('reportBottomLathType').value;
-        if (lathIndex1 === "" || endlockIndex === "" || bottomLathIndex === "") {
-            statusDiv.textContent = 'Error: Missing selections.'; statusDiv.style.color = 'red'; return;
-        }
-        const primaryLath = lathData[lathIndex1];
-        const secondaryLath = (lathIndex2 !== "") ? lathData[lathIndex2] : primaryLath; 
-        const selectedEndlock = endlockData[endlockIndex];
-        const selectedBottomLath = bottomLathData[bottomLathIndex];
-        const getSelectedValues = (className) => Array.from(document.querySelectorAll(`.${className}:checked`)).map(cb => cb.value);
-        const selectedManufacturers = getSelectedValues('report-motor-checkbox');
-        const selectedVoltages = getSelectedValues('report-voltage-checkbox');
-        const selectedMountings = getSelectedValues('report-mounting-checkbox');
-        const selectedUsageTypes = getSelectedValues('report-usage-checkbox');
-        
-        let manufacturerKey = '', voltageKey = '', mountingKey = '', usageKey = '';
-        if (motorData.length > 0) {
-            const firstMotor = motorData[0];
-            manufacturerKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'manufacturer');
-            voltageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'voltage');
-            mountingKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'mounting type');
-            usageKey = Object.keys(firstMotor).find(k => k.toLowerCase().trim() === 'usage type');
-        }
-        const calculationCache = {};
-        const defaultAdditionalLength = 20; 
+    const totalRevs = halfRevs / 2;
+    const finalTorque = maxTorqueFound * (1 + totalFriction / 100);
 
-        for (let width = minWidth; width <= maxWidth; width += interval) {
-            calculationCache[width] = {};
-            const currentLath = (width > switchLimit) ? secondaryLath : primaryLath;
-            
-            const revKey = Object.keys(currentLath).find(k => k.toLowerCase().trim() === 'reversible');
-            const isReversible = revKey && String(currentLath[revKey]).toLowerCase().trim() === 'yes';
-            const useReverseCoil = isReportReverseCoilChecked && isReversible;
+    return {
+        torque: finalTorque,
+        weight: props.totalWeight,
+        axleName: axleRes.name,
+        deflection: axleRes.deflection,
+        revs: totalRevs
+    };
+}
 
-            for (let height = minHeight; height <= maxHeight; height += interval) {
-                const props = calculateCurtainPropertiesHeadless(currentLath, selectedBottomLath, selectedEndlock, width, height, isReportPowderCoated);
-                const axleResult = findBestAxleHeadless(props.totalWeight, width + defaultAdditionalLength, currentLath, width);
-                const defaultFriction = parseFloat(currentLath['Friction %']) || 10;
-                
-                const result = {
-                    'Lath Type Used': currentLath.Name, 
-                    'Total Weight (kg)': props.totalWeight.toFixed(2),
-                    'Required Axle Name': axleResult.name,
-                    'Axle Deflection (mm)': axleResult.deflection.toFixed(2)
-                };
+/**
+ * GENERATE MULTI-GROUP GRID REPORT (Including Usage Type)
+ * Creates separate Width x Height tables for every combination of
+ * Mounting Type, Voltage, Manufacturer, and Usage Type.
+ */
+async function generateCsvReport() {
+    const statusDiv = document.getElementById('csv-generation-status');
+    statusDiv.textContent = 'Analyzing combinations...';
+    statusDiv.style.color = 'blue';
 
-                for (const usage of selectedUsageTypes) {
-                    for (const man of selectedManufacturers) {
-                        for (const vol of selectedVoltages) {
-                            for (const mou of selectedMountings) {
-                                const scenarioName = `${usage} - ${man} (${vol}, ${mou})`;
-                                const sampleMotor = motorData.find(m => {
-                                    const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
-                                    const volMatch = motorVoltages.includes(String(vol));
-                                    return m[usageKey] == usage && m[manufacturerKey] == man && volMatch && m[mountingKey] == mou;
-                                });
+    // 1. Get Range Settings
+    const minW = parseInt(document.getElementById('reportMinWidth').value);
+    const maxW = parseInt(document.getElementById('reportMaxWidth').value);
+    const minH = parseInt(document.getElementById('reportMinHeight').value);
+    const maxH = parseInt(document.getElementById('reportMaxHeight').value);
+    const interval = parseInt(document.getElementById('reportInterval').value);
+    
+    // 2. Get Product Settings
+    const primaryLath = lathData[document.getElementById('reportLathType').value];
+    const secondaryLathIdx = document.getElementById('reportLathType2').value;
+    const secondaryLath = secondaryLathIdx !== "" ? lathData[secondaryLathIdx] : null;
+    const switchWidth = parseInt(document.getElementById('reportLathLimit').value) || 99999;
+    const bottomLath = bottomLathData[document.getElementById('reportBottomLathType').value];
+    const endlock = endlockData[document.getElementById('reportEndlockType').value];
+    const isPC = document.getElementById('reportPowderCoated').checked;
+    const useReverse = document.getElementById('reportReverseCoil').checked;
+
+    // 3. Get Checked Filters from Admin UI
+    const selectedMounts = Array.from(document.querySelectorAll('.report-mounting-checkbox:checked')).map(cb => cb.value);
+    const selectedVolts = Array.from(document.querySelectorAll('.report-voltage-checkbox:checked')).map(cb => cb.value);
+    const selectedMfrs = Array.from(document.querySelectorAll('.report-motor-checkbox:checked')).map(cb => cb.value);
+    const selectedUsages = Array.from(document.querySelectorAll('.report-usage-checkbox:checked')).map(cb => cb.value);
+
+    // 4. Create Grid Axis
+    const widths = [];
+    for (let w = minW; w <= maxW; w += interval) widths.push(w);
+    const heights = [];
+    for (let h = minH; h <= maxH; h += interval) heights.push(h);
+
+    const fullCsvRows = [];
+    const techCache = new Map();
+
+    // 5. GENERATE MOTOR TABLES (Quadruple Nesting: Mount > Volt > Mfr > Usage)
+    statusDiv.textContent = 'Generating motor grids...';
+    
+    for (const mount of selectedMounts) {
+        for (const volt of selectedVolts) {
+            for (const mfr of selectedMfrs) {
+                for (const usage of selectedUsages) {
+                    
+                    // Filter motors strictly for THIS specific table
+                    const groupMotors = motorData.filter(m => {
+                        const voltKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'voltage');
+                        const mfrKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'manufacturer');
+                        const usageKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'usage type');
+                        const motorVoltages = String(m[voltKey] || '').split('/').map(v => v.trim());
+                        
+                        return m['Mounting type'] === mount && 
+                               m[mfrKey] === mfr && 
+                               m[usageKey] === usage &&
+                               motorVoltages.includes(volt);
+                    });
+
+                    // Only create the table if there are actually motors in this category
+                    if (groupMotors.length > 0) {
+                        fullCsvRows.push([`MOTOR CHART: ${mfr} | ${mount} | ${volt} | USAGE: ${usage}`]);
+                        fullCsvRows.push(["Height \\ Width", ...widths]);
+
+                        heights.forEach(h => {
+                            const row = [h];
+                            widths.forEach(w => {
+                                // Calculate tech data specifically for this usage (to account for +5% friction if high speed)
+                                const cacheKey = `${w}-${h}-${usage}`;
+                                let sys;
+                                if (techCache.has(cacheKey)) {
+                                    sys = techCache.get(cacheKey);
+                                } else {
+                                    const activeLath = (w > switchWidth && secondaryLath) ? secondaryLath : primaryLath;
+                                    // We create a dummy motor object to pass the usage type into the headless calculator
+                                    const dummyMotor = { "Usage type": usage };
+                                    sys = calculateSystemHeadless(w, h, activeLath, bottomLath, endlock, isPC, useReverse, dummyMotor);
+                                    techCache.set(cacheKey, sys);
+                                }
+
+                                // Find smallest passing motor
+                                const best = groupMotors
+                                    .filter(m => sys.torque >= (parseFloat(m['Torque (Nm) min']) || 0) && 
+                                                 sys.torque <= (parseFloat(m['Torque (Nm) max']) || Infinity))
+                                    .sort((a,b) => (parseFloat(a['Torque (Nm) max']) || 0) - (parseFloat(b['Torque (Nm) max']) || 0))[0];
                                 
-                                const reqTorque = calculateTorqueHeadless(props.torqueWeight, currentLath, props.travelHeight, axleResult.axleObj, width, selectedBottomLath, defaultFriction, reportAxleMatch, reportCollarOverride, height, sampleMotor, useReverseCoil);
-
-                                const suitableMotors = motorData.filter(m => {
-                                    const motorVoltages = String(m[voltageKey] || '').split('/').map(v => v.trim());
-                                    const volMatch = motorVoltages.includes(String(vol));
-                                    return m[usageKey] == usage && m[manufacturerKey] == man && volMatch && m[mountingKey] == mou && reqTorque > 0 && reqTorque >= parseFloat(m['Torque (Nm) min']) && reqTorque <= parseFloat(m['Torque (Nm) max']);
-                                }).sort((a,b) => parseFloat(a['Torque (Nm) max']) - parseFloat(b['Torque (Nm) max']));
-                                
-                                result[`Motor: ${scenarioName}`] = suitableMotors.length > 0 ? suitableMotors[0].Name : 'null';
-                            }
-                        }
+                                row.push(best ? best.Name : "---");
+                            });
+                            fullCsvRows.push(row);
+                        });
+                        fullCsvRows.push([]); 
+                        fullCsvRows.push([]);
                     }
                 }
-                calculationCache[width][height] = result;
             }
         }
-
-        const csvData = [];
-        const widthHeaders = ['Height \\ Width'];
-        for (let w = minWidth; w <= maxWidth; w += interval) { widthHeaders.push(w); }
-        const tableTypes = Object.keys(calculationCache[minWidth][minHeight]);
-        
-        for (const tableType of tableTypes) {
-            csvData.push([`Data: ${tableType}`]);
-            csvData.push(widthHeaders);
-            for (let height = minHeight; height <= maxHeight; height += interval) {
-                const row = [height];
-                for (let width = minWidth; width <= maxWidth; width += interval) {
-                    row.push(calculationCache[width]?.[height]?.[tableType] || 'N/A');
-                }
-                csvData.push(row);
-            }
-            csvData.push([]); 
-        }
-
-        downloadCsv(csvData);
-        statusDiv.textContent = 'Report generated and downloaded.'; 
-        statusDiv.style.color = 'green';
     }
+
+    // 6. GENERATE SHARED TECHNICAL TABLES (Reference only)
+    const createTechTable = (title, cacheKeyProp) => {
+        fullCsvRows.push([`REFERENCE: ${title} (Standard Usage)`]);
+        fullCsvRows.push(["Height \\ Width", ...widths]);
+        heights.forEach(h => {
+            const row = [h];
+            widths.forEach(w => {
+                // We use "Standard" as the baseline reference for the technical tables
+                const activeLath = (w > switchWidth && secondaryLath) ? secondaryLath : primaryLath;
+                const sys = calculateSystemHeadless(w, h, activeLath, bottomLath, endlock, isPC, useReverse, { "Usage type": "Standard" });
+                row.push(sys[cacheKeyProp]);
+            });
+            fullCsvRows.push(row);
+        });
+        fullCsvRows.push([]);
+        fullCsvRows.push([]);
+    };
+
+    createTechTable("REQUIRED TORQUE (Nm)", "torque");
+    createTechTable("AXLE SELECTION", "axleName");
+    createTechTable("TOTAL WEIGHT (kg)", "weight");
+
+    // 7. DOWNLOAD
+    downloadCsv(fullCsvRows);
+    statusDiv.textContent = 'Complete! CSV Downloaded.';
+    statusDiv.style.color = 'green';
+}
+
+/**
+ * Update the Headless System Calculator to accept the motor object
+ */
+function calculateSystemHeadless(width, height, lath, bottomLath, endlock, isPC, useReverse, motorObj) {
+    const props = calculateCurtainPropertiesHeadless(lath, bottomLath, endlock, width, height, isPC);
+    const axleRes = findBestAxleHeadless(props.totalWeight, width + 20, lath, width);
+    const axle = axleRes.axleObj;
+
+    const lathThickness = parseFloat(lath['Thickness']) || 0;
+    const axleCoilDiameter = getEffectiveCoilDiameter(axle);
+    const collarSize = parseFloat(dom.collarSize.value) || 0;
+    const startDia = Math.max(axleCoilDiameter, collarSize);
+    
+    const widthM = width / 1000;
+    const bLathWeight = widthM * (parseFloat(bottomLath['BLath weight / m length']) || 0);
+    const lathsWeight = props.torqueWeight - bLathWeight;
+    
+    let heightLifted = 0;
+    let currentRollDiameter = startDia;
+    let maxTorqueFound = 0;
+    let halfRevs = 0;
+    
+    while (heightLifted < props.travelHeight) {
+        let t = lathThickness;
+        if (useReverse && halfRevs < 4) t += 10;
+        const force = ((lathsWeight * (1 - heightLifted/props.travelHeight)) + bLathWeight) * 9.81;
+        const radiusM = ((currentRollDiameter + t) / 2) / 1000;
+        maxTorqueFound = Math.max(maxTorqueFound, force * radiusM);
+        heightLifted += (Math.PI * currentRollDiameter) / 2; 
+        currentRollDiameter += t;
+        halfRevs++;
+        if (halfRevs > 500) break;
+    }
+
+    // --- Friction Logic Synced with Main UI ---
+    const frictionKey = Object.keys(lath).find(k => k.toLowerCase().trim() === 'friction %');
+    let totalFriction = frictionKey ? (parseFloat(lath[frictionKey]) || 0) : 10;
+
+    if (height >= 7000) totalFriction += 5; // Height Penalty
+    
+    if (motorObj) {
+        const usageKey = Object.keys(motorObj).find(k => k.toLowerCase().trim() === 'usage type');
+        const usage = usageKey ? (String(motorObj[usageKey])).toLowerCase() : '';
+        // If Usage Type contains "high speed", "hi " or "high performance", add 5%
+        if (usage.includes('high') || usage.includes('hi ') || usage.includes('speed')) {
+            totalFriction += 5;
+        }
+    }
+
+    return {
+        torque: maxTorqueFound * (1 + totalFriction / 100),
+        weight: props.totalWeight,
+        axleName: axleRes.name,
+        deflection: axleRes.deflection,
+        revs: halfRevs / 2
+    };
+}
+
+function downloadCsv(data) {
+    let csvContent = "\uFEFF"; // Byte Order Mark for Excel UTF-8 support
+    data.forEach(rowArray => {
+        const row = rowArray.map(item => {
+            const str = String(item).replace(/"/g, '""');
+            return `"${str}"`;
+        }).join(",");
+        csvContent += row + "\r\n";
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", "Shutter_Grid_Sizing_Report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
     function downloadCsv(data) {
         let csvContent = "data:text/csv;charset=utf-8,";
