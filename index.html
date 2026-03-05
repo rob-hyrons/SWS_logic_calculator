@@ -1158,6 +1158,9 @@ const dom = {};[
                         if (selectedLath && selectedLath['Friction %'] !== undefined) {
                             dom.friction.value = selectedLath['Friction %'];
                         }
+    if (typeof filterMotorUsageByLath === 'function') {
+        filterMotorUsageByLath(dom.lathType.value);
+    }
                     }
                     updateAllCalculations();
                 });
@@ -1279,7 +1282,7 @@ if (dom.dxfButton) {
             try {
                 const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
                 const required = {
-                    'Lath':['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter', 'reversible'],
+                    'Lath':['Name', 'Kgs/ m2', 'Thickness', 'Compressed lath height', 'uncompressed lath height', 'Friction %', 'Max Width', 'Lath image', 'Moment of inertia iy', 'Allowable Bending Stress (MPa)', 'vision percentage', 'min axle diameter', 'reversible', 'Motor usage type available'],
                     'Bottom lath':['Bottom lath name', 'BLath height'],
                     'Axles':['Name', 'Diameter', 'Wall Thickness', 'Material grade', "Density (kg/m3)", 'Shape'],
                     'Motors':['Name', 'Torque (Nm) min', 'Torque (Nm) max', 'RPM', 'Mounting type', 'Wattage', 'Voltage', 'Manufacturer', 'Usage type', 'Manual override', 'Motor image', 'Limit turn', 'Driveshaft diameter mm'],
@@ -1356,8 +1359,19 @@ if (dom.dxfButton) {
                 populateMotorMountingTypes();
                 populateMotorVoltageFilter();
                 populateMotorManufacturerFilter();
+				// ADD A SMALL DELAY TO ENSURE DOM IS READY
+setTimeout(() => {
+    filterMotorUsageByLath(dom.lathType.value);
+    updateAllCalculations();
+}, 100); 
+
+populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');
                 populateMotorUsageFilter();
                 populateMotorManualOverrideFilter();
+				// This runs the filter for the *initially selected* lath
+filterMotorUsageByLath(dom.lathType.value); 
+updateAllCalculations(); // Ensure everything reflects the filtered usage
+// ---------------------------
                 populateDropdown(dom.wicketDoorSelector, wicketData, 'Name');['lathType', 'guideType', 'bottomLathType', 'visionLathType', 'motorMountingType', 'motorVoltageFilter', 'motorManufacturerFilter', 'motorUsageFilter', 'motorManualOverrideFilter', 'safetyBrakeSelector', 'axleType', 'endplateSelector', 'wicketDoorSelector', 'endlockType'].forEach(id => {
                     if(dom[id]) dom[id].disabled = false;
                 });
@@ -1375,6 +1389,46 @@ if (dom.dxfButton) {
                 lathData = []; axleData = []; motorData = []; bottomLathData =[]; safetyBrakeData = []; endplateData = []; wicketData = []; endlockData = []; guideData = []; chainDriveData =[]; bearingData =[];
             }
         }
+function filterMotorUsageByLath(selectedLathIndex) {
+    const usageSelect = dom.motorUsageFilter;
+    if (!usageSelect || !lathData || lathData.length === 0) return;
+
+    let allowedUsages = [];
+    if (selectedLathIndex !== "" && lathData[selectedLathIndex]) {
+        const lath = lathData[selectedLathIndex];
+        // Use a case-insensitive key lookup
+        const key = Object.keys(lath).find(k => k.toLowerCase().trim() === 'motor usage type available');
+        if (key && lath[key]) {
+            // Split by comma and clean
+            allowedUsages = String(lath[key]).split(',').map(s => s.trim().toLowerCase());
+        }
+    }
+
+    // If lath has no restriction, show everything
+    const isRestricted = allowedUsages.length > 0 && !allowedUsages.includes('all');
+
+    Array.from(usageSelect.options).forEach(option => {
+        if (option.value === "") {
+            option.style.display = 'block'; // Always keep "All Usage Types"
+            return;
+        }
+
+        if (isRestricted) {
+            const optionValue = option.value.toLowerCase().trim();
+            // Check if this option is included in the allowed list
+            option.style.display = allowedUsages.includes(optionValue) ? 'block' : 'none';
+        } else {
+            option.style.display = 'block';
+        }
+    });
+
+    // If the currently selected value is now hidden, reset to "" (All)
+    const currentVal = usageSelect.value.toLowerCase().trim();
+    if (isRestricted && currentVal !== "" && !allowedUsages.includes(currentVal)) {
+        usageSelect.value = "";
+    }
+}
+
 
         function handleCsvImport() {
             const csvFileInput = document.getElementById('csvFileInput');
@@ -1792,6 +1846,56 @@ function filterBottomLathDropdown(selectedLathIndex) {
     // Fallback: If nothing is selected, default to the first valid item
     if (dom.bottomLathType.options.length > 1) {
         dom.bottomLathType.selectedIndex = 1;
+    }
+}
+
+function filterMotorUsageByLath(selectedLathIndex) {
+    const usageSelect = dom.motorUsageFilter;
+    if (!usageSelect || !lathData || lathData.length === 0) return;
+
+    // 1. Get requirements
+    let allowedUsages = [];
+    if (selectedLathIndex !== "" && lathData[selectedLathIndex]) {
+        const lath = lathData[selectedLathIndex];
+        const key = Object.keys(lath).find(k => k.toLowerCase().trim() === 'motor usage type available');
+        if (key && lath[key]) {
+            allowedUsages = String(lath[key]).split(',').map(s => s.trim().toLowerCase());
+        }
+    }
+
+    // 2. Check if restricted
+    const isRestricted = allowedUsages.length > 0 && !allowedUsages.includes('all');
+    let visibleCount = 0;
+
+    // 3. Filter
+    Array.from(usageSelect.options).forEach(option => {
+        if (option.value === "") {
+            option.style.display = 'block'; 
+            return;
+        }
+        
+        if (isRestricted) {
+            const optionValue = option.value.toLowerCase().trim();
+            const isMatch = allowedUsages.includes(optionValue);
+            option.style.display = isMatch ? 'block' : 'none';
+            if (isMatch) visibleCount++;
+        } else {
+            option.style.display = 'block';
+            visibleCount++;
+        }
+    });
+
+    // 4. Safety Override: If filter hid everything, show all (Prevents user from being stuck)
+    if (visibleCount === 0 && isRestricted) {
+        console.warn("Filter matched zero items, showing all for safety.");
+        Array.from(usageSelect.options).forEach(o => o.style.display = 'block');
+    }
+
+    // 5. Reset if current selection is invalid
+    const currentVal = usageSelect.value.toLowerCase().trim();
+    if (isRestricted && currentVal !== "" && !allowedUsages.includes(currentVal)) {
+        usageSelect.value = "";
+        updateAllCalculations();
     }
 }
 
