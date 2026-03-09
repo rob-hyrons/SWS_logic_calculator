@@ -286,6 +286,15 @@
 </head>
 
 <body>
+<!-- Password Overlay -->
+<div id="password-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center;">
+    <div style="text-align:center; padding:20px; border:1px solid #ccc; border-radius:8px;">
+        <h3>Authentication Required</h3>
+        <input type="password" id="page-password" placeholder="Enter Password" style="width:200px; margin-bottom:10px;">
+        <button onclick="checkPassword()" style="padding:8px 16px; background:#007bff; color:white; border:none; cursor:pointer;">Login</button>
+        <p id="password-error" style="color:red; display:none;">Incorrect password</p>
+    </div>
+</div>
     <img src="https://raw.githubusercontent.com/rob-hyrons/SWS_logic_calculator/main/swslogo.svg" alt="SWS Logo" id="logo-image">
     <div class="container">
         <div class="tabs">
@@ -7513,6 +7522,26 @@ function exportConfigurationJson() {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 }
+
+function checkPassword() {
+    const passwordInput = document.getElementById('page-password').value;
+    const errorMsg = document.getElementById('password-error');
+    
+    // Set your password here
+    if (passwordInput === "SWS321!$") {
+        document.getElementById('password-overlay').style.display = 'none';
+    } else {
+        errorMsg.style.display = 'block';
+    }
+}
+
+// Optional: Allow pressing "Enter" key
+document.getElementById('page-password').addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        checkPassword();
+    }
+});
+
 
 </script>
 </body>
