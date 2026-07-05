@@ -6436,6 +6436,9 @@ function calculateSystemHeadless(width, height, lath, bottomLath, endlock, isPC,
  * Creates separate Width x Height tables for every combination of
  * Mounting Type, Voltage, Manufacturer, and Usage Type.
  */
+/**
+ * GENERATE MULTI-GROUP GRID REPORT (Including Safety Brake)
+ */
 async function generateCsvReport() {
     const statusDiv = document.getElementById('csv-generation-status');
     statusDiv.textContent = 'Analyzing combinations...';
@@ -6473,15 +6476,14 @@ async function generateCsvReport() {
     const fullCsvRows = [];
     const techCache = new Map();
 
-    // 5. GENERATE MOTOR TABLES (Quadruple Nesting: Mount > Volt > Mfr > Usage)
-    statusDiv.textContent = 'Generating motor grids...';
+    // 5. GENERATE MOTOR TABLES (Now including Safety Brake in the cell)
+    statusDiv.textContent = 'Generating motor and brake grids...';
     
     for (const mount of selectedMounts) {
         for (const volt of selectedVolts) {
             for (const mfr of selectedMfrs) {
                 for (const usage of selectedUsages) {
                     
-                    // Filter motors strictly for THIS specific table
                     const groupMotors = motorData.filter(m => {
                         const voltKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'voltage');
                         const mfrKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'manufacturer');
@@ -6494,34 +6496,54 @@ async function generateCsvReport() {
                                motorVoltages.includes(volt);
                     });
 
-                    // Only create the table if there are actually motors in this category
                     if (groupMotors.length > 0) {
-                        fullCsvRows.push([`MOTOR CHART: ${mfr} | ${mount} | ${volt} | USAGE: ${usage}`]);
+                        fullCsvRows.push([`MOTOR & BRAKE CHART: ${mfr} | ${mount} | ${volt} | USAGE: ${usage}`]);
                         fullCsvRows.push(["Height \\ Width", ...widths]);
 
                         heights.forEach(h => {
                             const row = [h];
                             widths.forEach(w => {
-                                // Calculate tech data specifically for this usage (to account for +5% friction if high speed)
                                 const cacheKey = `${w}-${h}-${usage}`;
                                 let sys;
                                 if (techCache.has(cacheKey)) {
                                     sys = techCache.get(cacheKey);
                                 } else {
                                     const activeLath = (w > switchWidth && secondaryLath) ? secondaryLath : primaryLath;
-                                    // We create a dummy motor object to pass the usage type into the headless calculator
                                     const dummyMotor = { "Usage type": usage };
                                     sys = calculateSystemHeadless(w, h, activeLath, bottomLath, endlock, isPC, useReverse, dummyMotor);
                                     techCache.set(cacheKey, sys);
                                 }
 
                                 // Find smallest passing motor
-                                const best = groupMotors
+                                const bestMotor = groupMotors
                                     .filter(m => sys.torque >= (parseFloat(m['Torque (Nm) min']) || 0) && 
                                                  sys.torque <= (parseFloat(m['Torque (Nm) max']) || Infinity))
                                     .sort((a,b) => (parseFloat(a['Torque (Nm) max']) || 0) - (parseFloat(b['Torque (Nm) max']) || 0))[0];
                                 
-                                row.push(best ? best.Name : "---");
+                                if (bestMotor) {
+                                    // Calculate matching safety brake for this motor
+                                    const motorMaxTorque = parseFloat(bestMotor['Torque (Nm) max']) || 0;
+                                    const brakeKey = Object.keys(bestMotor).find(k => k.toLowerCase().includes('requires additional saftey brake'));
+                                    const needsBrake = brakeKey ? String(bestMotor[brakeKey]).toLowerCase().trim() !== "no" : true;
+
+                                    let brakeName = "N/A";
+                                    if (needsBrake && safetyBrakeData.length > 0) {
+                                        const suitableBrake = safetyBrakeData.filter(brake => {
+                                            const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
+                                            const opTorque = parseFloat(brake[opTorqueKey]) || 0;
+                                            return opTorque >= motorMaxTorque;
+                                        }).sort((a,b) => {
+                                            const opA = parseFloat(a[Object.keys(a).find(k => k.toLowerCase().includes('operating torque'))]) || 0;
+                                            const opB = parseFloat(b[Object.keys(b).find(k => k.toLowerCase().includes('operating torque'))]) || 0;
+                                            return opA - opB;
+                                        })[0];
+                                        brakeName = suitableBrake ? suitableBrake.Name : "REQUIRED - NOT FOUND";
+                                    }
+
+                                    row.push(`${bestMotor.Name} / ${brakeName}`);
+                                } else {
+                                    row.push("---");
+                                }
                             });
                             fullCsvRows.push(row);
                         });
@@ -6533,17 +6555,16 @@ async function generateCsvReport() {
         }
     }
 
-    // 6. GENERATE SHARED TECHNICAL TABLES (Reference only)
-    const createTechTable = (title, cacheKeyProp) => {
-        fullCsvRows.push([`REFERENCE: ${title} (Standard Usage)`]);
+    // 6. GENERATE SHARED TECHNICAL TABLES
+    const createTechTable = (title, displayFn) => {
+        fullCsvRows.push([`REFERENCE: ${title}`]);
         fullCsvRows.push(["Height \\ Width", ...widths]);
         heights.forEach(h => {
             const row = [h];
             widths.forEach(w => {
-                // We use "Standard" as the baseline reference for the technical tables
                 const activeLath = (w > switchWidth && secondaryLath) ? secondaryLath : primaryLath;
                 const sys = calculateSystemHeadless(w, h, activeLath, bottomLath, endlock, isPC, useReverse, { "Usage type": "Standard" });
-                row.push(sys[cacheKeyProp]);
+                row.push(displayFn(sys));
             });
             fullCsvRows.push(row);
         });
@@ -6551,9 +6572,23 @@ async function generateCsvReport() {
         fullCsvRows.push([]);
     };
 
-    createTechTable("REQUIRED TORQUE (Nm)", "torque");
-    createTechTable("AXLE SELECTION", "axleName");
-    createTechTable("TOTAL WEIGHT (kg)", "weight");
+    createTechTable("REQUIRED TORQUE (Nm)", (s) => s.torque.toFixed(1));
+    createTechTable("AXLE SELECTION", (s) => s.axleName);
+    createTechTable("TOTAL WEIGHT (kg)", (s) => s.weight.toFixed(1));
+    
+    // Dedicated Safety Brake Reference Table
+    createTechTable("RECOMMENDED SAFETY BRAKE (Based on Required Torque)", (sys) => {
+        if (safetyBrakeData.length === 0) return "No Brake Data";
+        const suitableBrake = safetyBrakeData.filter(brake => {
+            const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
+            return (parseFloat(brake[opTorqueKey]) || 0) >= sys.torque;
+        }).sort((a,b) => {
+            const opA = parseFloat(a[Object.keys(a).find(k => k.toLowerCase().includes('operating torque'))]) || 0;
+            const opB = parseFloat(b[Object.keys(b).find(k => k.toLowerCase().includes('operating torque'))]) || 0;
+            return opA - opB;
+        })[0];
+        return suitableBrake ? suitableBrake.Name : "OVER CAPACITY";
+    });
 
     // 7. DOWNLOAD
     downloadCsv(fullCsvRows);
