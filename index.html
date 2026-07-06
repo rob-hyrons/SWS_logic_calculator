@@ -1071,6 +1071,8 @@
     
     <script>
         let lathData = [], axleData =[], motorData = [], bottomLathData = [], safetyBrakeData = [], endplateData = [], wicketData =[], endlockData = [], guideData = [], chainDriveData = [], bearingData =[];
+		let userSelectedAxleIndex = null;
+		let userSelectedEndplateIndex = null; // Added line
         let lathImageMap = new Map();
         let safetyBrakeImageMap = new Map();
         let motorImageMap = new Map();
@@ -1079,7 +1081,7 @@
         let currentFilteredMotors = [], currentFilteredEndplates =[];
         let calculatedRotations = 0, maxCoilDiameter = 0;
         let lastTorqueProfile =[];
-        let userSelectedAxleIndex = null;
+
         let visionCalcs = null; 
         
 const dom = {};[
@@ -1155,6 +1157,7 @@ const dom = {};[
                     // Reset manual axle ONLY if shape or weight-bearing dimensions change
                     if (['width', 'height', 'widthType', 'lathType', 'bottomLathType', 'shapeCircular', 'shapeOctagonal', 'powderCoated', 'useCustomLath', 'customLathWeight'].includes(id)) {
                         userSelectedAxleIndex = null;
+						userSelectedEndplateIndex = null;
                     }
 
                     if (id === 'useCustomLath') {
@@ -1188,10 +1191,12 @@ if (dom.axleType) {
 
 // --- ADD THIS NEW SECTION HERE: MANUAL ENDPLATE OVERRIDE LISTENER ---
 if (dom.endplateSelector) {
-    dom.endplateSelector.addEventListener('change', () => {
-        // This ensures the Inputs page widths and plan graphic 
-        // update when you pick a different endplate size/offset
-        updateAllCalculations();
+    dom.endplateSelector.addEventListener('change', (e) => {
+        if (e.target.value !== "" && e.target.value !== null) {
+            // Set the flag so the auto-calculator knows the user has taken control
+            userSelectedEndplateIndex = parseInt(e.target.value, 10);
+            updateAllCalculations();
+        } // <--- Added this missing closing brace
     });
 }
         
@@ -1668,7 +1673,11 @@ function getCalculatedWidths() {
     let epSize = 0;
 
     // 1. Get Endplate Specs (Offset and Size) from current selection
-    if (selectedEndplateIndex !== "" && currentFilteredEndplates[selectedEndplateIndex]) {
+    // ADDED SAFETY: Check if array exists and index is valid
+    if (selectedEndplateIndex !== "" && 
+        currentFilteredEndplates && 
+        currentFilteredEndplates[selectedEndplateIndex]) {
+        
         const ep = currentFilteredEndplates[selectedEndplateIndex];
         const offsetKey = Object.keys(ep).find(k => k.toLowerCase().trim() === 'offset');
         const sizeKey = Object.keys(ep).find(k => k.toLowerCase().trim() === 'size');
@@ -3287,48 +3296,74 @@ function drawChainGraphic(motorTeeth, barrelTeeth, pitch, sprocketDia, plateWhee
             return diameter;
         }
         
-        function calculateEndplateRecommendation() {
-            if (endplateData.length === 0) return;
-            dom['max-coil-diameter'].textContent = maxCoilDiameter.toFixed(1);
-            const axleDeflection = parseFloat(dom['axle-deflection'].textContent) || 0;
-            let effectiveCoilDiameter = maxCoilDiameter;
+function calculateEndplateRecommendation() {
+    if (endplateData.length === 0) return;
 
-            if (dom.includeDeflectionInSizing.checked && axleDeflection > 0) {
-                effectiveCoilDiameter += axleDeflection;
-                dom['effective-coil-diameter'].textContent = effectiveCoilDiameter.toFixed(1);
-                dom['effective-coil-para'].style.display = 'block';
-            } else { dom['effective-coil-para'].style.display = 'none'; }
-            
-            const selectedMaterial = dom.matSteel.checked ? 'Steel' : 'Aluminium';
-            currentFilteredEndplates = endplateData.filter(plate => plate.Material.toLowerCase() === selectedMaterial.toLowerCase()).sort((a, b) => a.Size - b.Size);
-            const select = dom.endplateSelector;
-            select.innerHTML = '';
+    dom['max-coil-diameter'].textContent = maxCoilDiameter.toFixed(1);
+    const axleDeflection = parseFloat(dom['axle-deflection'].textContent) || 0;
+    let effectiveCoilDiameter = maxCoilDiameter;
 
-            if (currentFilteredEndplates.length === 0) {
-                select.innerHTML = `<option value="">-- No ${selectedMaterial} plates --</option>`;
-                updateSelectedEndplateInfo(); return;
-            }
-            let recommendedPlateIndex = -1;
-            currentFilteredEndplates.forEach((plate, index) => {
-                const option = document.createElement('option');
-                option.value = index; option.textContent = `${plate.Name} (${plate.Size} mm)`;
-                if (plate.Size >= effectiveCoilDiameter) {
-                    option.classList.add('option-pass');
-                    if (recommendedPlateIndex === -1) { recommendedPlateIndex = index; }
-                } else {
-                    option.classList.add('option-fail'); option.disabled = true;
-                }
-                select.appendChild(option);
-            });
+    if (dom.includeDeflectionInSizing.checked && axleDeflection > 0) {
+        effectiveCoilDiameter += axleDeflection;
+        dom['effective-coil-diameter'].textContent = effectiveCoilDiameter.toFixed(1);
+        dom['effective-coil-para'].style.display = 'block';
+    } else { 
+        dom['effective-coil-para'].style.display = 'none'; 
+    }
+    
+    const selectedMaterial = dom.matSteel.checked ? 'Steel' : 'Aluminium';
+    
+    // 1. Build the filtered list first
+    currentFilteredEndplates = endplateData.filter(plate => 
+        plate.Material.toLowerCase() === selectedMaterial.toLowerCase()
+    ).sort((a, b) => a.Size - b.Size);
+    
+    const select = dom.endplateSelector;
+    select.innerHTML = '';
 
-            if (recommendedPlateIndex !== -1) { select.value = recommendedPlateIndex; } else {
-                 const noPlateOption = document.createElement('option');
-                noPlateOption.value = ""; noPlateOption.textContent = "-- Coil too large for available plates --";
-                noPlateOption.selected = true; noPlateOption.disabled = true;
-                select.prepend(noPlateOption); drawEndplateGraphic(null, 0, null, null, 0); 
-            }
-            updateSelectedEndplateInfo();
+    if (currentFilteredEndplates.length === 0) {
+        select.innerHTML = `<option value="">-- No ${selectedMaterial} plates --</option>`;
+        updateSelectedEndplateInfo(); 
+        return;
+    }
+
+    // 2. Populate the dropdown options
+    let autoRecommendedIndex = -1;
+    currentFilteredEndplates.forEach((plate, index) => {
+        const option = document.createElement('option');
+        option.value = index; 
+        option.textContent = `${plate.Name} (${plate.Size} mm)`;
+        
+        if (plate.Size >= effectiveCoilDiameter) {
+            option.classList.add('option-pass');
+            if (autoRecommendedIndex === -1) { autoRecommendedIndex = index; }
+        } else {
+            option.classList.add('option-fail');
         }
+        select.appendChild(option);
+    });
+
+    // 3. APPLY LOGIC: Manual Override vs Auto-calculation
+    // If the user has NOT manually picked something, or the manual pick is no longer valid
+    if (userSelectedEndplateIndex === null || userSelectedEndplateIndex >= currentFilteredEndplates.length) {
+        if (autoRecommendedIndex !== -1) {
+            select.value = autoRecommendedIndex;
+        } else {
+            // Fallback if no plate fits
+            const noPlateOption = document.createElement('option');
+            noPlateOption.value = ""; 
+            noPlateOption.textContent = "-- Coil too large for available plates --";
+            noPlateOption.selected = true; 
+            noPlateOption.disabled = true;
+            select.prepend(noPlateOption);
+        }
+    } else {
+        // Stay on the user's manual selection
+        select.value = userSelectedEndplateIndex;
+    }
+
+    updateSelectedEndplateInfo();
+}
 
         function calculateMaxFloorToAxleHeight(endplateSize, lath, bottomLath, axle) {
             if (!lath || !axle || !bottomLath || endplateSize <= 0) return 0;
@@ -6476,84 +6511,68 @@ async function generateCsvReport() {
     const fullCsvRows = [];
     const techCache = new Map();
 
-    // 5. GENERATE MOTOR TABLES (Now including Safety Brake in the cell)
-    statusDiv.textContent = 'Generating motor and brake grids...';
-    
-    for (const mount of selectedMounts) {
-        for (const volt of selectedVolts) {
-            for (const mfr of selectedMfrs) {
-                for (const usage of selectedUsages) {
+    // 5. GENERATE MOTOR TABLES (Only Motor Name now)
+statusDiv.textContent = 'Generating motor grids...';
+
+for (const mount of selectedMounts) {
+    for (const volt of selectedVolts) {
+        for (const mfr of selectedMfrs) {
+            for (const usage of selectedUsages) {
+                
+                const groupMotors = motorData.filter(m => {
+                    const voltKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'voltage');
+                    const mfrKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'manufacturer');
+                    const usageKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'usage type');
+                    const motorVoltages = String(m[voltKey] || '').split('/').map(v => v.trim());
                     
-                    const groupMotors = motorData.filter(m => {
-                        const voltKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'voltage');
-                        const mfrKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'manufacturer');
-                        const usageKey = Object.keys(m).find(k => k.toLowerCase().trim() === 'usage type');
-                        const motorVoltages = String(m[voltKey] || '').split('/').map(v => v.trim());
-                        
-                        return m['Mounting type'] === mount && 
-                               m[mfrKey] === mfr && 
-                               m[usageKey] === usage &&
-                               motorVoltages.includes(volt);
-                    });
+                    return m['Mounting type'] === mount && 
+                           m[mfrKey] === mfr && 
+                           m[usageKey] === usage &&
+                           motorVoltages.includes(volt);
+                });
 
-                    if (groupMotors.length > 0) {
-                        fullCsvRows.push([`MOTOR & BRAKE CHART: ${mfr} | ${mount} | ${volt} | USAGE: ${usage}`]);
-                        fullCsvRows.push(["Height \\ Width", ...widths]);
+                if (groupMotors.length > 0) {
+                    // Title changed to remove "& BRAKE"
+                    fullCsvRows.push([`MOTOR CHART: ${mfr} | ${mount} | ${volt} | USAGE: ${usage}`]);
+                    fullCsvRows.push(["Height \\ Width", ...widths]);
 
-                        heights.forEach(h => {
-                            const row = [h];
-                            widths.forEach(w => {
-                                const cacheKey = `${w}-${h}-${usage}`;
-                                let sys;
-                                if (techCache.has(cacheKey)) {
-                                    sys = techCache.get(cacheKey);
-                                } else {
-                                    const activeLath = (w > switchWidth && secondaryLath) ? secondaryLath : primaryLath;
-                                    const dummyMotor = { "Usage type": usage };
-                                    sys = calculateSystemHeadless(w, h, activeLath, bottomLath, endlock, isPC, useReverse, dummyMotor);
-                                    techCache.set(cacheKey, sys);
-                                }
+                    heights.forEach(h => {
+                        const row = [h];
+                        widths.forEach(w => {
+                            const cacheKey = `${w}-${h}-${usage}`;
+                            let sys;
+                            if (techCache.has(cacheKey)) {
+                                sys = techCache.get(cacheKey);
+                            } else {
+                                const activeLath = (w > switchWidth && secondaryLath) ? secondaryLath : primaryLath;
+                                const dummyMotor = { "Usage type": usage };
+                                sys = calculateSystemHeadless(w, h, activeLath, bottomLath, endlock, isPC, useReverse, dummyMotor);
+                                techCache.set(cacheKey, sys);
+                            }
 
-                                // Find smallest passing motor
-                                const bestMotor = groupMotors
-                                    .filter(m => sys.torque >= (parseFloat(m['Torque (Nm) min']) || 0) && 
-                                                 sys.torque <= (parseFloat(m['Torque (Nm) max']) || Infinity))
-                                    .sort((a,b) => (parseFloat(a['Torque (Nm) max']) || 0) - (parseFloat(b['Torque (Nm) max']) || 0))[0];
-                                
-                                if (bestMotor) {
-                                    // Calculate matching safety brake for this motor
-                                    const motorMaxTorque = parseFloat(bestMotor['Torque (Nm) max']) || 0;
-                                    const brakeKey = Object.keys(bestMotor).find(k => k.toLowerCase().includes('requires additional saftey brake'));
-                                    const needsBrake = brakeKey ? String(bestMotor[brakeKey]).toLowerCase().trim() !== "no" : true;
-
-                                    let brakeName = "N/A";
-                                    if (needsBrake && safetyBrakeData.length > 0) {
-                                        const suitableBrake = safetyBrakeData.filter(brake => {
-                                            const opTorqueKey = Object.keys(brake).find(k => k.toLowerCase().includes('operating torque'));
-                                            const opTorque = parseFloat(brake[opTorqueKey]) || 0;
-                                            return opTorque >= motorMaxTorque;
-                                        }).sort((a,b) => {
-                                            const opA = parseFloat(a[Object.keys(a).find(k => k.toLowerCase().includes('operating torque'))]) || 0;
-                                            const opB = parseFloat(b[Object.keys(b).find(k => k.toLowerCase().includes('operating torque'))]) || 0;
-                                            return opA - opB;
-                                        })[0];
-                                        brakeName = suitableBrake ? suitableBrake.Name : "REQUIRED - NOT FOUND";
-                                    }
-
-                                    row.push(`${bestMotor.Name} / ${brakeName}`);
-                                } else {
-                                    row.push("---");
-                                }
-                            });
-                            fullCsvRows.push(row);
+                            // Find smallest passing motor
+                            const bestMotor = groupMotors
+                                .filter(m => sys.torque >= (parseFloat(m['Torque (Nm) min']) || 0) && 
+                                             sys.torque <= (parseFloat(m['Torque (Nm) max']) || Infinity))
+                                .sort((a,b) => (parseFloat(a['Torque (Nm) max']) || 0) - (parseFloat(b['Torque (Nm) max']) || 0))[0];
+                            
+                            if (bestMotor) {
+                                // FIXED: Only push the Motor Name. 
+                                // Safety Brake logic removed from here as it appears in the Reference section.
+                                row.push(bestMotor.Name);
+                            } else {
+                                row.push("---");
+                            }
                         });
-                        fullCsvRows.push([]); 
-                        fullCsvRows.push([]);
-                    }
+                        fullCsvRows.push(row);
+                    });
+                    fullCsvRows.push([]); 
+                    fullCsvRows.push([]);
                 }
             }
         }
     }
+}
 
     // 6. GENERATE SHARED TECHNICAL TABLES
     const createTechTable = (title, displayFn) => {
